@@ -1,0 +1,461 @@
+{
+  "info": {
+    "_postman_id": "8d2dfa82-bd06-4d7a-a0b1-evzonev500001",
+    "name": "EVzone Ride v5 Mobile Contracts",
+    "description": "Mobile contract endpoints added in EVzone Ride Backend 5.0.0. Run Rider Login and Driver Login first.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "riderToken",
+      "value": ""
+    },
+    {
+      "key": "driverToken",
+      "value": ""
+    },
+    {
+      "key": "placeId",
+      "value": ""
+    },
+    {
+      "key": "rentalRequestId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Public mobile contract",
+      "item": [
+        {
+          "name": "capabilities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "x-app-platform",
+                "value": "android"
+              },
+              {
+                "key": "x-app-version",
+                "value": "1.0.0"
+              }
+            ],
+            "url": "{{baseUrl}}/mobile/v1/capabilities"
+          }
+        },
+        {
+          "name": "config",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/mobile/v1/config"
+          }
+        },
+        {
+          "name": "branches",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/rentals/branches"
+          }
+        },
+        {
+          "name": "vehicle-classes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/rentals/vehicle-classes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"rider@evzone.local\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const b=pm.response.json(); pm.collectionVariables.set('riderToken', b.data.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"driver@evzone.local\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const b=pm.response.json(); pm.collectionVariables.set('driverToken', b.data.accessToken);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rider mobile flows",
+      "item": [
+        {
+          "name": "bootstrap",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{riderToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/mobile/v1/bootstrap"
+          }
+        },
+        {
+          "name": "places",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{riderToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/users/me/places",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Kampala Central\",\n  \"address\": \"Kampala Central, Uganda\",\n  \"latitude\": 0.3136,\n  \"longitude\": 32.5811,\n  \"source\": \"POSTMAN\",\n  \"pinned\": true,\n  \"pinLabel\": \"City\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const b=pm.response.json(); pm.collectionVariables.set('placeId', b.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "places?scope=recent",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{riderToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/users/me/places?scope=recent"
+          }
+        },
+        {
+          "name": "custom-requests",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{riderToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/rentals/custom-requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickupAt\": \"2026-07-10T08:00:00.000Z\",\n  \"returnAt\": \"2026-07-12T17:00:00.000Z\",\n  \"pickupLocation\": \"Kampala Central\",\n  \"returnLocation\": \"Entebbe International Airport\",\n  \"passengerCount\": 3,\n  \"luggageCount\": 2,\n  \"withDriver\": true,\n  \"requirements\": {\n    \"airConditioning\": true\n  },\n  \"budgetAmount\": 600000,\n  \"currency\": \"UGX\",\n  \"paymentMethod\": \"CASH\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const b=pm.response.json(); pm.collectionVariables.set('rentalRequestId', b.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "custom-requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{riderToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/rentals/custom-requests"
+          }
+        },
+        {
+          "name": "me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{riderToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/reviews/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Driver mobile flows",
+      "item": [
+        {
+          "name": "jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/driver/jobs"
+          }
+        },
+        {
+          "name": "all-jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/drivers/me/all-jobs"
+          }
+        },
+        {
+          "name": "service-preferences",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/drivers/me/service-preferences"
+          }
+        },
+        {
+          "name": "service-preferences",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/drivers/me/service-preferences",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceCapabilities\": [\n    \"RIDE\",\n    \"DELIVERY\",\n    \"CAR_RENTAL\"\n  ],\n  \"maximumPickupDistanceKm\": 25,\n  \"autoAcceptEligibleJobs\": false,\n  \"interactionPreferences\": {\n    \"communicationStyle\": \"SILENT\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "learning",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/drivers/me/learning"
+          }
+        },
+        {
+          "name": "certificates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/drivers/me/certificates"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,553 @@
+{
+  "info": {
+    "_postman_id": "b23b24ee-41c7-4f33-a877-evzonefleetv6",
+    "name": "EVzone Fleet Partner Portal v6",
+    "description": "Fleet Partner application contract for EVzone Ride Backend v6. Login first and copy the returned accessToken into the collection variable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "fleetId",
+      "value": ""
+    },
+    {
+      "key": "driverId",
+      "value": ""
+    },
+    {
+      "key": "vehicleId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Login Fleet Partner",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "login"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"identifier\": \"fleet.partner@evzone.local\",\n  \"password\": \"Password123!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Fleet Runtime Flag",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/compat/flags/fleet",
+          "host": ["{{baseUrl}}"],
+          "path": ["compat", "flags", "fleet"]
+        }
+      }
+    },
+    {
+      "name": "Realtime Event Contract",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/compat/realtime/events",
+          "host": ["{{baseUrl}}"],
+          "path": ["compat", "realtime", "events"]
+        }
+      }
+    },
+    {
+      "name": "Fleet Profile",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/me/profile",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "me", "profile"]
+        }
+      }
+    },
+    {
+      "name": "Fleet Organizations",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/me/organizations",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "me", "organizations"]
+        }
+      }
+    },
+    {
+      "name": "Fleet Branches",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/me/branches",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "me", "branches"]
+        }
+      }
+    },
+    {
+      "name": "Create Fleet Branch",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/me/branches",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "me", "branches"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Kampala Central\",\n  \"city\": \"Kampala\",\n  \"country\": \"UG\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Fleet Drivers",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/drivers",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "drivers"]
+        }
+      }
+    },
+    {
+      "name": "Create Fleet Driver",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/drivers",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "drivers"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fleetAccountId\": \"{{fleetId}}\",\n  \"displayName\": \"Jane Driver\",\n  \"email\": \"jane.driver@example.com\",\n  \"phone\": \"+256700000000\",\n  \"status\": \"ACTIVE\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Fleet Vehicles",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/vehicles",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "vehicles"]
+        }
+      }
+    },
+    {
+      "name": "Create Fleet Vehicle",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/vehicles",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "vehicles"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fleetAccountId\": \"{{fleetId}}\",\n  \"make\": \"BYD\",\n  \"model\": \"Atto 3\",\n  \"yearOfManufacture\": 2026,\n  \"licensePlate\": \"UAA 001E\",\n  \"powertrain\": \"BEV\",\n  \"vehicleStatus\": \"ACTIVE\",\n  \"bodyType\": \"SUV\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Fleet Dispatches",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/dispatches",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "dispatches"]
+        }
+      }
+    },
+    {
+      "name": "Create Fleet Dispatch",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/dispatches",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "dispatches"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"pickup\": {\n    \"address\": \"Kampala Road\"\n  },\n  \"dropoff\": {\n    \"address\": \"Entebbe Airport\"\n  },\n  \"driverId\": \"{{driverId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"type\": \"ride\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Fleet Rentals",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/rentals",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "rentals"]
+        }
+      }
+    },
+    {
+      "name": "Fleet Tours",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/tours",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "tours"]
+        }
+      }
+    },
+    {
+      "name": "Fleet School Shuttles",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/school-shuttles",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "school-shuttles"]
+        }
+      }
+    },
+    {
+      "name": "School Routes",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/school-shuttles/routes",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "school-shuttles", "routes"]
+        }
+      }
+    },
+    {
+      "name": "School Students",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/school-shuttles/students",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "school-shuttles", "students"]
+        }
+      }
+    },
+    {
+      "name": "Compliance Incidents",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/compliance/incidents",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "compliance", "incidents"]
+        }
+      }
+    },
+    {
+      "name": "Training Courses",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/compliance/training-courses",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "compliance", "training-courses"]
+        }
+      }
+    },
+    {
+      "name": "Fleet Notifications",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/me/notifications",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "me", "notifications"]
+        }
+      }
+    },
+    {
+      "name": "Earnings Summary",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/earnings/summary",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "earnings", "summary"]
+        }
+      }
+    },
+    {
+      "name": "Fleet Portal Settings",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/me/settings",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "me", "settings"]
+        }
+      }
+    },
+    {
+      "name": "Fleet Security Settings",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/me/security",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "me", "security"]
+        }
+      }
+    },
+    {
+      "name": "Fleet Integrations",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/me/integrations",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "me", "integrations"]
+        }
+      }
+    },
+    {
+      "name": "Fleet Roles",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/fleet/me/roles",
+          "host": ["{{baseUrl}}"],
+          "path": ["fleet", "me", "roles"]
+        }
+      }
+    }
+  ]
+}

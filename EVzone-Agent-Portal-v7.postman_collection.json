@@ -1,0 +1,992 @@
+{
+  "info": {
+    "_postman_id": "d2d06b81-9c9c-4e31-b751-evzone-agent-v7",
+    "name": "EVzone Agent Portal API v7.0.0",
+    "description": "Agent Portal, Dispatcher, Support and Supervisor API examples for EVzone Ride Backend v7.0.0.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "agentAccessToken",
+      "value": ""
+    },
+    {
+      "key": "agentRefreshToken",
+      "value": ""
+    },
+    {
+      "key": "taskId",
+      "value": ""
+    },
+    {
+      "key": "ticketId",
+      "value": ""
+    },
+    {
+      "key": "bookingId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Agent login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"agent@evzone.local\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login succeeded', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "const token = json.accessToken || json.data?.accessToken || json.tokens?.accessToken;",
+                  "const refresh = json.refreshToken || json.data?.refreshToken || json.tokens?.refreshToken;",
+                  "if (token) pm.collectionVariables.set('agentAccessToken', token);",
+                  "if (refresh) pm.collectionVariables.set('agentRefreshToken', refresh);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dispatcher login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"dispatcher@evzone.local\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login succeeded', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "const token = json.accessToken || json.data?.accessToken || json.tokens?.accessToken;",
+                  "const refresh = json.refreshToken || json.data?.refreshToken || json.tokens?.refreshToken;",
+                  "if (token) pm.collectionVariables.set('agentAccessToken', token);",
+                  "if (refresh) pm.collectionVariables.set('agentRefreshToken', refresh);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current portal profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Refresh session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{agentRefreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Workspace",
+      "item": [
+        {
+          "name": "Bootstrap",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/bootstrap",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "bootstrap"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "dashboard"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/analytics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "analytics"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Supervisor workspace",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/supervisor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "supervisor"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "profile"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Preferences",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "preferences"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks and Drafts",
+      "item": [
+        {
+          "name": "List tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "tasks"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Create task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "tasks"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Follow up priority rider\",\n  \"description\": \"Confirm pickup assistance requirements\",\n  \"priority\": \"HIGH\",\n  \"category\": \"FOLLOW_UP\",\n  \"tags\": [\n    \"rider\",\n    \"priority\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List drafts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/drafts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "drafts"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Create booking draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/drafts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "drafts"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"draftType\": \"MANUAL_BOOKING\",\n  \"title\": \"Airport pickup draft\",\n  \"lastStep\": \"DESTINATION\",\n  \"payload\": {\n    \"serviceType\": \"RIDE\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dispatch and Live Operations",
+      "item": [
+        {
+          "name": "Dispatch hub",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/dispatch/hub",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "dispatch",
+                "hub"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Dispatch board",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/dispatch/board",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "dispatch",
+                "board"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "List manual bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/dispatch/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "dispatch",
+                "bookings"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Create manual ride booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/dispatch/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "dispatch",
+                "bookings"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceType\": \"RIDE\",\n  \"priority\": \"NORMAL\",\n  \"customer\": {\n    \"phone\": \"+256700000099\",\n    \"email\": \"portal.test@evzone.local\",\n    \"firstName\": \"Portal\",\n    \"lastName\": \"Rider\"\n  },\n  \"payload\": {\n    \"pickup\": {\n      \"address\": \"Kampala Road, Kampala\",\n      \"latitude\": 0.3136,\n      \"longitude\": 32.5811\n    },\n    \"destination\": {\n      \"address\": \"Ntinda, Kampala\",\n      \"latitude\": 0.3548,\n      \"longitude\": 32.6122\n    },\n    \"passengerCount\": 1\n  },\n  \"paymentMethod\": \"CASH\",\n  \"quotedAmount\": 25000,\n  \"notes\": \"Created from the Agent Portal Postman collection\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Live operations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/live-ops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "live-ops"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Live operations map",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/live-ops/map",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "live-ops",
+                "map"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Support, Onboarding and Safety",
+      "item": [
+        {
+          "name": "List support tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/support/tickets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "support",
+                "tickets"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Create support ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/support/tickets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "support",
+                "tickets"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"Rider booking assistance\",\n  \"description\": \"Customer needs help with a scheduled booking.\",\n  \"category\": \"BOOKING\",\n  \"priority\": \"HIGH\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Onboarding queue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/onboarding",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "onboarding"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Safety incident queue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/safety/incidents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "safety",
+                "incidents"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "SOS queue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/safety/sos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "safety",
+                "sos"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Global search",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/search?search=driver",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "search?search=driver"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Training, QA and Settings",
+      "item": [
+        {
+          "name": "Training overview",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/training",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "training"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Training modules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/training/modules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "training",
+                "modules"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "QA reviews",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/qa/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "qa",
+                "reviews"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Teams",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/settings/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "settings",
+                "teams"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/settings/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "settings",
+                "roles"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Shifts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/settings/shifts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "settings",
+                "shifts"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        },
+        {
+          "name": "Portal agents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentAccessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/agent/settings/agents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "agent",
+                "settings",
+                "agents"
+              ]
+            },
+            "description": "EVzone Agent Portal v7 endpoint."
+          }
+        }
+      ]
+    }
+  ]
+}

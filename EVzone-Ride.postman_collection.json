@@ -1,0 +1,1332 @@
+{
+  "info": {
+    "name": "EVzone Ride \u2013 Rides, Logistics & Operations v2.0",
+    "description": "Ready-to-run requests for Rider, Driver, Fleet Partner, Agent/Dispatcher, Admin, School fleet synchronization and CorporatePay integration. Import docs/openapi.json for the complete contract.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "driverToken",
+      "value": ""
+    },
+    {
+      "key": "fleetToken",
+      "value": ""
+    },
+    {
+      "key": "agentToken",
+      "value": ""
+    },
+    {
+      "key": "dispatcherToken",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "organizationId",
+      "value": ""
+    },
+    {
+      "key": "fleetId",
+      "value": ""
+    },
+    {
+      "key": "deskId",
+      "value": ""
+    },
+    {
+      "key": "corporatePayAccountId",
+      "value": ""
+    },
+    {
+      "key": "manualBookingId",
+      "value": ""
+    },
+    {
+      "key": "corporatePayTransactionId",
+      "value": ""
+    },
+    {
+      "key": "driverId",
+      "value": ""
+    },
+    {
+      "key": "vehicleId",
+      "value": ""
+    },
+    {
+      "key": "schoolConnectionId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login \u2013 Rider",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"rider@evzone.local\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); pm.collectionVariables.set('accessToken', b.data.accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login \u2013 Driver",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"driver@evzone.local\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); pm.collectionVariables.set('driverToken', b.data.accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login \u2013 Fleet Partner",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"fleet.partner@evzone.local\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); pm.collectionVariables.set('fleetToken', b.data.accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login \u2013 Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"agent@evzone.local\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); pm.collectionVariables.set('agentToken', b.data.accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login \u2013 Dispatcher",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"dispatcher@evzone.local\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); pm.collectionVariables.set('dispatcherToken', b.data.accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login \u2013 Administrator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"admin@evzone.local\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); pm.collectionVariables.set('adminToken', b.data.accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ride Hailing",
+      "item": [
+        {
+          "name": "Estimate ride",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/rides/estimate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rides",
+                "estimate"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickup\": {\n    \"address\": \"Kampala Central\",\n    \"latitude\": 0.315,\n    \"longitude\": 32.58\n  },\n  \"destination\": {\n    \"address\": \"Entebbe Airport\",\n    \"latitude\": 0.0424,\n    \"longitude\": 32.4435\n  },\n  \"vehicleType\": \"SUV\",\n  \"mode\": \"ON_DEMAND\",\n  \"category\": \"STANDARD\",\n  \"tripType\": \"ONE_WAY\",\n  \"passengerCount\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create ride",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/rides",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rides"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickup\": {\n    \"address\": \"Kampala Central\",\n    \"latitude\": 0.315,\n    \"longitude\": 32.58\n  },\n  \"destination\": {\n    \"address\": \"Entebbe Airport\",\n    \"latitude\": 0.0424,\n    \"longitude\": 32.4435\n  },\n  \"vehicleType\": \"SUV\",\n  \"mode\": \"ON_DEMAND\",\n  \"category\": \"STANDARD\",\n  \"tripType\": \"ONE_WAY\",\n  \"passengerCount\": 1,\n  \"paymentMethod\": \"CASH\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "My rides",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rides",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rides"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Deliveries",
+      "item": [
+        {
+          "name": "Estimate delivery",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deliveries/estimate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deliveries",
+                "estimate"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickup\": {\n    \"address\": \"Acacia Mall\",\n    \"latitude\": 0.3382,\n    \"longitude\": 32.5867\n  },\n  \"destination\": {\n    \"address\": \"Kajjansi\",\n    \"latitude\": 0.2068,\n    \"longitude\": 32.5415\n  },\n  \"serviceType\": \"ELECTRIC_VEHICLE\",\n  \"packageSize\": \"MEDIUM\",\n  \"weightKg\": 4.5,\n  \"fragile\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Track example",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/deliveries/track/EVZ-TRACKING-CODE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deliveries",
+                "track",
+                "EVZ-TRACKING-CODE"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ambulance",
+      "item": [
+        {
+          "name": "Nearest facilities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ambulance/facilities/nearest?latitude=0.31&longitude=32.58&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ambulance",
+                "facilities",
+                "nearest?latitude=0.31&longitude=32.58&limit=5"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Car Rental",
+      "item": [
+        {
+          "name": "Search rental vehicles",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/rentals/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rentals",
+                "search"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickupAt\": \"2026-07-01T08:00:00.000Z\",\n  \"returnAt\": \"2026-07-04T08:00:00.000Z\",\n  \"vehicleType\": \"SUV\",\n  \"seats\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Organizations & Fleet Partner",
+      "item": [
+        {
+          "name": "My organizations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fleetToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/organizations/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "organizations",
+                "mine"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); const o=b.data.find(x=>x.code==='EVFLEET-DEMO')||b.data[0]; if(o) pm.collectionVariables.set('organizationId',o.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fleet profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fleetToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fleet-partners/{{organizationId}}/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fleet-partners",
+                "{{organizationId}}",
+                "profile"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); pm.collectionVariables.set('fleetId',b.data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fleet dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fleetToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fleet-partners/{{organizationId}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fleet-partners",
+                "{{organizationId}}",
+                "dashboard"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Fleet vehicles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fleetToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fleet-partners/{{organizationId}}/vehicles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fleet-partners",
+                "{{organizationId}}",
+                "vehicles"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); const x=b.data.find(v=>(v.serviceCapabilities||[]).includes('RIDE')); if(x) pm.collectionVariables.set('vehicleId',x.vehicleId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fleet drivers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fleetToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fleet-partners/{{organizationId}}/drivers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fleet-partners",
+                "{{organizationId}}",
+                "drivers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); const x=b.data.find(v=>(v.serviceCapabilities||[]).includes('RIDE')); if(x) pm.collectionVariables.set('driverId',x.driverId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fleet compliance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fleetToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fleet-partners/{{organizationId}}/compliance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fleet-partners",
+                "{{organizationId}}",
+                "compliance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "School connections",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fleetToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fleet-partners/{{organizationId}}/school/connections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fleet-partners",
+                "{{organizationId}}",
+                "school",
+                "connections"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); if(b.data[0]) pm.collectionVariables.set('schoolConnectionId',b.data[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Run School bidirectional sync",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dispatcherToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fleet-partners/{{organizationId}}/school/connections/{{schoolConnectionId}}/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fleet-partners",
+                "{{organizationId}}",
+                "school",
+                "connections",
+                "{{schoolConnectionId}}",
+                "sync"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"direction\": \"BIDIRECTIONAL\",\n  \"resourceType\": \"VEHICLE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Agent & Dispatcher",
+      "item": [
+        {
+          "name": "Dispatch desks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dispatch/{{organizationId}}/desks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dispatch",
+                "{{organizationId}}",
+                "desks"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); if(b.data[0]) pm.collectionVariables.set('deskId',b.data[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dispatch dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dispatch/{{organizationId}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dispatch",
+                "{{organizationId}}",
+                "dashboard"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Agents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fleetToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dispatch/{{organizationId}}/agents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dispatch",
+                "{{organizationId}}",
+                "agents"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create manual CorporatePay ride",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dispatch/{{organizationId}}/manual-bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dispatch",
+                "{{organizationId}}",
+                "manual-bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deskId\": \"{{deskId}}\",\n  \"serviceType\": \"RIDE\",\n  \"customer\": {\n    \"phone\": \"+256700123456\",\n    \"firstName\": \"Manual\",\n    \"lastName\": \"Customer\"\n  },\n  \"payload\": {\n    \"pickup\": {\n      \"address\": \"Kampala Road\",\n      \"latitude\": 0.3136,\n      \"longitude\": 32.5811\n    },\n    \"destination\": {\n      \"address\": \"Entebbe Airport\",\n      \"latitude\": 0.0424,\n      \"longitude\": 32.4435\n    },\n    \"passengerCount\": 1\n  },\n  \"paymentMethod\": \"CORPORATE_PAY\",\n  \"corporatePayAccountId\": \"{{corporatePayAccountId}}\",\n  \"notes\": \"Created from Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); pm.collectionVariables.set('manualBookingId',b.data.booking.id); pm.collectionVariables.set('corporatePayTransactionId',b.data.booking.corporatePayTransactionId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign manual booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dispatcherToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dispatch/{{organizationId}}/manual-bookings/{{manualBookingId}}/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dispatch",
+                "{{organizationId}}",
+                "manual-bookings",
+                "{{manualBookingId}}",
+                "assign"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fleetId\": \"{{fleetId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"vehicleId\": \"{{vehicleId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Manual booking details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dispatcherToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dispatch/{{organizationId}}/manual-bookings/{{manualBookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dispatch",
+                "{{organizationId}}",
+                "manual-bookings",
+                "{{manualBookingId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "CorporatePay Integration",
+      "item": [
+        {
+          "name": "CorporatePay accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{agentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/corporate-pay/accounts?organizationId={{organizationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "corporate-pay",
+                "accounts?organizationId={{organizationId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.json(); if(b.data[0]) pm.collectionVariables.set('corporatePayAccountId',b.data[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "CorporatePay transaction",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dispatcherToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/corporate-pay/transactions/{{corporatePayTransactionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "corporate-pay",
+                "transactions",
+                "{{corporatePayTransactionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "CorporatePay dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fleetToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/corporate-pay/dashboard/summary?organizationId={{organizationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "corporate-pay",
+                "dashboard",
+                "summary?organizationId={{organizationId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reconcile transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fleetToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/corporate-pay/reconciliations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "corporate-pay",
+                "reconciliations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"{{corporatePayTransactionId}}\",\n  \"settledAmount\": 1000,\n  \"statementDate\": \"2026-06-20T00:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expanded Administration",
+      "item": [
+        {
+          "name": "Admin dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "dashboard"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Organizations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/organizations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "organizations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Fleets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/fleets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "fleets"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Manual bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/manual-bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "manual-bookings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "CorporatePay transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/corporate-pay/transactions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "corporate-pay",
+                "transactions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Integration health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/integrations/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "integrations",
+                "health"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Platform settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

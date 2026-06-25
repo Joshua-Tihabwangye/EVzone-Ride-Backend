@@ -1,0 +1,87 @@
+{
+  "product": "EVzone Ride Backend",
+  "version": "10.0.0",
+  "releaseDate": "2026-06-23",
+  "corporatePayPartnerContractVersion": "2026-06-21",
+  "adminPortalContractVersion": "2026-06-v1",
+  "agentPortalContractVersion": "2026-06-v1",
+  "fleetContractVersion": "2026-06-v1",
+  "mobileContractVersion": "2026-06-v1",
+  "checks": {
+    "typescriptBuild": "PASS",
+    "eslint": {
+      "status": "PASS",
+      "scope": "Full src and test trees",
+      "warnings": 0
+    },
+    "jest": {
+      "status": "PASS",
+      "suites": 16,
+      "tests": 52
+    },
+    "freshSqlJsStartup": "PASS",
+    "demoSeed": "PASS",
+    "runtimeSmokes": {
+      "core": "PASS",
+      "platform": "PASS",
+      "fleetPartner": "PASS",
+      "agentPortal": "PASS",
+      "adminPortal": "PASS",
+      "corporatePayPartner": "PASS",
+      "corporatePaySchoolShuttle": "PASS",
+      "productionHardening": "PASS",
+      "reportUpgrade": "PASS",
+      "reportInfrastructure": "PASS"
+    },
+    "hmacPartnerAuthentication": "PASS",
+    "persistedNonceReplayRejection": "PASS",
+    "runtimeHealthProbe": "PASS",
+    "openApiProbe": "PASS"
+  },
+  "schema": {
+    "typeormEntities": 151,
+    "universalDispatchEntities": 23
+  },
+  "openApi": {
+    "version": "10.0.0",
+    "paths": 587,
+    "operations": 765,
+    "schemas": 316,
+    "corporatePayPartnerPaths": 21,
+    "corporatePayPartnerOperations": 24
+  },
+  "corporatePayPartner": {
+    "restPrefix": "/api/v1/corporate-pay/partner",
+    "ownershipBoundary": "CorporatePay remains a separate backend and corporate financial system of record",
+    "hmacSha256": "PASS",
+    "sandboxApiKey": "PASS",
+    "subjectMapping": "PASS",
+    "quotesAndServiceRequests": "PASS",
+    "authorizationAndProvisioning": "PASS",
+    "receiptsEvidenceAndDisputes": "PASS",
+    "refundsReconciliationAndEsg": "PASS",
+    "durableEventsAndAcknowledgements": "PASS",
+    "schoolShuttleExternalPaymentBridge": "PASS",
+    "schoolBackendOwnershipPreserved": "PASS"
+  },
+  "preservation": {
+    "riderAndDriverContracts": "PASS",
+    "fleetPartner": "PASS",
+    "agentDispatcher": "PASS",
+    "agentPortal": "PASS",
+    "adminPortal": "PASS",
+    "existingCorporatePayAdapter": "PASS",
+    "schoolFleetSync": "PASS",
+    "rideHailing": "PASS",
+    "deliveries": "PASS",
+    "touristVehicles": "PASS",
+    "ambulance": "PASS",
+    "carRental": "PASS"
+  },
+  "notes": [
+    "Version 10 is additive and retains every version 9 module and route family.",
+    "The universal dispatch TypeORM schema, policy catalogue, decision model and transactional outbox foundation are included.",
+    "CorporatePay remains independently deployed; this package preserves its secure EVzone service integration boundary.",
+    "Redis, Kafka, Cloudinary, push providers and external OIDC remain optional; local fallbacks are operational."
+  ]
+}

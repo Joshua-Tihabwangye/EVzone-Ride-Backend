@@ -1,0 +1,118 @@
+{
+  "name": "EVzone Ride Backend",
+  "version": "10.0.0",
+  "releaseDate": "2026-06-23",
+  "runtime": {
+    "node": ">=20",
+    "framework": "NestJS 11",
+    "orm": "TypeORM",
+    "localDatabase": "SQL.js",
+    "productionDatabase": "PostgreSQL 16 + PostGIS"
+  },
+  "platforms": [
+    "Rider",
+    "Driver",
+    "Fleet Partner",
+    "Agent/Dispatcher",
+    "Agent Portal",
+    "Admin Portal"
+  ],
+  "serviceDomains": [
+    "Ride-Hailing",
+    "Deliveries",
+    "Tourist Vehicles",
+    "Ambulance",
+    "Car Rental",
+    "School Shuttle Fleet Management"
+  ],
+  "externalIntegrations": [
+    "CorporatePay separate backend via Partner API v9",
+    "School App Backend",
+    "Optional Redis and Redis Socket.IO Adapter",
+    "Optional Apache Kafka",
+    "Optional Cloudinary",
+    "Optional Firebase Cloud Messaging",
+    "Optional Nominatim/OSRM"
+  ],
+  "validation": {
+    "typescriptBuild": "PASS",
+    "eslint": "PASS",
+    "testSuites": 16,
+    "tests": 52,
+    "freshStartup": "PASS",
+    "demoSeed": "PASS",
+    "runtimeSmokeSuites": 10,
+    "hmacAuthentication": "PASS",
+    "nonceReplayProtection": "PASS",
+    "entities": 151,
+    "openApiPaths": 587,
+    "openApiOperations": 765,
+    "openApiSchemas": 316,
+    "corporatePayPartnerPaths": 21,
+    "corporatePayPartnerOperations": 24,
+    "schoolShuttleCorporatePayBridge": "PASS",
+    "runtimeHealthProbe": "PASS",
+    "universalDispatchEntities": 23
+  },
+  "startup": {
+    "local": "./start-local.sh",
+    "powershell": "./start-local.ps1",
+    "docker": "docker compose up --build"
+  },
+  "documentation": [
+    "README.md",
+    "RELEASE_NOTES.md",
+    "docs/openapi.json",
+    "docs/ARCHITECTURE.md",
+    "docs/PLATFORM_EXPANSION.md",
+    "docs/LEGACY_TRANSFER_MATRIX.md",
+    "docs/API_FLOWS.md",
+    "docs/DEPLOYMENT.md",
+    "docs/SECURITY.md",
+    "docs/VALIDATION.md",
+    "docs/MOBILE_APP_CONTRACT_AUDIT.md",
+    "docs/FLEET_PARTNER_APP_CONTRACT_AUDIT.md",
+    "docs/AGENT_PORTAL_APP_CONTRACT_AUDIT.md",
+    "docs/ADMIN_PORTAL_APP_CONTRACT_AUDIT.md",
+    "docs/CORPORATEPAY_APP_CONTRACT_AUDIT.md",
+    "EVzone-Ride-v5-Mobile.postman_collection.json",
+    "EVzone-Fleet-Partner-v6.postman_collection.json",
+    "EVzone-Agent-Portal-v7.postman_collection.json",
+    "EVzone-Admin-Portal-v8.postman_collection.json",
+    "EVzone-CorporatePay-Partner-v9.postman_collection.json",
+    "docs/UNIVERSAL_DISPATCH_V10.md",
+    "docs/specifications/EVzoneRide_Backend_Implementation_Prompt.md",
+    "docs/specifications/EVzoneRide_Universal_Driver_Dispatch_Backend_Implementation.md"
+  ],
+  "demoPassword": "Password123!",
+  "demoAccounts": [
+    "admin@evzone.local",
+    "fleet.partner@evzone.local",
+    "agent@evzone.local",
+    "dispatcher@evzone.local",
+    "rider@evzone.local",
+    "driver@evzone.local",
+    "delivery.driver@evzone.local",
+    "ambulance.driver@evzone.local",
+    "tour.driver@evzone.local",
+    "school.driver@evzone.local",
+    "tour.operator@evzone.local",
+    "rental.partner@evzone.local"
+  ],
+  "mobileContractVersion": "2026-06-v1",
+  "fleetContractVersion": "2026-06-v1",
+  "agentPortalContractVersion": "2026-06-v1",
+  "adminPortalContractVersion": "2026-06-v1",
+  "corporatePayPartnerContractVersion": "2026-06-21",
+  "universalDispatch": {
+    "version": "10.0.0",
+    "runtimeModel": "DRIVER_PLUS_ACTIVE_VEHICLE_PLUS_QUALIFICATIONS_PLUS_CAPABILITIES_PLUS_COMPLIANCE_PLUS_FLEET_SHIFT_LIVE_STATE",
+    "assignmentAuthority": "POSTGRESQL_OR_TRANSACTIONALLY_EQUIVALENT_DURABLE_DATABASE",
+    "policyRules": [
+      "ELIGIBILITY_BEFORE_RANKING",
+      "NO_SENSITIVE_ATTRIBUTES",
+      "SAFETY_REQUIREMENTS_NEVER_RELAXED",
+      "VERSIONED_AND_AUDITABLE"
+    ]
+  }
+}

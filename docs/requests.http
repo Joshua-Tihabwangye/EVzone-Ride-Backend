@@ -1,0 +1,107 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = paste-rider-access-token-here
+
+### Health
+GET {{baseUrl}}/health
+
+### Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "rider@evzone.local",
+  "password": "Password123!"
+}
+
+### Ride estimate
+POST {{baseUrl}}/rides/estimate
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "pickup": { "address": "Kampala Central", "latitude": 0.315, "longitude": 32.58 },
+  "destination": { "address": "Entebbe Airport", "latitude": 0.0424, "longitude": 32.4435 },
+  "vehicleType": "SUV",
+  "mode": "ON_DEMAND",
+  "category": "STANDARD",
+  "tripType": "ONE_WAY",
+  "passengerCount": 1
+}
+
+### Login – Fleet Partner
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "fleet.partner@evzone.local",
+  "password": "Password123!"
+}
+
+### Login – Agent
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "agent@evzone.local",
+  "password": "Password123!"
+}
+
+### My organizations
+GET {{baseUrl}}/organizations/mine
+Authorization: Bearer {{token}}
+
+### Fleet dashboard
+GET {{baseUrl}}/fleet-partners/{{organizationId}}/dashboard
+Authorization: Bearer {{token}}
+
+### Dispatch dashboard
+GET {{baseUrl}}/dispatch/{{organizationId}}/dashboard
+Authorization: Bearer {{token}}
+
+### CorporatePay accounts
+GET {{baseUrl}}/corporate-pay/accounts?organizationId={{organizationId}}
+Authorization: Bearer {{token}}
+
+### School fleet synchronization
+POST {{baseUrl}}/fleet-partners/{{organizationId}}/school/connections/{{connectionId}}/sync
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "direction": "BIDIRECTIONAL",
+  "resourceType": "VEHICLE"
+}
+
+
+### Version 3 compatibility contract
+GET {{baseUrl}}/compat/contracts
+
+### Local geofence check
+POST {{baseUrl}}/geo/geofence/check
+Content-Type: application/json
+
+{
+  "point": { "latitude": 0.32, "longitude": 32.58 },
+  "polygon": [
+    { "latitude": 0.2, "longitude": 32.4 },
+    { "latitude": 0.5, "longitude": 32.4 },
+    { "latitude": 0.5, "longitude": 32.8 },
+    { "latitude": 0.2, "longitude": 32.8 }
+  ]
+}
+
+### Feature flags (Admin)
+GET {{baseUrl}}/governance/feature-flags
+Authorization: Bearer {{adminToken}}
+
+### Watchdog status (Admin)
+GET {{baseUrl}}/operations/watchdog/status
+Authorization: Bearer {{adminToken}}
+
+### Rider commutes
+GET {{baseUrl}}/commutes
+Authorization: Bearer {{riderToken}}
+
+### Stored payment methods
+GET {{baseUrl}}/payment-methods
+Authorization: Bearer {{riderToken}}

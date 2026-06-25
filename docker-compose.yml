@@ -1,0 +1,141 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    ports:
+    - "5432:5432"
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evzone
+      POSTGRES_PASSWORD: evzone-group
+      POSTGRES_DB: evzone
+    volumes:
+      - evzone_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U evzone -d evzone']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - evzone_redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3001
+      CORS_ORIGINS: '*'
+      SOCKET_CORS_ORIGINS: '*'
+      DB_TYPE: postgres
+      DATABASE_URL: postgresql://evzone:evzone-group@postgres:5432/evzone
+      DB_SYNCHRONIZE: 'true'
+      DB_MIGRATIONS_RUN: 'true'
+      DB_LOGGING: 'false'
+      DB_POOL_SIZE: 20
+      POSTGIS_AUTO_SETUP: 'true'
+      SEED_DEMO: 'true'
+      JWT_SECRET: evzone-docker-access-secret-2026
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL_DAYS: 30
+      OIDC_AUTHORITY: https://accounts.evzone.app
+      OIDC_ISSUER: https://accounts.evzone.app
+      OIDC_AUDIENCE: ''
+      OIDC_JWKS_CACHE_SECONDS: 3600
+      JWT_CLOCK_TOLERANCE_SECONDS: 30
+      OTP_MAX_ATTEMPTS: 5
+      PASSWORD_RESET_TTL_MINUTES: 15
+      STORAGE_PATH: /app/storage
+      PUBLIC_BASE_URL: http://localhost:3001
+      MAX_FILE_SIZE_BYTES: 15728640
+      CLOUDINARY_DISABLED: 'true'
+      REDIS_URL: redis://redis:6379
+      REDIS_DISABLED: 'false'
+      REDIS_SOCKET_ADAPTER_ENABLED: 'true'
+      REDIS_CONNECT_TIMEOUT_MS: 3000
+      REDIS_SOCKET_REQUEST_TIMEOUT_MS: 5000
+      DRIVER_GEO_TTL_SECONDS: 300
+      MATCH_RADIUS_KM: 25
+      OFFER_TTL_SECONDS: 120
+      MATCH_INITIAL_RADIUS_M: 3000
+      MATCH_MAX_RADIUS_M: 40000
+      MATCH_RADIUS_STEP_M: 3000
+      MATCH_CONCURRENT_OFFERS: 5
+      MATCH_OFFER_TTL_SECONDS: 30
+      MATCH_JOB_TTL_SECONDS: 900
+      MATCH_RETRY_INTERVAL_SECONDS: 10
+      DELIVERY_MATCH_CONCURRENT_OFFERS: 5
+      DELIVERY_MATCH_MAX_RADIUS_M: 40000
+      DELIVERY_DROPOFF_OTP_REQUIRED: 'true'
+      ROUTE_AVG_SPEED_KPH: 30
+      # Demo data has verified profiles but intentionally lightweight document fixtures.
+      # Set true with SEED_DEMO=false for real production onboarding enforcement.
+      STRICT_DRIVER_COMPLIANCE: 'false'
+      MAX_DAILY_DRIVING_MINUTES: 600
+      RATE_LIMIT_TTL_MS: 60000
+      RATE_LIMIT_REQUESTS: 240
+      PAYMENT_PROVIDER: MOCK
+      MOCK_PAYMENT_AUTO_APPROVE: 'true'
+      PUSH_PROVIDER: LOCAL
+      KAFKA_DISABLED: 'true'
+      KAFKA_CLIENT_ID: evzone-ride
+      KAFKA_TOPIC_PREFIX: evzone
+      DOMAIN_EVENT_FLUSH_INTERVAL_MS: 10000
+      CORPORATEPAY_MODE: sandbox
+      CORPORATEPAY_MOCK_AUTO_APPROVE: 'true'
+      CORPORATEPAY_WEBHOOK_SECRET: evzone-corporatepay-docker-secret
+      CORPORATEPAY_SIGNING_SECRET: evzone-corporatepay-signing-docker-secret
+      SCHOOL_WEBHOOK_SECRET: evzone-school-docker-secret
+      INTEGRATION_ENCRYPTION_KEY: evzone-docker-integration-encryption-key
+      API_PUBLIC_URL: http://localhost:3001
+      IDEMPOTENCY_TTL_SECONDS: 86400
+      GEO_LOOKUP_BASE_URL: https://nominatim.openstreetmap.org
+      ROUTE_LOOKUP_BASE_URL: https://router.project-osrm.org
+      GEO_REQUEST_TIMEOUT_MS: 5000
+      OPERATIONS_WATCHDOG_ENABLED: 'true'
+      OPERATIONS_WATCHDOG_INTERVAL_MS: 30000
+      DRIVER_HEARTBEAT_TIMEOUT_MS: 300000
+      TRIP_REQUEST_TIMEOUT_MS: 600000
+      ACTIVE_SERVICE_STUCK_THRESHOLD_MS: 1800000
+      CASHOUT_AUTO_APPROVE: 'false'
+      LEGACY_API_SUNSET: 2027-06-30
+    ports:
+      - '3001:3001'
+    volumes:
+      - evzone_storage:/app/storage
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@evzone.example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - evzone_pgadmin:/var/lib/pgadmin
+
+volumes:
+  evzone_postgres:
+  evzone_redis:
+  evzone_storage:
+  evzone_pgadmin:
