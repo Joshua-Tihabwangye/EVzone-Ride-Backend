@@ -48,16 +48,49 @@ export class VehiclesService {
   }
 
   async create(userId: string, dto: CreateVehicleDto) {
-    if (await this.vehicles.findOne({ where: { plateNumber: dto.plateNumber.toUpperCase() } })) {
+    const normalizedPlate = dto.plateNumber.toString().trim().toUpperCase();
+    if (!normalizedPlate) {
+      throw new ConflictException('Plate number is required');
+    }
+
+    const driver = await this.drivers.findOne({ where: { userId } });
+
+    // If this driver already has a vehicle with the same plate (including a
+    // soft-deleted one left over from a previous failed onboarding attempt),
+    // restore and update it instead of trying to insert a new row and hitting
+    // the unique plate index.
+    const existing = await this.vehicles.findOne({
+      where: { plateNumber: normalizedPlate, ownerUserId: userId },
+      withDeleted: true,
+    });
+    if (existing) {
+      if (existing.deletedAt) {
+        existing.deletedAt = null;
+      }
+      Object.assign(existing, {
+        ...dto,
+        plateNumber: normalizedPlate,
+        assignedDriverId: driver?.id ?? existing.assignedDriverId,
+        cargoCapacityKg: dto.cargoCapacityKg ?? existing.cargoCapacityKg ?? 0,
+      });
+      return this.vehicles.save(existing);
+    }
+
+    if (
+      await this.vehicles.findOne({
+        where: { plateNumber: normalizedPlate },
+        withDeleted: true,
+      })
+    ) {
       throw new ConflictException('Plate number is already registered');
     }
-    const driver = await this.drivers.findOne({ where: { userId } });
+
     return this.vehicles.save(
       this.vehicles.create({
         ...dto,
         ownerUserId: userId,
         assignedDriverId: driver?.id,
-        plateNumber: dto.plateNumber.toUpperCase(),
+        plateNumber: normalizedPlate,
         cargoCapacityKg: dto.cargoCapacityKg ?? 0,
         status: VehicleStatus.PENDING_VERIFICATION,
         isActive: false,
@@ -102,18 +135,19 @@ export class VehiclesService {
     return this.vehicles.save(vehicle);
   }
 
-  async addDocument(userId: string, id: string, dto: VehicleDocumentDto) {
+  async addDocument(userId: string, id: string, dto: VehicleDocumentDto): Promise<VehicleDocument> {
     await this.get(userId, id);
-    return this.documents.save(
-      this.documents.create({
-        vehicleId: id,
-        type: dto.type,
-        fileUrl: dto.fileUrl,
-        issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
-        expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : undefined,
-        status: DocumentStatus.IN_REVIEW,
-      }),
-    );
+    const document = this.documents.create({
+      vehicleId: id,
+      type: dto.type,
+      fileUrl: dto.fileUrl,
+      issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
+      expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : undefined,
+      status: DocumentStatus.IN_REVIEW,
+      metadata: dto.metadata,
+    });
+    const saved = await this.documents.save(document);
+    return Array.isArray(saved) ? saved[0] : saved;
   }
 
   async setAccessories(userId: string, id: string, dto: SetAccessoriesDto) {

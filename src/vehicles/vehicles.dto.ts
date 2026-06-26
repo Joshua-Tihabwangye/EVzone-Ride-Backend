@@ -22,6 +22,8 @@ export class CreateVehicleDto {
   @IsEnum(EnergyType) energyType!: EnergyType;
   @Type(() => Number) @IsInt() @Min(1) @Max(100) seats!: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) cargoCapacityKg?: number;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) batteryCapacityKwh?: number;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) estimatedRangeKm?: number;
   @IsOptional() @IsString() color?: string;
   @IsOptional() @IsString() imageUrl?: string;
   @IsArray() @IsEnum(ServiceType, { each: true }) serviceCapabilities!: ServiceType[];
@@ -38,6 +40,7 @@ export class VehicleDocumentDto {
   @IsString() fileUrl!: string;
   @IsOptional() @IsDateString() issueDate?: string;
   @IsOptional() @IsDateString() expiryDate?: string;
+  @IsOptional() @IsObject() metadata?: Record<string, unknown>;
 }
 
 export class SetAccessoriesDto {
