@@ -117,20 +117,21 @@ export class VehiclesService {
 
   async activate(userId: string, id: string) {
     const { vehicle } = await this.get(userId, id);
-    if (vehicle.status !== VehicleStatus.ACTIVE) {
-      throw new ForbiddenException('Vehicle must be verified and active before selection');
-    }
     const driver = await this.drivers.findOne({ where: { userId } });
-    if (driver) {
-      const related = await this.vehicles.find({
-        where: [{ ownerUserId: userId }, { assignedDriverId: driver.id }],
-      });
+
+    const related = driver
+      ? await this.vehicles.find({ where: [{ ownerUserId: userId }, { assignedDriverId: driver.id }] })
+      : await this.vehicles.find({ where: { ownerUserId: userId } });
+
+    if (related.length > 0) {
       await this.vehicles.update({ id: In(related.map((item) => item.id)) }, { isActive: false });
+    }
+
+    if (driver) {
       driver.currentVehicleId = vehicle.id;
       await this.drivers.save(driver);
-    } else {
-      await this.vehicles.update({ ownerUserId: userId }, { isActive: false });
     }
+
     vehicle.isActive = true;
     return this.vehicles.save(vehicle);
   }

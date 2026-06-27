@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -19,13 +30,26 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { DriversService } from '../drivers/drivers.service';
 import { UsersService } from '../users/users.service';
-import { DriverDocument, DriverProfile, DriverSocialLink, EmergencyContact, VehicleDocument } from '../database/entities';
+import {
+  DriverDocument,
+  DriverProfile,
+  DriverSocialLink,
+  EmergencyContact,
+  VehicleDocument,
+} from '../database/entities';
 import { FinancialOperationsService } from '../financial-operations/financial-operations.service';
 import { CancelRideDto, CompleteRideDto, VerifyRideOtpDto } from '../rides/rides.dto';
 import { RidesService } from '../rides/rides.service';
 import { CreateVehicleDto, UpdateVehicleDto } from '../vehicles/vehicles.dto';
 import { VehiclesService } from '../vehicles/vehicles.service';
-import { CompatDriverPreferencesDto, CompatDriverPresenceDto, CompatDriverProfilePatchDto, CompatDriverServiceCapabilitiesDto, CompatRejectJobDto, CompatSocialLinkDto } from './compatibility.dto';
+import {
+  CompatDriverPreferencesDto,
+  CompatDriverPresenceDto,
+  CompatDriverProfilePatchDto,
+  CompatDriverServiceCapabilitiesDto,
+  CompatRejectJobDto,
+  CompatSocialLinkDto,
+} from './compatibility.dto';
 
 @ApiTags('Driver Compatibility API')
 @ApiBearerAuth()
@@ -109,7 +133,16 @@ export class DriverCompatibilityController {
         availabilityStatus: DriverAvailabilityStatus.OFFLINE,
       });
     }
-    if (dto.city || dto.country || dto.streetAddress || dto.district || dto.landmark || dto.postalCode || dto.dateOfBirth || dto.nationalIdNumber) {
+    if (
+      dto.city ||
+      dto.country ||
+      dto.streetAddress ||
+      dto.district ||
+      dto.landmark ||
+      dto.postalCode ||
+      dto.dateOfBirth ||
+      dto.nationalIdNumber
+    ) {
       driver.preferences = {
         ...(driver.preferences || {}),
         city: dto.city,
@@ -187,8 +220,16 @@ export class DriverCompatibilityController {
     };
   }
 
-  private async buildOnboardingStatus(user: AuthUser, driver: DriverProfile, vehicles: any[], documents: DriverDocument[]) {
-    const activeVehicle = vehicles.find((vehicle) => vehicle.id === driver.currentVehicleId) ?? vehicles.find((vehicle) => vehicle.isActive) ?? null;
+  private async buildOnboardingStatus(
+    user: AuthUser,
+    driver: DriverProfile,
+    vehicles: any[],
+    documents: DriverDocument[],
+  ) {
+    const activeVehicle =
+      vehicles.find((vehicle) => vehicle.id === driver.currentVehicleId) ??
+      vehicles.find((vehicle) => vehicle.isActive) ??
+      null;
     const vehicleDocuments = activeVehicle
       ? await this.vehicleDocuments.find({ where: { vehicleId: activeVehicle.id } })
       : [];
@@ -196,7 +237,9 @@ export class DriverCompatibilityController {
     const hasDocument = (type: DocumentType) =>
       documents.some((document) => document.type === type && document.status !== DocumentStatus.REJECTED);
     const hasVehicleDocument = (type: DocumentType) =>
-      vehicleDocuments.some((document) => document.type === type && document.status !== DocumentStatus.REJECTED);
+      vehicleDocuments.some(
+        (document) => document.type === type && document.status !== DocumentStatus.REJECTED,
+      );
     const hasSelectedServiceCategories = Boolean(driver.serviceCapabilities?.length);
     const hasRequiredDriverDocuments =
       hasDocument(DocumentType.NATIONAL_ID) && hasDocument(DocumentType.DRIVING_LICENSE_FRONT);
@@ -245,7 +288,8 @@ export class DriverCompatibilityController {
       hasSelectedService: hasSelectedServiceCategories,
       hasSelectedServiceCategories,
       hasProfile: true,
-      hasOperationArea: Array.isArray(driver.preferences?.areaIds) && (driver.preferences?.areaIds as unknown[]).length > 0,
+      hasOperationArea:
+        Array.isArray(driver.preferences?.areaIds) && (driver.preferences?.areaIds as unknown[]).length > 0,
       hasActiveVehicle,
       hasRequiredDriverDocuments,
       hasRequiredVehicleDocuments,
@@ -283,7 +327,10 @@ export class DriverCompatibilityController {
   }
 
   @Patch('service-capabilities')
-  async updateServiceCapabilities(@CurrentUser() user: AuthUser, @Body() dto: CompatDriverServiceCapabilitiesDto) {
+  async updateServiceCapabilities(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: CompatDriverServiceCapabilitiesDto,
+  ) {
     const driver = await this.drivers.getByUserId(user.id);
     driver.serviceCapabilities = dto.serviceCapabilities;
     return this.driverProfiles.save(driver);
@@ -354,7 +401,11 @@ export class DriverCompatibilityController {
       const existing = await this.vehicles.listMine(user.id);
       const matched = existing.find((v) => v.plateNumber.toUpperCase() === plate);
       if (matched) {
-        const vehicle = await this.vehicles.update(user.id, matched.id, this.toVehicleDto(dto) as UpdateVehicleDto);
+        const vehicle = await this.vehicles.update(
+          user.id,
+          matched.id,
+          this.toVehicleDto(dto) as UpdateVehicleDto,
+        );
         return this.mapVehicle(vehicle);
       }
     }
@@ -368,7 +419,11 @@ export class DriverCompatibilityController {
     @Param('vehicleId') vehicleId: string,
     @Body() dto: any,
   ) {
-    const vehicle = await this.vehicles.update(user.id, vehicleId, this.toVehicleDto(dto) as UpdateVehicleDto);
+    const vehicle = await this.vehicles.update(
+      user.id,
+      vehicleId,
+      this.toVehicleDto(dto) as UpdateVehicleDto,
+    );
     return this.mapVehicle(vehicle);
   }
 
@@ -378,7 +433,15 @@ export class DriverCompatibilityController {
   }
 
   @Post('vehicles/:vehicleId/documents')
-  async uploadVehicleDocument(@CurrentUser() user: AuthUser, @Param('vehicleId') vehicleId: string, @Body() dto: any) {
+  async uploadVehicleDocument(
+    @CurrentUser() user: AuthUser,
+    @Param('vehicleId') vehicleId: string,
+    @Body() dto: any,
+  ) {
+    if (!dto.fileUrl) {
+      throw new BadRequestException('fileUrl is required. Upload the file first through /files/upload.');
+    }
+
     const document = await this.vehicles.addDocument(user.id, vehicleId, {
       type: this.toDocumentType(dto.documentType ?? dto.type),
       fileUrl: dto.fileUrl,
@@ -389,6 +452,7 @@ export class DriverCompatibilityController {
         originalFileName: dto.originalFileName ?? null,
         mimeType: dto.mimeType ?? null,
         sizeBytes: dto.sizeBytes ?? null,
+        source: 'driver-onboarding',
       },
     });
     return this.mapVehicleDocument(document);
@@ -432,14 +496,22 @@ export class DriverCompatibilityController {
 
   @Post('jobs/:jobId/accept')
   async accept(@CurrentUser() user: AuthUser, @Param('jobId') jobId: string) {
-    const result = await this.driverJobs.accept({ id: user.id, role: user.role, email: user.email, phone: user.phone } as AuthUser, jobId, {} as any);
+    const result = await this.driverJobs.accept(
+      { id: user.id, role: user.role, email: user.email, phone: user.phone } as AuthUser,
+      jobId,
+      {} as any,
+    );
     const job = this.mapJob(result.job);
     const trip = result.assignment ? this.mapTripFromRideDetail(result.assignment) : undefined;
     return { job, trip };
   }
 
   @Post('jobs/:jobId/reject')
-  async reject(@CurrentUser() user: AuthUser, @Param('jobId') jobId: string, @Body() dto: CompatRejectJobDto) {
+  async reject(
+    @CurrentUser() user: AuthUser,
+    @Param('jobId') jobId: string,
+    @Body() dto: CompatRejectJobDto,
+  ) {
     await this.driverJobs.decline(user.id, jobId, { reason: dto.reason } as any);
     return { declined: true, offerId: jobId, reason: dto.reason };
   }
@@ -519,7 +591,10 @@ export class DriverCompatibilityController {
 
   @Get('emergency-contacts')
   emergencyContacts(@CurrentUser() user: AuthUser) {
-    return this.emergencyContactsRepo.find({ where: { userId: user.id }, order: { isPrimary: 'DESC', createdAt: 'ASC' } });
+    return this.emergencyContactsRepo.find({
+      where: { userId: user.id },
+      order: { isPrimary: 'DESC', createdAt: 'ASC' },
+    });
   }
 
   @Post('emergency-contacts')
@@ -527,14 +602,17 @@ export class DriverCompatibilityController {
     const count = await this.emergencyContactsRepo.count({ where: { userId: user.id } });
     const isPrimary = body.isPrimary === true || count === 0;
     if (isPrimary) await this.emergencyContactsRepo.update({ userId: user.id }, { isPrimary: false });
-    return this.emergencyContactsRepo.save(this.emergencyContactsRepo.create({ userId: user.id, ...body, isPrimary }));
+    return this.emergencyContactsRepo.save(
+      this.emergencyContactsRepo.create({ userId: user.id, ...body, isPrimary }),
+    );
   }
 
   @Patch('emergency-contacts/:id')
   async updateEmergencyContact(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: any) {
     const contact = await this.emergencyContactsRepo.findOne({ where: { id, userId: user.id } });
     if (!contact) throw new NotFoundException('Emergency contact not found');
-    if (body.isPrimary === true) await this.emergencyContactsRepo.update({ userId: user.id }, { isPrimary: false });
+    if (body.isPrimary === true)
+      await this.emergencyContactsRepo.update({ userId: user.id }, { isPrimary: false });
     Object.assign(contact, body);
     return this.emergencyContactsRepo.save(contact);
   }
@@ -549,7 +627,9 @@ export class DriverCompatibilityController {
 
   @Get('documents')
   async driverDocumentsList(@CurrentUser() user: AuthUser) {
-    return (await this.drivers.listDocuments(user.id)).map((document) => this.mapDriverDocument(user.id, document));
+    return (await this.drivers.listDocuments(user.id)).map((document) =>
+      this.mapDriverDocument(user.id, document),
+    );
   }
 
   @Post('documents')
@@ -571,7 +651,11 @@ export class DriverCompatibilityController {
   }
 
   @Patch('documents/:documentId')
-  async patchDriverDocument(@CurrentUser() user: AuthUser, @Param('documentId') documentId: string, @Body() dto: any) {
+  async patchDriverDocument(
+    @CurrentUser() user: AuthUser,
+    @Param('documentId') documentId: string,
+    @Body() dto: any,
+  ) {
     const driver = await this.drivers.getByUserId(user.id);
     const document = await this.driverDocuments.findOne({ where: { id: documentId, driverId: driver.id } });
     if (!document) throw new NotFoundException('Driver document not found');
@@ -685,11 +769,13 @@ export class DriverCompatibilityController {
       model: input.model,
       year: input.year,
       plateNumber: input.plateNumber ?? input.plate,
-      vehicleType: input.vehicleType || input.type ? this.toVehicleType(input.vehicleType ?? input.type) : undefined,
+      vehicleType:
+        input.vehicleType || input.type ? this.toVehicleType(input.vehicleType ?? input.type) : undefined,
       energyType: input.energyType ?? (withDefaults ? EnergyType.ELECTRIC : undefined),
       seats: input.seats ?? (withDefaults ? 4 : undefined),
       cargoCapacityKg: input.cargoCapacityKg ?? (withDefaults ? 0 : undefined),
-      batteryCapacityKwh: input.batteryCapacityKwh ?? (input.batterySize ? Number(input.batterySize) : undefined),
+      batteryCapacityKwh:
+        input.batteryCapacityKwh ?? (input.batterySize ? Number(input.batterySize) : undefined),
       estimatedRangeKm: input.estimatedRangeKm ?? (input.range ? Number(input.range) : undefined),
       color: input.color,
       imageUrl: input.imageUrl ?? input.imageKey,
@@ -699,11 +785,16 @@ export class DriverCompatibilityController {
       includedDailyKm: input.includedDailyKm,
       extraKmRate: input.extraKmRate,
     };
-    return Object.fromEntries(Object.entries(dto).filter(([, value]) => value !== undefined)) as Partial<CreateVehicleDto>;
+    return Object.fromEntries(
+      Object.entries(dto).filter(([, value]) => value !== undefined),
+    ) as Partial<CreateVehicleDto>;
   }
 
   private toVehicleType(value: unknown): VehicleType {
-    const normalized = String(value ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+    const normalized = String(value ?? '')
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, '_');
     if (normalized in VehicleType) return VehicleType[normalized as keyof typeof VehicleType];
     if (normalized.includes('BIKE') || normalized.includes('MOTOR')) return VehicleType.MOTORCYCLE;
     if (normalized.includes('SCOOTER')) return VehicleType.SCOOTER;
@@ -713,14 +804,19 @@ export class DriverCompatibilityController {
   }
 
   private toDocumentType(value: unknown): DocumentType {
-    const normalized = String(value ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+    const normalized = String(value ?? '')
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, '_');
     if (normalized in DocumentType) return DocumentType[normalized as keyof typeof DocumentType];
     if (normalized.includes('LICENSE')) return DocumentType.DRIVING_LICENSE_FRONT;
     if (normalized.includes('NATIONAL') || normalized.includes('IDENTITY')) return DocumentType.NATIONAL_ID;
     if (normalized.includes('INSURANCE')) return DocumentType.VEHICLE_INSURANCE;
     if (normalized.includes('INSPECTION')) return DocumentType.VEHICLE_INSPECTION;
-    if (normalized.includes('LOGBOOK') || normalized.includes('OWNERSHIP')) return DocumentType.VEHICLE_LOGBOOK;
-    if (normalized.includes('REGISTRATION') || normalized.includes('ROAD_LICENSE')) return DocumentType.ROAD_LICENSE;
+    if (normalized.includes('LOGBOOK') || normalized.includes('OWNERSHIP'))
+      return DocumentType.VEHICLE_LOGBOOK;
+    if (normalized.includes('REGISTRATION') || normalized.includes('ROAD_LICENSE'))
+      return DocumentType.ROAD_LICENSE;
     return DocumentType.OTHER;
   }
 
@@ -737,7 +833,10 @@ export class DriverCompatibilityController {
       tripId: job.serviceId || job.serviceType,
       routeId: null,
       orderId: null,
-      route: job.route || { distanceKm: job.distanceToPickupMeters ? job.distanceToPickupMeters / 1000 : 0, durationMinutes: 0 },
+      route: job.route || {
+        distanceKm: job.distanceToPickupMeters ? job.distanceToPickupMeters / 1000 : 0,
+        durationMinutes: 0,
+      },
       estimatedFare: job.estimatedFare ?? 0,
       routeSummary: '',
       requiresPickupOtp: false,
@@ -745,7 +844,8 @@ export class DriverCompatibilityController {
       riderName: job.metadata?.riderName || null,
       riderPhone: job.metadata?.riderPhone || null,
       pickupLocation: pickup.latitude != null ? { lat: pickup.latitude, lng: pickup.longitude } : null,
-      dropoffLocation: destination.latitude != null ? { lat: destination.latitude, lng: destination.longitude } : null,
+      dropoffLocation:
+        destination.latitude != null ? { lat: destination.latitude, lng: destination.longitude } : null,
       nextStopId: null,
       stops: [],
     };
@@ -788,10 +888,16 @@ export class DriverCompatibilityController {
       startedAt: ride.startedAt ? new Date(ride.startedAt).getTime() : undefined,
       completedAt: ride.completedAt ? new Date(ride.completedAt).getTime() : undefined,
       fare: ride.estimatedFare ?? 0,
-      riderName: detail?.rider ? `${detail.rider.firstName ?? ''} ${detail.rider.lastName ?? ''}`.trim() : null,
+      riderName: detail?.rider
+        ? `${detail.rider.firstName ?? ''} ${detail.rider.lastName ?? ''}`.trim()
+        : null,
       riderPhone: detail?.rider?.phone || null,
-      pickupLocation: pickup.latitude != null ? { lat: Number(pickup.latitude), lng: Number(pickup.longitude) } : null,
-      dropoffLocation: destination.latitude != null ? { lat: Number(destination.latitude), lng: Number(destination.longitude) } : null,
+      pickupLocation:
+        pickup.latitude != null ? { lat: Number(pickup.latitude), lng: Number(pickup.longitude) } : null,
+      dropoffLocation:
+        destination.latitude != null
+          ? { lat: Number(destination.latitude), lng: Number(destination.longitude) }
+          : null,
       otpCode: null,
       route: { distanceKm: ride.estimatedDistanceKm, durationMinutes: ride.estimatedDurationMinutes },
       driver: {
