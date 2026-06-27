@@ -155,6 +155,9 @@ export class DriverCompatibilityController {
         nationalIdNumber: dto.nationalIdNumber,
       };
     }
+    if (typeof dto.trainingCompleted === 'boolean') {
+      driver.trainingCompleted = dto.trainingCompleted;
+    }
     await this.driverProfiles.save(driver);
     return this.profile(user);
   }
@@ -254,7 +257,7 @@ export class DriverCompatibilityController {
       Boolean((user as any).avatarUrl) ||
       hasDocument(DocumentType.NATIONAL_ID);
     const hasActiveVehicle = Boolean(activeVehicle);
-    const hasCompletedTutorials = driver.verificationStatus === DriverVerificationStatus.VERIFIED;
+    const hasCompletedTutorials = driver.trainingCompleted === true;
     const emergencyContactReady = emergencyContacts > 0;
     const onboardingCompleted =
       hasSelectedServiceCategories &&
@@ -262,7 +265,8 @@ export class DriverCompatibilityController {
       hasRequiredVehicleDocuments &&
       identityVerified &&
       hasActiveVehicle &&
-      emergencyContactReady;
+      emergencyContactReady &&
+      hasCompletedTutorials;
     const nextRequiredStep = !hasSelectedServiceCategories
       ? 'SERVICE_CATEGORIES'
       : !identityVerified || !hasRequiredDriverDocuments

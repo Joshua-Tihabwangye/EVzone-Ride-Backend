@@ -426,6 +426,9 @@ export class DriverProfile extends BaseEntity {
   @Column({ default: true })
   rideSharingEnabled!: boolean;
 
+  @Column({ default: false })
+  trainingCompleted!: boolean;
+
   @Column({ default: 0 })
   drivingMinutesToday!: number;
 

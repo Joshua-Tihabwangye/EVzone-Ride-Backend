@@ -26,6 +26,7 @@ export class CompatDriverProfilePatchDto {
   @IsOptional() @IsString() landmark?: string;
   @IsOptional() @IsString() nationalIdNumber?: string;
   @IsOptional() @IsString() profilePhoto?: string;
+  @IsOptional() @IsBoolean() trainingCompleted?: boolean;
 }
 
 export class CompatDriverPreferencesDto {
