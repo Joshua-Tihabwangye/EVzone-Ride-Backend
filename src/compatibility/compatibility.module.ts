@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
 import { DriversModule } from '../drivers/drivers.module';
@@ -17,10 +18,12 @@ import { CompatibilityContractsController } from './contracts.controller';
 import { CompatibilityService } from './compatibility.service';
 import { DriverCompatibilityController } from './driver-compat.controller';
 import { DriverJobsModule } from '../driver-jobs/driver-jobs.module';
+import { EmergencyContact } from '../database/entities';
 import { RiderCompatibilityController } from './rider-compat.controller';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([EmergencyContact]),
     AdminModule,
     AuthModule,
     UsersModule,

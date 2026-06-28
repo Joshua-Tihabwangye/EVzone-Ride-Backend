@@ -1,7 +1,7 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { DocumentStatus, ServiceType, VehicleStatus, VehicleType } from '../common/enums';
+import { DocumentStatus, DocumentType, ServiceType, VehicleStatus, VehicleType } from '../common/enums';
 import { DriverProfile, RentalBlock, Vehicle, VehicleAccessory, VehicleDocument } from '../database/entities';
 import { CreateVehicleDto, SetAccessoriesDto, UpdateVehicleDto, VehicleDocumentDto } from './vehicles.dto';
 
@@ -102,18 +102,74 @@ export class VehiclesService {
     return this.vehicles.save(vehicle);
   }
 
+  listDocuments(vehicleId: string) {
+    return this.documents.find({ where: { vehicleId }, order: { createdAt: 'DESC' } });
+  }
+
   async addDocument(userId: string, id: string, dto: VehicleDocumentDto) {
     await this.get(userId, id);
-    return this.documents.save(
+    const autoVerify = (process.env.AUTO_VERIFY_DRIVER_DOCUMENTS ?? 'true') === 'true';
+    const document = await this.documents.save(
       this.documents.create({
         vehicleId: id,
         type: dto.type,
         fileUrl: dto.fileUrl,
         issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
         expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : undefined,
-        status: DocumentStatus.IN_REVIEW,
+        status: autoVerify ? DocumentStatus.VERIFIED : DocumentStatus.IN_REVIEW,
       }),
     );
+    // Auto-activate the vehicle once all required docs are uploaded and verified.
+    await this.autoActivateVehicleIfReady(userId, id);
+    return document;
+  }
+
+  async updateDocument(
+    userId: string,
+    vehicleId: string,
+    documentId: string,
+    patch: Partial<VehicleDocumentDto>,
+  ) {
+    await this.get(userId, vehicleId);
+    const document = await this.documents.findOne({ where: { id: documentId, vehicleId } });
+    if (!document) throw new NotFoundException('Vehicle document not found');
+    if (patch.type) document.type = patch.type;
+    if (patch.fileUrl !== undefined) document.fileUrl = patch.fileUrl;
+    if (patch.issueDate) document.issueDate = new Date(patch.issueDate);
+    if (patch.expiryDate) document.expiryDate = new Date(patch.expiryDate);
+    const updated = await this.documents.save(document);
+    // A patch may fix an expiry date, so re-evaluate vehicle activation.
+    await this.autoActivateVehicleIfReady(userId, vehicleId);
+    return updated;
+  }
+
+  private async autoActivateVehicleIfReady(userId: string, vehicleId: string) {
+    const { vehicle } = await this.get(userId, vehicleId);
+    if (vehicle.status === VehicleStatus.ACTIVE && vehicle.isActive) {
+      return;
+    }
+    const documents = await this.documents.find({ where: { vehicleId } });
+    const now = new Date();
+    const requiredTypes = [DocumentType.VEHICLE_INSURANCE, DocumentType.VEHICLE_INSPECTION];
+    const allReady = requiredTypes.every((type) =>
+      documents.some(
+        (d) =>
+          d.type === type &&
+          d.status === DocumentStatus.VERIFIED &&
+          (!d.expiryDate || d.expiryDate > now),
+      ),
+    );
+    if (allReady) {
+      vehicle.status = VehicleStatus.ACTIVE;
+      vehicle.isActive = true;
+      await this.vehicles.save(vehicle);
+      // Make this vehicle the driver's current vehicle if none is selected.
+      const driver = await this.drivers.findOne({ where: { userId } });
+      if (driver && !driver.currentVehicleId) {
+        driver.currentVehicleId = vehicle.id;
+        await this.drivers.save(driver);
+      }
+    }
   }
 
   async setAccessories(userId: string, id: string, dto: SetAccessoriesDto) {

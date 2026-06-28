@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -29,9 +30,27 @@ export class CreateVehicleDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) dailyRentalRate?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) includedDailyKm?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) extraKmRate?: number;
+  @IsOptional() @IsBoolean() isActive?: boolean;
 }
 
-export class UpdateVehicleDto extends CreateVehicleDto {}
+export class UpdateVehicleDto {
+  @IsOptional() @IsString() make?: string;
+  @IsOptional() @IsString() model?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1980) @Max(2100) year?: number;
+  @IsOptional() @IsString() plateNumber?: string;
+  @IsOptional() @IsEnum(VehicleType) vehicleType?: VehicleType;
+  @IsOptional() @IsEnum(EnergyType) energyType?: EnergyType;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) seats?: number;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) cargoCapacityKg?: number;
+  @IsOptional() @IsString() color?: string;
+  @IsOptional() @IsString() imageUrl?: string;
+  @IsOptional() @IsArray() @IsEnum(ServiceType, { each: true }) serviceCapabilities?: ServiceType[];
+  @IsOptional() @IsObject() features?: Record<string, unknown>;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) dailyRentalRate?: number;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) includedDailyKm?: number;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) extraKmRate?: number;
+  @IsOptional() @IsBoolean() isActive?: boolean;
+}
 
 export class VehicleDocumentDto {
   @IsEnum(DocumentType) type!: DocumentType;

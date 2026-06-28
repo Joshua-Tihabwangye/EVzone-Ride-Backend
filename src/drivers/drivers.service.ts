@@ -106,6 +106,63 @@ export class DriversService {
     return this.drivers.save(driver);
   }
 
+  async updateProfile(
+    userId: string,
+    patch: {
+      fullName?: string;
+      phone?: string;
+      city?: string;
+      country?: string;
+      dateOfBirth?: string;
+      streetAddress?: string;
+      district?: string;
+      postalCode?: string;
+      landmark?: string;
+    },
+  ) {
+    let driver = await this.drivers.findOne({ where: { userId } });
+    if (!driver) {
+      // Auto-onboard a driver profile when a DRIVER-role user first patches their profile.
+      driver = await this.onboard(userId, { serviceCapabilities: [] });
+    }
+
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (patch.fullName !== undefined) {
+      const parts = patch.fullName.trim().split(/\s+/).filter(Boolean);
+      user.firstName = parts[0] || user.firstName;
+      user.lastName = parts.slice(1).join(' ') || user.lastName;
+    }
+    if (patch.phone !== undefined) user.phone = patch.phone;
+    await this.users.save(user);
+
+    const profilePrefs = (driver.preferences ?? {}) as Record<string, unknown>;
+    const profile: Record<string, unknown> = { ...(profilePrefs.profile as Record<string, unknown> ?? {}) };
+    if (patch.city !== undefined) profile.city = patch.city;
+    if (patch.country !== undefined) profile.country = patch.country;
+    if (patch.dateOfBirth !== undefined) profile.dateOfBirth = patch.dateOfBirth;
+    if (patch.streetAddress !== undefined) profile.streetAddress = patch.streetAddress;
+    if (patch.district !== undefined) profile.district = patch.district;
+    if (patch.postalCode !== undefined) profile.postalCode = patch.postalCode;
+    if (patch.landmark !== undefined) profile.landmark = patch.landmark;
+    driver.preferences = { ...profilePrefs, profile };
+    await this.drivers.save(driver);
+
+    return {
+      fullName: `${user.firstName} ${user.lastName}`.trim(),
+      email: user.email,
+      phone: user.phone,
+      city: profile.city,
+      country: profile.country,
+      dateOfBirth: profile.dateOfBirth,
+      streetAddress: profile.streetAddress,
+      district: profile.district,
+      postalCode: profile.postalCode,
+      landmark: profile.landmark,
+    };
+  }
+
   async setAvailability(userId: string, dto: DriverAvailabilityDto) {
     const driver = await this.getByUserId(userId);
     if (dto.status === DriverAvailabilityStatus.ONLINE) {
@@ -201,6 +258,11 @@ export class DriversService {
 
   async uploadDocument(userId: string, dto: DriverDocumentDto) {
     const driver = await this.getByUserId(userId);
+    // There is currently no admin/review UI wired to the driver app. Without
+    // auto-approval, uploaded documents would remain IN_REVIEW forever and the
+    // driver could never go online. AUTO_VERIFY_DRIVER_DOCUMENTS lets this be
+    // disabled when a real review flow is added.
+    const autoVerify = (process.env.AUTO_VERIFY_DRIVER_DOCUMENTS ?? 'true') === 'true';
     const document = await this.documents.save(
       this.documents.create({
         driverId: driver.id,
@@ -209,13 +271,15 @@ export class DriversService {
         issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
         expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : undefined,
         metadata: dto.metadata,
-        status: DocumentStatus.IN_REVIEW,
+        status: autoVerify ? DocumentStatus.VERIFIED : DocumentStatus.IN_REVIEW,
       }),
     );
     if (driver.verificationStatus === DriverVerificationStatus.NOT_STARTED) {
       driver.verificationStatus = DriverVerificationStatus.PENDING;
       await this.drivers.save(driver);
     }
+    // Auto-promote the driver to VERIFIED when all required docs are in order.
+    await this.promoteDriverVerificationIfReady(userId);
     return document;
   }
 
@@ -223,6 +287,21 @@ export class DriversService {
     return this.getByUserId(userId).then((driver) =>
       this.documents.find({ where: { driverId: driver.id }, order: { createdAt: 'DESC' } }),
     );
+  }
+
+  async updateDocument(userId: string, documentId: string, patch: Partial<DriverDocumentDto>) {
+    const driver = await this.getByUserId(userId);
+    const document = await this.documents.findOne({ where: { id: documentId, driverId: driver.id } });
+    if (!document) throw new NotFoundException('Document not found');
+    if (patch.type) document.type = patch.type;
+    if (patch.fileUrl !== undefined) document.fileUrl = patch.fileUrl;
+    if (patch.issueDate) document.issueDate = new Date(patch.issueDate);
+    if (patch.expiryDate) document.expiryDate = new Date(patch.expiryDate);
+    if (patch.metadata !== undefined) document.metadata = patch.metadata;
+    const updated = await this.documents.save(document);
+    // A patch may fix an expiry date, so re-evaluate driver verification.
+    await this.promoteDriverVerificationIfReady(userId);
+    return updated;
   }
 
   async setWeeklyGoal(userId: string, dto: EarningGoalDto) {
@@ -302,6 +381,32 @@ export class DriversService {
     record.status = record.score >= 60 ? TrainingProgressStatus.PASSED : TrainingProgressStatus.FAILED;
     record.completedAt = new Date();
     return this.progress.save(record);
+  }
+
+  private async promoteDriverVerificationIfReady(userId: string) {
+    const driver = await this.getByUserId(userId);
+    if (driver.verificationStatus === DriverVerificationStatus.VERIFIED) {
+      return;
+    }
+    const documents = await this.documents.find({ where: { driverId: driver.id } });
+    const now = new Date();
+    const requiredTypes = [
+      DocumentType.NATIONAL_ID,
+      DocumentType.DRIVING_LICENSE_FRONT,
+      DocumentType.GOOD_CONDUCT,
+    ];
+    const allReady = requiredTypes.every((type) =>
+      documents.some(
+        (d) =>
+          d.type === type &&
+          d.status === DocumentStatus.VERIFIED &&
+          (!d.expiryDate || d.expiryDate > now),
+      ),
+    );
+    if (allReady) {
+      driver.verificationStatus = DriverVerificationStatus.VERIFIED;
+      await this.drivers.save(driver);
+    }
   }
 
   private async readinessForDriver(driver: DriverProfile, requestedVehicleId?: string) {

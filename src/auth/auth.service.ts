@@ -6,6 +6,8 @@ import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
 import {
   AccountStatus,
+  DriverAvailabilityStatus,
+  DriverVerificationStatus,
   MembershipStatus,
   OrganizationMemberRole,
   OrganizationStatus,
@@ -78,9 +80,11 @@ export class AuthService {
 
     const role = requestsAdmin
       ? UserRole.ADMIN
-      : dto.role && [UserRole.CUSTOMER, UserRole.RIDER].includes(dto.role)
+      : dto.role && [UserRole.CUSTOMER, UserRole.RIDER, UserRole.DRIVER].includes(dto.role)
         ? dto.role
-        : UserRole.RIDER;
+        : requestedRoles.includes('driver')
+          ? UserRole.DRIVER
+          : UserRole.RIDER;
     const fallbackName = dto.email?.split('@')[0]?.replace(/[._-]+/g, ' ') || 'EVzone User';
     const suppliedName = dto.fullName ?? `${dto.firstName ?? ''} ${dto.lastName ?? ''}`.trim();
     const fullName = (suppliedName || fallbackName).trim();
@@ -114,6 +118,31 @@ export class AuthService {
     await this.wallets.save(
       this.wallets.create({ userId: user.id, currency: user.currency, availableBalance: 0 }),
     );
+
+    // Auto-create a driver profile when the user registers as a driver and persist
+    // the signup address/profile fields so the follow-up PATCH is not the only
+    // source of truth.
+    if (role === UserRole.DRIVER) {
+      const profilePrefs: Record<string, unknown> = {};
+      if (dto.country !== undefined) profilePrefs.country = dto.country;
+      if (dto.dateOfBirth !== undefined) profilePrefs.dateOfBirth = dto.dateOfBirth;
+      if (dto.streetAddress !== undefined) profilePrefs.streetAddress = dto.streetAddress;
+      if (dto.city !== undefined) profilePrefs.city = dto.city;
+      if (dto.district !== undefined) profilePrefs.district = dto.district;
+      if (dto.postalCode !== undefined) profilePrefs.postalCode = dto.postalCode;
+      if (dto.landmark !== undefined) profilePrefs.landmark = dto.landmark;
+
+      await this.driverProfiles.save(
+        this.driverProfiles.create({
+          userId: user.id,
+          verificationStatus: DriverVerificationStatus.NOT_STARTED,
+          availabilityStatus: DriverAvailabilityStatus.OFFLINE,
+          serviceCapabilities: [],
+          preferences: Object.keys(profilePrefs).length > 0 ? { profile: profilePrefs } : {},
+        }),
+      );
+    }
+
     return this.issueSession(user, metadata);
   }
 
