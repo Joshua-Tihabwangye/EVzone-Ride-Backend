@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DriverProfile } from '../database/entities';
 import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
 import { DriversModule } from '../drivers/drivers.module';
@@ -15,6 +16,7 @@ import { WalletsModule } from '../wallets/wallets.module';
 import { AdminCompatibilityController } from './admin-compat.controller';
 import { CompatibilityDeprecationInterceptor } from './compatibility-deprecation.interceptor';
 import { CompatibilityContractsController } from './contracts.controller';
+import { LocationCompatibilityController } from './location-compat.controller';
 import { CompatibilityService } from './compatibility.service';
 import { DriverCompatibilityController } from './driver-compat.controller';
 import { DriverJobsModule } from '../driver-jobs/driver-jobs.module';
@@ -23,7 +25,7 @@ import { RiderCompatibilityController } from './rider-compat.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([EmergencyContact]),
+    TypeOrmModule.forFeature([DriverProfile]),
     AdminModule,
     AuthModule,
     UsersModule,
@@ -42,6 +44,7 @@ import { RiderCompatibilityController } from './rider-compat.controller';
     CompatibilityContractsController,
     RiderCompatibilityController,
     DriverCompatibilityController,
+    LocationCompatibilityController,
     AdminCompatibilityController,
   ],
   providers: [CompatibilityService, CompatibilityDeprecationInterceptor],

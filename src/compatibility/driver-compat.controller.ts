@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Inject, NotFoundException, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -10,26 +21,34 @@ import {
   EnergyType,
   ServiceType,
   UserRole,
-  VehicleStatus,
   VehicleType,
 } from '../common/enums';
 import { AuthUser } from '../common/interfaces';
 import { DriverJobsService } from '../driver-jobs/driver-jobs.service';
+import { DriverLocationDto } from '../drivers/drivers.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { DriverDocumentDto, DriverLocationDto } from '../drivers/drivers.dto';
+import { In, Repository } from 'typeorm';
 import { DriversService } from '../drivers/drivers.service';
+import { UsersService } from '../users/users.service';
+import {
+  DriverDocument,
+  DriverProfile,
+  DriverSocialLink,
+  EmergencyContact,
+  VehicleDocument,
+} from '../database/entities';
 import { FinancialOperationsService } from '../financial-operations/financial-operations.service';
 import { CancelRideDto, CompleteRideDto, VerifyRideOtpDto } from '../rides/rides.dto';
 import { RidesService } from '../rides/rides.service';
 import { CreateVehicleDto, UpdateVehicleDto, VehicleDocumentDto } from '../vehicles/vehicles.dto';
 import { VehiclesService } from '../vehicles/vehicles.service';
-import { EmergencyContact, VehicleDocument } from '../database/entities';
 import {
   CompatDriverPreferencesDto,
   CompatDriverPresenceDto,
+  CompatDriverProfilePatchDto,
+  CompatDriverServiceCapabilitiesDto,
   CompatRejectJobDto,
-  CompatUpdateVehicleDto,
+  CompatSocialLinkDto,
 } from './compatibility.dto';
 
 @ApiTags('Driver Compatibility API')
@@ -43,8 +62,12 @@ export class DriverCompatibilityController {
     private readonly driverJobs: DriverJobsService,
     private readonly vehicles: VehiclesService,
     private readonly financial: FinancialOperationsService,
-    @InjectRepository(EmergencyContact)
-    private readonly emergencyContactRepo: Repository<EmergencyContact>,
+    private readonly users: UsersService,
+    @InjectRepository(DriverProfile) private readonly driverProfiles: Repository<DriverProfile>,
+    @InjectRepository(DriverDocument) private readonly driverDocuments: Repository<DriverDocument>,
+    @InjectRepository(VehicleDocument) private readonly vehicleDocuments: Repository<VehicleDocument>,
+    @InjectRepository(EmergencyContact) private readonly emergencyContactsRepo: Repository<EmergencyContact>,
+    @InjectRepository(DriverSocialLink) private readonly socialLinksRepo: Repository<DriverSocialLink>,
   ) {}
 
   @Post('presence/online')
@@ -69,6 +92,76 @@ export class DriverCompatibilityController {
     return { status: 'offline', requiresConfirmation: false };
   }
 
+  @Get()
+  async profile(@CurrentUser() user: AuthUser) {
+    const { driver } = await this.drivers.me(user.id);
+    return {
+      id: driver.id,
+      fullName: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
+      email: user.email || '',
+      phone: user.phone || '',
+      city: (driver.preferences?.city as string) || '',
+      country: (driver.preferences?.country as string) || (user as any).countryCode || 'UG',
+      dateOfBirth: (driver.preferences?.dateOfBirth as string) || null,
+      streetAddress: (driver.preferences?.streetAddress as string) || '',
+      district: (driver.preferences?.district as string) || '',
+      postalCode: (driver.preferences?.postalCode as string) || '',
+      landmark: (driver.preferences?.landmark as string) || '',
+      nationalIdNumber: (driver.preferences?.nationalIdNumber as string) || '',
+      profilePhoto: (user as any).avatarUrl || null,
+      serviceMode: driver.serviceCapabilities?.[0] || null,
+      status: driver.availabilityStatus.toLowerCase(),
+      onboardingStatus: driver.verificationStatus,
+    };
+  }
+
+  @Patch()
+  async patchProfile(@CurrentUser() user: AuthUser, @Body() dto: CompatDriverProfilePatchDto) {
+    const nameParts = dto.fullName?.trim().split(/\s+/) || [];
+    await this.users.updateProfile(user.id, {
+      firstName: nameParts[0] || user.firstName,
+      lastName: nameParts.slice(1).join(' ') || user.lastName,
+      phone: dto.phone,
+      avatarUrl: dto.profilePhoto,
+    });
+    let driver = await this.driverProfiles.findOne({ where: { userId: user.id } });
+    if (!driver) {
+      driver = this.driverProfiles.create({
+        userId: user.id,
+        serviceCapabilities: [ServiceType.RIDE],
+        verificationStatus: DriverVerificationStatus.PENDING,
+        availabilityStatus: DriverAvailabilityStatus.OFFLINE,
+      });
+    }
+    if (
+      dto.city ||
+      dto.country ||
+      dto.streetAddress ||
+      dto.district ||
+      dto.landmark ||
+      dto.postalCode ||
+      dto.dateOfBirth ||
+      dto.nationalIdNumber
+    ) {
+      driver.preferences = {
+        ...(driver.preferences || {}),
+        city: dto.city,
+        country: dto.country,
+        streetAddress: dto.streetAddress,
+        district: dto.district,
+        landmark: dto.landmark,
+        postalCode: dto.postalCode,
+        dateOfBirth: dto.dateOfBirth,
+        nationalIdNumber: dto.nationalIdNumber,
+      };
+    }
+    if (typeof dto.trainingCompleted === 'boolean') {
+      driver.trainingCompleted = dto.trainingCompleted;
+    }
+    await this.driverProfiles.save(driver);
+    return this.profile(user);
+  }
+
   @Post('location/heartbeat')
   heartbeat(@CurrentUser() user: AuthUser, @Body() dto: DriverLocationDto) {
     return this.drivers.updateLocation(user.id, dto);
@@ -83,73 +176,20 @@ export class DriverCompatibilityController {
       this.emergencyContactRepo.find({ where: { userId: user.id } }),
     ]);
     const driver = profile.driver;
-    const hasEmergencyContact = emergencyContacts.length > 0;
 
-    // Verify the required driver document types are present, VERIFIED, and not expired.
-    const now = new Date();
-    const requiredDriverTypes = [
-      DocumentType.NATIONAL_ID,
-      DocumentType.DRIVING_LICENSE_FRONT,
-      DocumentType.GOOD_CONDUCT,
-    ];
-    const hasRequiredDriverDocuments = requiredDriverTypes.every((type) =>
-      documents.some(
-        (d) =>
-          d.type === type && d.status === DocumentStatus.VERIFIED && (!d.expiryDate || d.expiryDate > now),
-      ),
-    );
+    // Eagerly load vehicle documents so the mobile app can rehydrate uploaded
+    // insurance, inspection and ownership docs after a refresh.
+    const vehicleIds = vehicles.map((v) => v.id);
+    const vehicleDocuments = vehicleIds.length
+      ? await this.vehicleDocuments.find({ where: { vehicleId: In(vehicleIds) } })
+      : [];
+    const documentsByVehicle = vehicleDocuments.reduce<Record<string, VehicleDocument[]>>((acc, doc) => {
+      acc[doc.vehicleId] = acc[doc.vehicleId] ?? [];
+      acc[doc.vehicleId].push(doc);
+      return acc;
+    }, {});
 
-    // Verify the active/current vehicle has the required vehicle documents.
-    const activeVehicle = driver.currentVehicleId
-      ? vehicles.find((v) => v.id === driver.currentVehicleId) || vehicles[0]
-      : vehicles[0];
-    const activeVehicleDocuments = activeVehicle ? await this.vehicles.listDocuments(activeVehicle.id) : [];
-    const requiredVehicleTypes = [DocumentType.VEHICLE_INSURANCE, DocumentType.VEHICLE_INSPECTION];
-    const hasRequiredVehicleDocuments = activeVehicle
-      ? requiredVehicleTypes.every((type) =>
-          activeVehicleDocuments.some(
-            (d) =>
-              d.type === type &&
-              d.status === DocumentStatus.VERIFIED &&
-              (!d.expiryDate || d.expiryDate > now),
-          ),
-        )
-      : false;
-
-    const vehicleIsActive = Boolean(
-      activeVehicle && activeVehicle.status === VehicleStatus.ACTIVE && activeVehicle.isActive,
-    );
-    const coreReady =
-      driver.verificationStatus === DriverVerificationStatus.VERIFIED &&
-      vehicleIsActive &&
-      hasEmergencyContact;
-    const onboarding = {
-      userId: user.id,
-      driverId: driver.id,
-      isAuthenticated: true,
-      hasSelectedService: Boolean(driver.serviceCapabilities?.length),
-      hasSelectedServiceCategories: Boolean(driver.serviceCapabilities?.length),
-      hasProfile: true,
-      hasOperationArea: true,
-      hasActiveVehicle: vehicleIsActive,
-      hasRequiredDriverDocuments,
-      hasRequiredVehicleDocuments,
-      hasEmergencyContact,
-      hasCompletedTutorials: coreReady,
-      onboardingCompleted: coreReady,
-      nextRequiredStep: null,
-      redirectTo: '/driver/dashboard/offline',
-      redirectPath: '/driver/dashboard/offline',
-      checkpoints: {
-        roleSelected: Boolean(driver.serviceCapabilities?.length),
-        documentsVerified: hasRequiredDriverDocuments,
-        identityVerified: driver.verificationStatus === DriverVerificationStatus.VERIFIED,
-        vehicleReady: vehicleIsActive && hasRequiredVehicleDocuments,
-        emergencyContactReady: hasEmergencyContact,
-        trainingCompleted: coreReady,
-        onboardingComplete: coreReady,
-      },
-    };
+    const onboarding = await this.buildOnboardingStatus(user, driver, vehicles, documents);
 
     const profilePrefs = (driver.preferences?.profile ?? {}) as Record<string, unknown>;
     return {
@@ -158,14 +198,14 @@ export class DriverCompatibilityController {
         fullName: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
         email: user.email || '',
         phone: user.phone || '',
-        city: (profilePrefs.city as string) || '',
-        country: (profilePrefs.country as string) || (user as any).countryCode || 'UG',
-        dateOfBirth: (profilePrefs.dateOfBirth as string) || null,
-        streetAddress: (profilePrefs.streetAddress as string) || '',
-        district: (profilePrefs.district as string) || '',
-        postalCode: (profilePrefs.postalCode as string) || '',
-        landmark: (profilePrefs.landmark as string) || '',
-        nationalIdNumber: '',
+        city: (driver.preferences?.city as string) || '',
+        country: (driver.preferences?.country as string) || (user as any).countryCode || 'UG',
+        dateOfBirth: (driver.preferences?.dateOfBirth as string) || null,
+        streetAddress: (driver.preferences?.streetAddress as string) || '',
+        district: (driver.preferences?.district as string) || '',
+        postalCode: (driver.preferences?.postalCode as string) || '',
+        landmark: (driver.preferences?.landmark as string) || '',
+        nationalIdNumber: (driver.preferences?.nationalIdNumber as string) || '',
         profilePhoto: (user as any).avatarUrl || null,
         serviceMode: driver.serviceCapabilities?.[0] || null,
         status: driver.availabilityStatus.toLowerCase(),
@@ -174,24 +214,139 @@ export class DriverCompatibilityController {
       preferences: {
         areaIds: (driver.preferences?.areaIds as string[])?.length
           ? (driver.preferences?.areaIds as string[])
-          : ['DEFAULT'],
+          : [],
         serviceIds: driver.serviceCapabilities || [],
         requirementIds: [],
       },
       onboardingStatus: onboarding,
-      vehicles: vehicles.map((v) => this.mapVehicle(v)),
-      documents: documents.map((d) => ({
-        id: d.id,
-        userId: user.id,
-        userType: 'DRIVER',
-        documentType: d.type,
-        fileUrl: d.fileUrl,
-        status: d.status,
-        expiryDate: d.expiryDate ? d.expiryDate.toISOString() : null,
-        uploadedAt: d.createdAt.toISOString(),
-        createdAt: d.createdAt.toISOString(),
-      })),
+      vehicles: vehicles.map((v) => this.mapVehicle({ ...v, documents: documentsByVehicle[v.id] })),
+      documents: documents.map((d) => this.mapDriverDocument(user.id, d)),
       presence: { status: driver.availabilityStatus.toLowerCase() },
+    };
+  }
+
+  @Post('onboarding/complete')
+  async completeOnboarding(@CurrentUser() user: AuthUser) {
+    const [profile, vehicles, documents] = await Promise.all([
+      this.drivers.me(user.id),
+      this.vehicles.listMine(user.id),
+      this.drivers.listDocuments(user.id),
+    ]);
+    const driver = profile.driver;
+
+    const onboarding = await this.buildOnboardingStatus(user, driver, vehicles, documents);
+
+    if (!onboarding.onboardingCompleted) {
+      throw new BadRequestException({
+        message: 'Onboarding requirements are not complete',
+        code: 'ONBOARDING_INCOMPLETE',
+        nextRequiredStep: onboarding.nextRequiredStep,
+        redirectPath: onboarding.redirectPath,
+      });
+    }
+
+    if (driver.verificationStatus !== DriverVerificationStatus.VERIFIED) {
+      driver.verificationStatus = DriverVerificationStatus.VERIFIED;
+      await this.driverProfiles.save(driver);
+    }
+
+    return {
+      onboardingCompleted: true,
+      verificationStatus: driver.verificationStatus,
+      redirectPath: '/driver/dashboard/offline',
+    };
+  }
+
+  private async buildOnboardingStatus(
+    user: AuthUser,
+    driver: DriverProfile,
+    vehicles: any[],
+    documents: DriverDocument[],
+  ) {
+    const activeVehicle =
+      vehicles.find((vehicle) => vehicle.id === driver.currentVehicleId) ??
+      vehicles.find((vehicle) => vehicle.isActive) ??
+      null;
+    const vehicleDocuments = activeVehicle
+      ? await this.vehicleDocuments.find({ where: { vehicleId: activeVehicle.id } })
+      : [];
+    const emergencyContacts = await this.emergencyContactsRepo.count({ where: { userId: user.id } });
+    const hasDocument = (type: DocumentType) =>
+      documents.some((document) => document.type === type && document.status !== DocumentStatus.REJECTED);
+    const hasVehicleDocument = (type: DocumentType) =>
+      vehicleDocuments.some(
+        (document) => document.type === type && document.status !== DocumentStatus.REJECTED,
+      );
+    const hasSelectedServiceCategories = Boolean(driver.serviceCapabilities?.length);
+    const hasRequiredDriverDocuments =
+      hasDocument(DocumentType.NATIONAL_ID) &&
+      hasDocument(DocumentType.DRIVING_LICENSE_FRONT) &&
+      hasDocument(DocumentType.GOOD_CONDUCT);
+    const hasRequiredVehicleDocuments =
+      Boolean(activeVehicle) &&
+      hasVehicleDocument(DocumentType.VEHICLE_INSURANCE) &&
+      hasVehicleDocument(DocumentType.VEHICLE_INSPECTION) &&
+      hasVehicleDocument(DocumentType.VEHICLE_LOGBOOK) &&
+      hasVehicleDocument(DocumentType.ROAD_LICENSE);
+    const identityVerified =
+      driver.verificationStatus === DriverVerificationStatus.VERIFIED ||
+      Boolean((user as any).avatarUrl) ||
+      hasDocument(DocumentType.NATIONAL_ID);
+    const hasActiveVehicle = Boolean(activeVehicle);
+    const hasCompletedTutorials = driver.trainingCompleted === true;
+    const emergencyContactReady = emergencyContacts > 0;
+    const onboardingCompleted =
+      hasSelectedServiceCategories &&
+      hasRequiredDriverDocuments &&
+      hasRequiredVehicleDocuments &&
+      identityVerified &&
+      hasActiveVehicle &&
+      emergencyContactReady &&
+      hasCompletedTutorials;
+    const nextRequiredStep = !hasSelectedServiceCategories
+      ? 'SERVICE_CATEGORIES'
+      : !identityVerified || !hasRequiredDriverDocuments
+        ? 'DOCUMENTS'
+        : !hasActiveVehicle || !hasRequiredVehicleDocuments
+          ? 'VEHICLE'
+          : !emergencyContactReady
+            ? 'EMERGENCY_CONTACT'
+            : !hasCompletedTutorials
+              ? 'TRAINING'
+              : null;
+    const redirectPath = onboardingCompleted
+      ? '/driver/dashboard/offline'
+      : nextRequiredStep === 'SERVICE_CATEGORIES'
+        ? '/driver/register'
+        : nextRequiredStep === 'TRAINING'
+          ? '/driver/training/intro'
+          : '/driver/onboarding/profile';
+    return {
+      userId: user.id,
+      driverId: driver.id,
+      isAuthenticated: true,
+      hasSelectedService: hasSelectedServiceCategories,
+      hasSelectedServiceCategories,
+      hasProfile: true,
+      hasOperationArea:
+        Array.isArray(driver.preferences?.areaIds) && (driver.preferences?.areaIds as unknown[]).length > 0,
+      hasActiveVehicle,
+      hasRequiredDriverDocuments,
+      hasRequiredVehicleDocuments,
+      hasCompletedTutorials,
+      onboardingCompleted,
+      nextRequiredStep,
+      redirectTo: redirectPath,
+      redirectPath,
+      checkpoints: {
+        roleSelected: hasSelectedServiceCategories,
+        documentsVerified: hasRequiredDriverDocuments,
+        identityVerified,
+        vehicleReady: hasActiveVehicle && hasRequiredVehicleDocuments,
+        emergencyContactReady,
+        trainingCompleted: hasCompletedTutorials,
+        onboardingComplete: onboardingCompleted,
+      },
     };
   }
 
@@ -211,29 +366,70 @@ export class DriverCompatibilityController {
     return this.drivers.updatePreferences(user.id, dto.preferences);
   }
 
-  @Patch()
-  async updateDriverProfile(
+  @Patch('service-capabilities')
+  async updateServiceCapabilities(
     @CurrentUser() user: AuthUser,
-    @Body()
-    body: {
-      fullName?: string;
-      email?: string;
-      phone?: string;
-      city?: string;
-      country?: string;
-      dateOfBirth?: string;
-      streetAddress?: string;
-      district?: string;
-      postalCode?: string;
-      landmark?: string;
-    },
+    @Body() dto: CompatDriverServiceCapabilitiesDto,
   ) {
-    const profile = await this.drivers.updateProfile(user.id, body);
-    return {
-      id: user.id,
-      userId: user.id,
-      ...profile,
-    };
+    const driver = await this.drivers.getByUserId(user.id);
+    driver.serviceCapabilities = dto.serviceCapabilities;
+    return this.driverProfiles.save(driver);
+  }
+
+  @Get('delivery/active')
+  async activeDelivery() {
+    return null;
+  }
+
+  @Get('service-requests')
+  async listServiceRequests() {
+    // Stub: the driver app bootstrap expects this list endpoint to exist.
+    // Once a driver-facing service-request repository exists, replace this with a real query.
+    return [];
+  }
+
+  @Get('service-requests/active')
+  async activeServiceRequest() {
+    return null;
+  }
+
+  @Get('social-links')
+  async socialLinks(@CurrentUser() user: AuthUser) {
+    const driver = await this.drivers.getByUserId(user.id);
+    return this.socialLinksRepo.find({
+      where: { driverId: driver.id },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  @Post('social-links')
+  async createSocialLink(@CurrentUser() user: AuthUser, @Body() dto: CompatSocialLinkDto) {
+    const driver = await this.drivers.getByUserId(user.id);
+    return this.socialLinksRepo.save(
+      this.socialLinksRepo.create({ driverId: driver.id, platform: dto.platform, url: dto.url }),
+    );
+  }
+
+  @Patch('social-links/:linkId')
+  async updateSocialLink(
+    @CurrentUser() user: AuthUser,
+    @Param('linkId') linkId: string,
+    @Body() dto: CompatSocialLinkDto,
+  ) {
+    const driver = await this.drivers.getByUserId(user.id);
+    const link = await this.socialLinksRepo.findOne({ where: { id: linkId, driverId: driver.id } });
+    if (!link) throw new NotFoundException('Social link not found');
+    link.platform = dto.platform;
+    link.url = dto.url;
+    return this.socialLinksRepo.save(link);
+  }
+
+  @Delete('social-links/:linkId')
+  async deleteSocialLink(@CurrentUser() user: AuthUser, @Param('linkId') linkId: string) {
+    const driver = await this.drivers.getByUserId(user.id);
+    const result = await this.socialLinksRepo.softDelete({ id: linkId, driverId: driver.id });
+    if (result.affected === 0) throw new NotFoundException('Social link not found');
+    return { success: true };
   }
 
   @Get('vehicles')
@@ -243,28 +439,24 @@ export class DriverCompatibilityController {
   }
 
   @Post('vehicles')
-  async createVehicle(@CurrentUser() user: AuthUser, @Body() raw: CompatUpdateVehicleDto) {
-    const patch = this.mapFrontendVehiclePatch(raw as UpdateVehicleDto & Record<string, unknown>);
-    // The frontend does not send all required creation fields; provide sensible defaults.
-    const dto: CreateVehicleDto = {
-      make: patch.make || 'Unknown',
-      model: patch.model || 'Unknown',
-      year: patch.year ?? new Date().getFullYear(),
-      plateNumber: patch.plateNumber || 'UNKNOWN',
-      vehicleType: patch.vehicleType ?? VehicleType.SEDAN,
-      energyType: patch.energyType ?? EnergyType.INTERNAL_COMBUSTION,
-      seats: patch.seats ?? 4,
-      serviceCapabilities: patch.serviceCapabilities ?? [],
-      ...(patch.cargoCapacityKg !== undefined && { cargoCapacityKg: patch.cargoCapacityKg }),
-      ...(patch.color !== undefined && { color: patch.color }),
-      ...(patch.imageUrl !== undefined && { imageUrl: patch.imageUrl }),
-      ...(patch.features !== undefined && { features: patch.features }),
-      ...(patch.dailyRentalRate !== undefined && { dailyRentalRate: patch.dailyRentalRate }),
-      ...(patch.includedDailyKm !== undefined && { includedDailyKm: patch.includedDailyKm }),
-      ...(patch.extraKmRate !== undefined && { extraKmRate: patch.extraKmRate }),
-      ...(patch.isActive !== undefined && { isActive: patch.isActive }),
-    } as CreateVehicleDto;
-    const vehicle = await this.vehicles.create(user.id, dto);
+  async createVehicle(@CurrentUser() user: AuthUser, @Body() dto: any) {
+    const plate = (dto.plateNumber ?? dto.plate ?? '').toString().trim().toUpperCase();
+    // If the driver already has a vehicle with this plate (e.g. retry after a
+    // partial save, or seeded data), update it instead of failing on the unique
+    // index.
+    if (plate) {
+      const existing = await this.vehicles.listMine(user.id);
+      const matched = existing.find((v) => v.plateNumber.toUpperCase() === plate);
+      if (matched) {
+        const vehicle = await this.vehicles.update(
+          user.id,
+          matched.id,
+          this.toVehicleDto(dto) as UpdateVehicleDto,
+        );
+        return this.mapVehicle(vehicle);
+      }
+    }
+    const vehicle = await this.vehicles.create(user.id, this.toVehicleDto(dto, true) as CreateVehicleDto);
     return this.mapVehicle(vehicle);
   }
 
@@ -272,11 +464,65 @@ export class DriverCompatibilityController {
   async updateVehicle(
     @CurrentUser() user: AuthUser,
     @Param('vehicleId') vehicleId: string,
-    @Body() raw: CompatUpdateVehicleDto,
+    @Body() dto: any,
   ) {
-    const payload = this.mapFrontendVehiclePatch(raw as UpdateVehicleDto & Record<string, unknown>);
-    const vehicle = await this.vehicles.update(user.id, vehicleId, payload);
+    const vehicle = await this.vehicles.update(
+      user.id,
+      vehicleId,
+      this.toVehicleDto(dto) as UpdateVehicleDto,
+    );
     return this.mapVehicle(vehicle);
+  }
+
+  @Delete('vehicles/:vehicleId')
+  deleteVehicle(@CurrentUser() user: AuthUser, @Param('vehicleId') vehicleId: string) {
+    return this.vehicles.remove(user.id, vehicleId);
+  }
+
+  @Post('vehicles/:vehicleId/documents')
+  async uploadVehicleDocument(
+    @CurrentUser() user: AuthUser,
+    @Param('vehicleId') vehicleId: string,
+    @Body() dto: any,
+  ) {
+    if (!dto.fileUrl) {
+      throw new BadRequestException('fileUrl is required. Upload the file first through /files/upload.');
+    }
+
+    const document = await this.vehicles.addDocument(user.id, vehicleId, {
+      type: this.toDocumentType(dto.documentType ?? dto.type),
+      fileUrl: dto.fileUrl,
+      expiryDate: dto.expiryDate,
+      issueDate: dto.issueDate,
+      metadata: {
+        fileKey: dto.fileKey ?? null,
+        originalFileName: dto.originalFileName ?? null,
+        mimeType: dto.mimeType ?? null,
+        sizeBytes: dto.sizeBytes ?? null,
+        source: 'driver-onboarding',
+      },
+    });
+    return this.mapVehicleDocument(document);
+  }
+
+  @Patch('vehicles/:vehicleId/documents/:documentId')
+  async patchVehicleDocument(
+    @CurrentUser() user: AuthUser,
+    @Param('vehicleId') vehicleId: string,
+    @Param('documentId') documentId: string,
+    @Body() dto: any,
+  ) {
+    await this.vehicles.get(user.id, vehicleId);
+    const document = await this.vehicleDocuments.findOne({ where: { id: documentId, vehicleId } });
+    if (!document) throw new NotFoundException('Vehicle document not found');
+    Object.assign(document, {
+      type: dto.documentType || dto.type ? this.toDocumentType(dto.documentType ?? dto.type) : document.type,
+      fileUrl: dto.fileUrl ?? document.fileUrl,
+      expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : document.expiryDate,
+      issueDate: dto.issueDate ? new Date(dto.issueDate) : document.issueDate,
+      status: dto.status ?? document.status,
+    });
+    return this.mapVehicleDocument(await this.vehicleDocuments.save(document));
   }
 
   @Patch('active-vehicle')
@@ -448,72 +694,110 @@ export class DriverCompatibilityController {
   }
 
   @Get('emergency-contacts')
-  async emergencyContacts(@CurrentUser() user: AuthUser) {
-    const items = await this.emergencyContactRepo.find({ where: { userId: user.id }, order: { createdAt: 'DESC' } });
-    return items.map((item) => ({
-      id: item.id,
-      name: item.name,
-      phone: item.phone,
-      relationship: item.relationship,
-      isPrimary: item.isPrimary,
-    }));
+  emergencyContacts(@CurrentUser() user: AuthUser) {
+    return this.emergencyContactsRepo.find({
+      where: { userId: user.id },
+      order: { isPrimary: 'DESC', createdAt: 'ASC' },
+    });
   }
 
   @Post('emergency-contacts')
-  async createEmergencyContact(@CurrentUser() user: AuthUser, @Body() body: { name: string; phone: string; relationship?: string; isPrimary?: boolean }) {
-    const item = await this.emergencyContactRepo.save(
-      this.emergencyContactRepo.create({
-        userId: user.id,
-        name: body.name,
-        phone: body.phone,
-        relationship: body.relationship,
-        isPrimary: body.isPrimary ?? false,
-      }),
+  async createEmergencyContact(@CurrentUser() user: AuthUser, @Body() body: any) {
+    const count = await this.emergencyContactsRepo.count({ where: { userId: user.id } });
+    const isPrimary = body.isPrimary === true || count === 0;
+    if (isPrimary) await this.emergencyContactsRepo.update({ userId: user.id }, { isPrimary: false });
+    return this.emergencyContactsRepo.save(
+      this.emergencyContactsRepo.create({ userId: user.id, ...body, isPrimary }),
     );
-    return {
-      id: item.id,
-      name: item.name,
-      phone: item.phone,
-      relationship: item.relationship,
-      isPrimary: item.isPrimary,
-    };
   }
 
   @Patch('emergency-contacts/:id')
-  async updateEmergencyContact(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Body() body: { name?: string; phone?: string; relationship?: string; isPrimary?: boolean },
-  ) {
-    const item = await this.emergencyContactRepo.findOne({ where: { id, userId: user.id } });
-    if (!item) throw new NotFoundException('Emergency contact not found');
-    if (body.name !== undefined) item.name = body.name;
-    if (body.phone !== undefined) item.phone = body.phone;
-    if (body.relationship !== undefined) item.relationship = body.relationship;
-    if (body.isPrimary !== undefined) item.isPrimary = body.isPrimary;
-    const updated = await this.emergencyContactRepo.save(item);
-    return {
-      id: updated.id,
-      name: updated.name,
-      phone: updated.phone,
-      relationship: updated.relationship,
-      isPrimary: updated.isPrimary,
-    };
+  async updateEmergencyContact(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: any) {
+    const contact = await this.emergencyContactsRepo.findOne({ where: { id, userId: user.id } });
+    if (!contact) throw new NotFoundException('Emergency contact not found');
+    if (body.isPrimary === true)
+      await this.emergencyContactsRepo.update({ userId: user.id }, { isPrimary: false });
+    Object.assign(contact, body);
+    return this.emergencyContactsRepo.save(contact);
   }
 
   @Delete('emergency-contacts/:id')
   async deleteEmergencyContact(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    const item = await this.emergencyContactRepo.findOne({ where: { id, userId: user.id } });
-    if (!item) throw new NotFoundException('Emergency contact not found');
-    await this.emergencyContactRepo.remove(item);
+    const contact = await this.emergencyContactsRepo.findOne({ where: { id, userId: user.id } });
+    if (!contact) throw new NotFoundException('Emergency contact not found');
+    await this.emergencyContactsRepo.softRemove(contact);
+    return { deleted: true };
+  }
+
+  @Get('documents')
+  async driverDocumentsList(@CurrentUser() user: AuthUser) {
+    return (await this.drivers.listDocuments(user.id)).map((document) =>
+      this.mapDriverDocument(user.id, document),
+    );
+  }
+
+  @Post('documents')
+  async createDriverDocument(@CurrentUser() user: AuthUser, @Body() dto: any) {
+    const document = await this.drivers.uploadDocument(user.id, {
+      type: this.toDocumentType(dto.documentType ?? dto.type),
+      fileUrl: dto.fileUrl,
+      expiryDate: dto.expiryDate,
+      issueDate: dto.issueDate,
+      metadata: {
+        fileKey: dto.fileKey,
+        originalFileName: dto.originalFileName,
+        mimeType: dto.mimeType,
+        sizeBytes: dto.sizeBytes,
+        side: dto.side,
+      },
+    });
+    return this.mapDriverDocument(user.id, document);
+  }
+
+  @Patch('documents/:documentId')
+  async patchDriverDocument(
+    @CurrentUser() user: AuthUser,
+    @Param('documentId') documentId: string,
+    @Body() dto: any,
+  ) {
+    const driver = await this.drivers.getByUserId(user.id);
+    const document = await this.driverDocuments.findOne({ where: { id: documentId, driverId: driver.id } });
+    if (!document) throw new NotFoundException('Driver document not found');
+    Object.assign(document, {
+      type: dto.documentType || dto.type ? this.toDocumentType(dto.documentType ?? dto.type) : document.type,
+      fileUrl: dto.fileUrl ?? document.fileUrl,
+      expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : document.expiryDate,
+      issueDate: dto.issueDate ? new Date(dto.issueDate) : document.issueDate,
+      metadata: { ...(document.metadata ?? {}), ...dto },
+    });
+    return this.mapDriverDocument(user.id, await this.driverDocuments.save(document));
+  }
+
+  @Delete('documents/:documentId')
+  async deleteDriverDocument(@CurrentUser() user: AuthUser, @Param('documentId') documentId: string) {
+    const driver = await this.drivers.getByUserId(user.id);
+    const document = await this.driverDocuments.findOne({ where: { id: documentId, driverId: driver.id } });
+    if (!document) throw new NotFoundException('Driver document not found');
+    await this.driverDocuments.softRemove(document);
     return { deleted: true };
   }
 
   @Get('documents/status')
   async documentStatus(@CurrentUser() user: AuthUser) {
     const docs = await this.drivers.listDocuments(user.id);
-    const completed = docs.map((d) => d.type);
-    return { required: [], completed, missing: [], hasBlockingIssues: false };
+    const required = [DocumentType.NATIONAL_ID, DocumentType.DRIVING_LICENSE_FRONT];
+    const completed = docs.filter((d) => d.status !== DocumentStatus.REJECTED).map((d) => d.type);
+    const missing = required.filter((type) => !completed.includes(type));
+    return { required, completed, missing, hasBlockingIssues: missing.length > 0 };
+  }
+
+  @Post('identity/photo')
+  async uploadIdentityPhoto(@CurrentUser() user: AuthUser, @Body() dto: any) {
+    const profilePhoto = dto.profilePhotoUrl ?? dto.imageUrl ?? dto.fileUrl ?? null;
+    if (profilePhoto) {
+      await this.users.updateProfile(user.id, { avatarUrl: profilePhoto });
+    }
+    return { profilePhoto, identityVerified: Boolean(profilePhoto) };
   }
 
   @Get('onboarding/status')
@@ -540,44 +824,104 @@ export class DriverCompatibilityController {
       accessories: v.features || {},
       imageKey: v.imageUrl || '',
       imageUrl: v.imageUrl || '',
-      batterySize: '',
+      batterySize: v.batteryCapacityKwh != null ? String(v.batteryCapacityKwh) : '',
       color: v.color || '',
-      range: '',
+      range: v.estimatedRangeKm != null ? String(v.estimatedRangeKm) : '',
       isActive: v.status === 'ACTIVE' || v.isActive === true,
       documents: this.mapVehicleDocuments(v.documents),
     };
   }
 
-  private mapVehicleDocuments(documents?: VehicleDocument[] | null): Record<string, unknown> | null {
-    if (!Array.isArray(documents) || documents.length === 0) {
-      return null;
-    }
-    return documents.reduce<Record<string, unknown>>((acc, document) => {
-      const key = this.toVehicleDocumentKey(document.type);
-      acc[key] = {
-        fileUrl: document.fileUrl,
-        expiryDate: document.expiryDate ? document.expiryDate.toISOString() : null,
-        issueDate: document.issueDate ? document.issueDate.toISOString() : null,
-        status: document.status,
-        type: document.type,
-      };
-      return acc;
-    }, {});
+  private mapVehicleDocument(document: VehicleDocument) {
+    return {
+      id: document.id,
+      documentType: document.type,
+      fileUrl: document.fileUrl,
+      fileKey: (document.metadata?.fileKey as string | undefined) ?? null,
+      originalFileName: (document.metadata?.originalFileName as string | undefined) ?? null,
+      mimeType: (document.metadata?.mimeType as string | undefined) ?? null,
+      sizeBytes: (document.metadata?.sizeBytes as number | undefined) ?? null,
+      status: document.status,
+      expiryDate: document.expiryDate ? document.expiryDate.toISOString() : null,
+      createdAt: document.createdAt.toISOString(),
+      uploadedAt: document.createdAt.toISOString(),
+    };
   }
 
-  private toVehicleDocumentKey(type: DocumentType): string {
-    switch (type) {
-      case DocumentType.VEHICLE_INSURANCE:
-        return 'insurance';
-      case DocumentType.VEHICLE_INSPECTION:
-        return 'inspection';
-      case DocumentType.VEHICLE_LOGBOOK:
-        return 'logbook';
-      case DocumentType.ROAD_LICENSE:
-        return 'registration';
-      default:
-        return String(type).toLowerCase();
-    }
+  private mapDriverDocument(userId: string, document: DriverDocument) {
+    return {
+      id: document.id,
+      userId,
+      userType: 'DRIVER',
+      documentType: document.type,
+      fileUrl: document.fileUrl,
+      fileKey: (document.metadata?.fileKey as string | undefined) ?? null,
+      originalFileName: (document.metadata?.originalFileName as string | undefined) ?? null,
+      mimeType: (document.metadata?.mimeType as string | undefined) ?? null,
+      sizeBytes: (document.metadata?.sizeBytes as number | undefined) ?? null,
+      side: (document.metadata?.side as string | undefined) ?? null,
+      status: document.status,
+      expiryDate: document.expiryDate ? document.expiryDate.toISOString() : null,
+      uploadedAt: document.createdAt.toISOString(),
+      createdAt: document.createdAt.toISOString(),
+    };
+  }
+
+  private toVehicleDto(input: any, withDefaults = false): Partial<CreateVehicleDto> {
+    const dto: Partial<CreateVehicleDto> = {
+      make: input.make,
+      model: input.model,
+      year: input.year,
+      plateNumber: input.plateNumber ?? input.plate,
+      vehicleType:
+        input.vehicleType || input.type ? this.toVehicleType(input.vehicleType ?? input.type) : undefined,
+      energyType: input.energyType ?? (withDefaults ? EnergyType.ELECTRIC : undefined),
+      seats: input.seats ?? (withDefaults ? 4 : undefined),
+      cargoCapacityKg: input.cargoCapacityKg ?? (withDefaults ? 0 : undefined),
+      batteryCapacityKwh:
+        input.batteryCapacityKwh ?? (input.batterySize ? Number(input.batterySize) : undefined),
+      estimatedRangeKm: input.estimatedRangeKm ?? (input.range ? Number(input.range) : undefined),
+      color: input.color,
+      imageUrl: input.imageUrl ?? input.imageKey,
+      serviceCapabilities: input.serviceCapabilities ?? (withDefaults ? [ServiceType.RIDE] : undefined),
+      features: input.features ?? input.accessories ?? (withDefaults ? {} : undefined),
+      dailyRentalRate: input.dailyRentalRate,
+      includedDailyKm: input.includedDailyKm,
+      extraKmRate: input.extraKmRate,
+    };
+    return Object.fromEntries(
+      Object.entries(dto).filter(([, value]) => value !== undefined),
+    ) as Partial<CreateVehicleDto>;
+  }
+
+  private toVehicleType(value: unknown): VehicleType {
+    const normalized = String(value ?? '')
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, '_');
+    if (normalized in VehicleType) return VehicleType[normalized as keyof typeof VehicleType];
+    if (normalized.includes('BIKE') || normalized.includes('MOTOR')) return VehicleType.MOTORCYCLE;
+    if (normalized.includes('SCOOTER')) return VehicleType.SCOOTER;
+    if (normalized.includes('VAN')) return VehicleType.VAN;
+    if (normalized.includes('SUV')) return VehicleType.SUV;
+    return VehicleType.SEDAN;
+  }
+
+  private toDocumentType(value: unknown): DocumentType {
+    const normalized = String(value ?? '')
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, '_');
+    if (normalized in DocumentType) return DocumentType[normalized as keyof typeof DocumentType];
+    if (normalized.includes('LICENSE')) return DocumentType.DRIVING_LICENSE_FRONT;
+    if (normalized.includes('NATIONAL') || normalized.includes('IDENTITY')) return DocumentType.NATIONAL_ID;
+    if (normalized.includes('INSURANCE')) return DocumentType.VEHICLE_INSURANCE;
+    if (normalized.includes('INSPECTION')) return DocumentType.VEHICLE_INSPECTION;
+    if (normalized.includes('LOGBOOK') || normalized.includes('OWNERSHIP'))
+      return DocumentType.VEHICLE_LOGBOOK;
+    if (normalized.includes('REGISTRATION') || normalized.includes('ROAD_LICENSE'))
+      return DocumentType.ROAD_LICENSE;
+    return DocumentType.OTHER;
   }
 
   private mapJob(job: any) {

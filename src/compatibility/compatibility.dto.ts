@@ -1,14 +1,16 @@
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
   IsEnum,
-  IsInt,
   IsNumber,
   IsObject,
   IsOptional,
   IsString,
+  Max,
+  Min,
 } from 'class-validator';
-import { DriverAvailabilityStatus, EnergyType, ServiceType, VehicleType } from '../common/enums';
+import { DriverAvailabilityStatus, ServiceType } from '../common/enums';
 
 export class CompatDriverPresenceDto {
   @IsOptional()
@@ -23,9 +25,96 @@ export class CompatDriverPresenceDto {
   location?: { latitude: number; longitude: number; accuracy?: number; heading?: number; speed?: number };
 }
 
+export class CompatDriverLocationHeartbeatDto {
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude!: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude!: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  accuracyMeters?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  accuracy?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  speedKph?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  speed?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(360)
+  heading?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  timestamp?: number;
+
+  @IsOptional()
+  @IsString()
+  tripId?: string;
+
+  @IsOptional()
+  @IsString()
+  routeId?: string;
+
+  @IsOptional()
+  @IsEnum(ServiceType)
+  serviceType?: ServiceType;
+
+  @IsOptional()
+  @IsString()
+  serviceId?: string;
+}
+
+export class CompatDriverProfilePatchDto {
+  @IsOptional() @IsString() fullName?: string;
+  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() city?: string;
+  @IsOptional() @IsString() country?: string;
+  @IsOptional() @IsString() dateOfBirth?: string;
+  @IsOptional() @IsString() streetAddress?: string;
+  @IsOptional() @IsString() district?: string;
+  @IsOptional() @IsString() postalCode?: string;
+  @IsOptional() @IsString() landmark?: string;
+  @IsOptional() @IsString() nationalIdNumber?: string;
+  @IsOptional() @IsString() profilePhoto?: string;
+  @IsOptional() @IsBoolean() trainingCompleted?: boolean;
+}
+
 export class CompatDriverPreferencesDto {
   @IsObject()
   preferences!: Record<string, unknown>;
+}
+
+export class CompatDriverServiceCapabilitiesDto {
+  @IsArray()
+  @IsEnum(ServiceType, { each: true })
+  serviceCapabilities!: ServiceType[];
 }
 
 export class CompatRejectJobDto {
@@ -52,35 +141,10 @@ export class CompatAvailabilityDto {
   vehicleId?: string;
 }
 
-/**
- * Permissive vehicle update DTO for the driver compatibility layer.
- * The frontend still uses legacy field names (`plate`, `type`, `imageKey`,
- * `batterySize`, `range`, etc.) while the backend DTO uses different names.
- * This DTO accepts everything the frontend may send; the controller then maps
- * it to the canonical `UpdateVehicleDto`.
- */
-export class CompatUpdateVehicleDto {
-  @IsOptional() @IsString() make?: string;
-  @IsOptional() @IsString() model?: string;
-  @IsOptional() @IsInt() year?: number;
-  @IsOptional() @IsString() plate?: string;
-  @IsOptional() @IsString() plateNumber?: string;
-  @IsOptional() @IsString() type?: string;
-  @IsOptional() @IsEnum(VehicleType) vehicleType?: VehicleType;
-  @IsOptional() @IsEnum(EnergyType) energyType?: EnergyType;
-  @IsOptional() @IsString() status?: string;
-  @IsOptional() @IsObject() accessories?: Record<string, unknown>;
-  @IsOptional() @IsString() imageKey?: string;
-  @IsOptional() @IsString() imageUrl?: string;
-  @IsOptional() @IsNumber() batterySize?: number;
-  @IsOptional() @IsString() color?: string;
-  @IsOptional() @IsNumber() range?: number;
-  @IsOptional() @IsInt() seats?: number;
-  @IsOptional() @IsNumber() cargoCapacityKg?: number;
-  @IsOptional() @IsObject() features?: Record<string, unknown>;
-  @IsOptional() @IsArray() @IsEnum(ServiceType, { each: true }) serviceCapabilities?: ServiceType[];
-  @IsOptional() @IsNumber() dailyRentalRate?: number;
-  @IsOptional() @IsNumber() includedDailyKm?: number;
-  @IsOptional() @IsNumber() extraKmRate?: number;
-  @IsOptional() @IsBoolean() isActive?: boolean;
+export class CompatSocialLinkDto {
+  @IsString()
+  platform!: string;
+
+  @IsString()
+  url!: string;
 }

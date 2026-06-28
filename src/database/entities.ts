@@ -426,6 +426,9 @@ export class DriverProfile extends BaseEntity {
   @Column({ default: true })
   rideSharingEnabled!: boolean;
 
+  @Column({ default: false })
+  trainingCompleted!: boolean;
+
   @Column({ default: 0 })
   drivingMinutesToday!: number;
 
@@ -460,14 +463,27 @@ export class DriverDocument extends BaseEntity {
   @Column({ nullable: true })
   rejectionReason?: string;
 
+  @Column({ type: 'simple-json', nullable: true })
+  metadata?: Record<string, unknown>;
+
   @Column({ nullable: true })
   reviewedByUserId?: string;
 
   @Column({ nullable: true })
   reviewedAt?: Date;
+}
 
-  @Column({ type: 'simple-json', nullable: true })
-  metadata?: Record<string, unknown>;
+@Entity('driver_social_links')
+export class DriverSocialLink extends BaseEntity {
+  @Index()
+  @Column()
+  driverId!: string;
+
+  @Column()
+  platform!: string;
+
+  @Column()
+  url!: string;
 }
 
 @Entity('vehicles')
@@ -507,6 +523,12 @@ export class Vehicle extends BaseEntity {
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0, transformer: numberTransformer })
   cargoCapacityKg!: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, transformer: numberTransformer })
+  batteryCapacityKwh?: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, transformer: numberTransformer })
+  estimatedRangeKm?: number;
 
   @Column({ nullable: true })
   color?: string;
@@ -556,6 +578,9 @@ export class VehicleDocument extends BaseEntity {
 
   @Column({ nullable: true })
   rejectionReason?: string;
+
+  @Column({ type: 'simple-json', nullable: true })
+  metadata?: Record<string, unknown>;
 }
 
 @Entity('vehicle_accessories')
@@ -4919,6 +4944,7 @@ export const ENTITIES = [
   AuditLog,
   DriverProfile,
   DriverDocument,
+  DriverSocialLink,
   Vehicle,
   VehicleDocument,
   VehicleAccessory,

@@ -6,6 +6,8 @@ import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
 import {
   AccountStatus,
+  DocumentStatus,
+  DocumentType,
   DriverAvailabilityStatus,
   DriverVerificationStatus,
   MembershipStatus,
@@ -13,19 +15,28 @@ import {
   OrganizationStatus,
   OrganizationType,
   ServiceType,
+  TrainingProgressStatus,
   UserRole,
+  VehicleStatus,
 } from '../common/enums';
 import { AuthUser, JwtPayload } from '../common/interfaces';
 import { randomOtp, randomToken, safeEqualHash, sha256 } from '../common/utils/security';
 import {
   DriverProfile,
+  DriverDocument,
+  EmergencyContact,
   FleetProfile,
+  OnboardingApplication,
+  OnboardingChecklistItem,
   Organization,
   OrganizationMember,
   OtpCode,
   PasswordResetToken,
   RefreshToken,
+  TrainingProgress,
   User,
+  Vehicle,
+  VehicleDocument,
   Wallet,
 } from '../database/entities';
 import { RedisService } from '../infrastructure/redis.service';
@@ -42,6 +53,16 @@ import {
 } from './auth.dto';
 import { AccessTokenClaims } from './access-token-verifier.service';
 
+const DRIVER_ONBOARDING_CHECKLIST = [
+  { key: 'PROFILE', label: 'Personal profile', required: true },
+  { key: 'IDENTITY', label: 'Identity and selfie verification', required: true },
+  { key: 'DRIVER_DOCUMENTS', label: 'Driving permit and professional documents', required: true },
+  { key: 'VEHICLE', label: 'Vehicle registration and compliance', required: true },
+  { key: 'EMERGENCY_CONTACT', label: 'Emergency contact', required: true },
+  { key: 'BANK_DETAILS', label: 'Payout details', required: true },
+  { key: 'TRAINING', label: 'Driver information session and quiz', required: true },
+];
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -55,6 +76,15 @@ export class AuthService {
     private readonly passwordResetTokens: Repository<PasswordResetToken>,
     @InjectRepository(Wallet) private readonly wallets: Repository<Wallet>,
     @InjectRepository(DriverProfile) private readonly driverProfiles: Repository<DriverProfile>,
+    @InjectRepository(DriverDocument) private readonly driverDocuments: Repository<DriverDocument>,
+    @InjectRepository(Vehicle) private readonly vehicles: Repository<Vehicle>,
+    @InjectRepository(VehicleDocument) private readonly vehicleDocuments: Repository<VehicleDocument>,
+    @InjectRepository(EmergencyContact) private readonly emergencyContacts: Repository<EmergencyContact>,
+    @InjectRepository(TrainingProgress) private readonly trainingProgress: Repository<TrainingProgress>,
+    @InjectRepository(OnboardingApplication)
+    private readonly onboardingApplications: Repository<OnboardingApplication>,
+    @InjectRepository(OnboardingChecklistItem)
+    private readonly onboardingChecklist: Repository<OnboardingChecklistItem>,
     @InjectRepository(Organization) private readonly organizations: Repository<Organization>,
     @InjectRepository(OrganizationMember)
     private readonly organizationMembers: Repository<OrganizationMember>,
@@ -78,12 +108,13 @@ export class AuthService {
       }
     }
 
+    const requestedDriver = requestedRoles.some((role) => role.includes('driver')) || dto.role === UserRole.DRIVER;
     const role = requestsAdmin
       ? UserRole.ADMIN
-      : dto.role && [UserRole.CUSTOMER, UserRole.RIDER, UserRole.DRIVER].includes(dto.role)
-        ? dto.role
-        : requestedRoles.includes('driver')
-          ? UserRole.DRIVER
+      : requestedDriver
+        ? UserRole.DRIVER
+        : dto.role && [UserRole.CUSTOMER, UserRole.RIDER].includes(dto.role)
+          ? dto.role
           : UserRole.RIDER;
     const fallbackName = dto.email?.split('@')[0]?.replace(/[._-]+/g, ' ') || 'EVzone User';
     const suppliedName = dto.fullName ?? `${dto.firstName ?? ''} ${dto.lastName ?? ''}`.trim();
@@ -118,31 +149,9 @@ export class AuthService {
     await this.wallets.save(
       this.wallets.create({ userId: user.id, currency: user.currency, availableBalance: 0 }),
     );
-
-    // Auto-create a driver profile when the user registers as a driver and persist
-    // the signup address/profile fields so the follow-up PATCH is not the only
-    // source of truth.
     if (role === UserRole.DRIVER) {
-      const profilePrefs: Record<string, unknown> = {};
-      if (dto.country !== undefined) profilePrefs.country = dto.country;
-      if (dto.dateOfBirth !== undefined) profilePrefs.dateOfBirth = dto.dateOfBirth;
-      if (dto.streetAddress !== undefined) profilePrefs.streetAddress = dto.streetAddress;
-      if (dto.city !== undefined) profilePrefs.city = dto.city;
-      if (dto.district !== undefined) profilePrefs.district = dto.district;
-      if (dto.postalCode !== undefined) profilePrefs.postalCode = dto.postalCode;
-      if (dto.landmark !== undefined) profilePrefs.landmark = dto.landmark;
-
-      await this.driverProfiles.save(
-        this.driverProfiles.create({
-          userId: user.id,
-          verificationStatus: DriverVerificationStatus.NOT_STARTED,
-          availabilityStatus: DriverAvailabilityStatus.OFFLINE,
-          serviceCapabilities: [],
-          preferences: Object.keys(profilePrefs).length > 0 ? { profile: profilePrefs } : {},
-        }),
-      );
+      await this.ensureDriverOnboarding(user.id, roles);
     }
-
     return this.issueSession(user, metadata);
   }
 
@@ -436,7 +445,7 @@ export class AuthService {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
     const [driver, organizations] = await Promise.all([
-      this.driverProfiles.findOne({ where: { userId } }),
+      user.role === UserRole.DRIVER ? this.ensureDriverOnboarding(userId) : this.driverProfiles.findOne({ where: { userId } }),
       this.organizations.find({ where: { primaryOwnerUserId: userId }, order: { createdAt: 'ASC' } }),
     ]);
     const metadata = user.metadata ?? {};
@@ -449,6 +458,7 @@ export class AuthService {
       : user.role === UserRole.ADMIN
         ? ['*']
         : [];
+    const onboarding = driver ? await this.driverOnboardingStatus(user, driver) : null;
     return {
       user: {
         id: user.id,
@@ -464,8 +474,168 @@ export class AuthService {
         fleetProfileId: organizations[0]?.id ?? null,
         adminProfileId: user.role === UserRole.ADMIN ? user.id : null,
       },
+      onboarding,
       permissions,
       defaultRedirect: this.defaultRedirect(user.role),
+    };
+  }
+
+  private async ensureDriverOnboarding(userId: string, roles: string[] = ['driver']): Promise<DriverProfile> {
+    let driver = await this.driverProfiles.findOne({ where: { userId } });
+    if (!driver) {
+      driver = await this.driverProfiles.save(
+        this.driverProfiles.create({
+          userId,
+          serviceCapabilities: this.driverServiceCapabilities(roles),
+          verificationStatus: DriverVerificationStatus.PENDING,
+          availabilityStatus: DriverAvailabilityStatus.OFFLINE,
+          preferences: { areaIds: [], requirementIds: [] },
+          experienceYears: 0,
+        }),
+      );
+    }
+
+    let application = await this.onboardingApplications.findOne({
+      where: { userId, applicationType: 'DRIVER' },
+      order: { createdAt: 'DESC' },
+    });
+    if (!application || ['REJECTED', 'WITHDRAWN'].includes(application.status)) {
+      application = await this.onboardingApplications.save(
+        this.onboardingApplications.create({
+          userId,
+          applicationType: 'DRIVER',
+          status: 'IN_PROGRESS',
+          completionPercent: 0,
+          profileData: { roles },
+        }),
+      );
+    }
+
+    const existingItems = await this.onboardingChecklist.find({
+      where: { applicationId: application.id },
+    });
+    const existingKeys = new Set(existingItems.map((item) => item.key));
+    const missingItems = DRIVER_ONBOARDING_CHECKLIST.filter((item) => !existingKeys.has(item.key));
+    if (missingItems.length) {
+      await this.onboardingChecklist.save(
+        missingItems.map((item) => this.onboardingChecklist.create({ applicationId: application.id, ...item })),
+      );
+    }
+
+    return driver;
+  }
+
+  private driverServiceCapabilities(roles: string[]): ServiceType[] {
+    const normalized = roles.map((role) => role.toLowerCase());
+    const capabilities = new Set<ServiceType>();
+    if (normalized.some((role) => role.includes('delivery'))) capabilities.add(ServiceType.DELIVERY);
+    if (normalized.some((role) => role.includes('tour'))) capabilities.add(ServiceType.TOURIST_VEHICLE);
+    if (normalized.some((role) => role.includes('ambulance') || role.includes('medical'))) {
+      capabilities.add(ServiceType.AMBULANCE);
+    }
+    if (normalized.some((role) => role.includes('rental'))) capabilities.add(ServiceType.CAR_RENTAL);
+    if (normalized.some((role) => role.includes('school'))) capabilities.add(ServiceType.SCHOOL_SHUTTLE);
+    capabilities.add(ServiceType.RIDE);
+    return [...capabilities];
+  }
+
+  private async driverOnboardingStatus(user: User, driver: DriverProfile) {
+    const [driverDocuments, vehicles, contacts, progress] = await Promise.all([
+      this.driverDocuments.find({ where: { driverId: driver.id } }),
+      this.vehicles.find({
+        where: [{ ownerUserId: user.id }, { assignedDriverId: driver.id }],
+        order: { isActive: 'DESC', createdAt: 'DESC' },
+      }),
+      this.emergencyContacts.find({ where: { userId: user.id } }),
+      this.trainingProgress.find({ where: { driverId: driver.id } }),
+    ]);
+    const activeVehicle =
+      vehicles.find((vehicle) => vehicle.id === driver.currentVehicleId) ??
+      vehicles.find((vehicle) => vehicle.isActive || vehicle.status === VehicleStatus.ACTIVE) ??
+      null;
+    const vehicleDocuments = activeVehicle
+      ? await this.vehicleDocuments.find({ where: { vehicleId: activeVehicle.id } })
+      : [];
+    const hasUploadedDriverDocument = (type: DocumentType) =>
+      driverDocuments.some((document) => document.type === type && document.status !== DocumentStatus.REJECTED);
+    const hasUploadedVehicleDocument = (type: DocumentType) =>
+      vehicleDocuments.some((document) => document.type === type && document.status !== DocumentStatus.REJECTED);
+
+    const hasSelectedServiceCategories = Boolean(driver.serviceCapabilities?.length);
+    const hasProfile = Boolean(user.firstName && user.lastName && (user.email || user.phone));
+    const hasOperationArea =
+      Array.isArray(driver.preferences?.areaIds) && (driver.preferences?.areaIds as unknown[]).length > 0;
+    const identityVerified =
+      hasUploadedDriverDocument(DocumentType.NATIONAL_ID) ||
+      driver.verificationStatus === DriverVerificationStatus.VERIFIED ||
+      Boolean(user.avatarUrl);
+    const hasRequiredDriverDocuments =
+      hasUploadedDriverDocument(DocumentType.NATIONAL_ID) &&
+      hasUploadedDriverDocument(DocumentType.DRIVING_LICENSE_FRONT);
+    const hasActiveVehicle = Boolean(activeVehicle);
+    const hasRequiredVehicleDocuments =
+      Boolean(activeVehicle) &&
+      hasUploadedVehicleDocument(DocumentType.VEHICLE_INSURANCE) &&
+      hasUploadedVehicleDocument(DocumentType.VEHICLE_INSPECTION);
+    const emergencyContactReady = contacts.length > 0;
+    const hasCompletedTutorials = progress.some((item) =>
+      [TrainingProgressStatus.COMPLETED, TrainingProgressStatus.PASSED].includes(item.status),
+    );
+    const onboardingCompleted =
+      hasSelectedServiceCategories &&
+      hasProfile &&
+      identityVerified &&
+      hasRequiredDriverDocuments &&
+      hasActiveVehicle &&
+      hasRequiredVehicleDocuments &&
+      emergencyContactReady &&
+      hasCompletedTutorials;
+    const nextRequiredStep = !hasSelectedServiceCategories
+      ? 'SERVICE_CATEGORIES'
+      : !hasProfile
+        ? 'PROFILE'
+        : !identityVerified || !hasRequiredDriverDocuments
+          ? 'DOCUMENTS'
+          : !hasActiveVehicle || !hasRequiredVehicleDocuments
+            ? 'VEHICLE'
+            : !emergencyContactReady
+              ? 'EMERGENCY_CONTACT'
+              : !hasCompletedTutorials
+                ? 'TRAINING'
+                : null;
+    const redirectPath = onboardingCompleted
+      ? '/driver/dashboard/offline'
+      : nextRequiredStep === 'SERVICE_CATEGORIES'
+        ? '/driver/register'
+        : nextRequiredStep === 'TRAINING'
+          ? '/driver/onboarding/training'
+          : '/driver/onboarding/profile';
+
+    return {
+      userId: user.id,
+      driverId: driver.id,
+      isAuthenticated: true,
+      hasSelectedService: hasSelectedServiceCategories,
+      hasSelectedServiceCategories,
+      hasProfile,
+      hasOperationArea,
+      hasActiveVehicle,
+      hasRequiredDriverDocuments,
+      hasRequiredVehicleDocuments,
+      hasCompletedTutorials,
+      onboardingCompleted,
+      nextRequiredStep,
+      redirectTo: redirectPath,
+      redirectPath,
+      checkpoints: {
+        roleSelected: hasSelectedServiceCategories,
+        documentsVerified: hasRequiredDriverDocuments,
+        identityVerified,
+        vehicleReady: hasActiveVehicle && hasRequiredVehicleDocuments,
+        emergencyContactReady,
+        trainingCompleted: hasCompletedTutorials,
+        onboardingComplete: onboardingCompleted,
+      },
     };
   }
 

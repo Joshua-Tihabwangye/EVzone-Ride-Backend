@@ -63,7 +63,10 @@ services:
       STORAGE_PATH: /app/storage
       PUBLIC_BASE_URL: http://localhost:3001
       MAX_FILE_SIZE_BYTES: 15728640
-      CLOUDINARY_DISABLED: 'true'
+      CLOUDINARY_DISABLED: '${CLOUDINARY_DISABLED:-false}'
+      CLOUDINARY_CLOUD_NAME: '${evzone}'
+      CLOUDINARY_API_KEY: '${581822896554343}'
+      CLOUDINARY_API_SECRET: '${_QiFeVKTKwI1Ogt-l1rulQcbtqw}'
       REDIS_URL: redis://redis:6379
       REDIS_DISABLED: 'false'
       REDIS_SOCKET_ADAPTER_ENABLED: 'true'

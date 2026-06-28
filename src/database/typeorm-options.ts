@@ -9,8 +9,8 @@ function bool(value: string | undefined, fallback: boolean): boolean {
 }
 
 export function createTypeOrmOptions(): TypeOrmModuleOptions {
-  const type = (process.env.DB_TYPE ?? 'sqljs').toLowerCase();
-  const synchronize = bool(process.env.DB_SYNCHRONIZE, true);
+  const type = (process.env.DB_TYPE ?? 'postgres').toLowerCase();
+  const synchronize = bool(process.env.DB_SYNCHRONIZE, false);
   const logging = bool(process.env.DB_LOGGING, false);
 
   if (type === 'postgres') {
@@ -19,7 +19,7 @@ export function createTypeOrmOptions(): TypeOrmModuleOptions {
       url: process.env.DATABASE_URL ?? 'postgresql://evzone:evzone@localhost:5432/evzone',
       entities: [...ENTITIES],
       migrations: [resolve(__dirname, 'migrations/*{.ts,.js}')],
-      migrationsRun: bool(process.env.DB_MIGRATIONS_RUN, false),
+      migrationsRun: bool(process.env.DB_MIGRATIONS_RUN, true),
       migrationsTableName: 'typeorm_migrations',
       synchronize,
       logging,

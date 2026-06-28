@@ -6,7 +6,6 @@ import { UserRole } from '../common/enums';
 import { AuthUser } from '../common/interfaces';
 import {
   DriverAvailabilityDto,
-  DriverDocumentDto,
   DriverLocationDto,
   EarningGoalDto,
   OnboardDriverDto,
@@ -49,17 +48,11 @@ export class DriversController {
     return this.service.updateLocation(user.id, dto);
   }
 
-  @Post('me/documents')
-  @Roles(UserRole.DRIVER)
-  uploadDocument(@CurrentUser() user: AuthUser, @Body() dto: DriverDocumentDto) {
-    return this.service.uploadDocument(user.id, dto);
-  }
-
-  @Get('me/documents')
-  @Roles(UserRole.DRIVER)
-  documents(@CurrentUser() user: AuthUser) {
-    return this.service.listDocuments(user.id);
-  }
+  // NOTE: POST /drivers/me/documents and GET /drivers/me/documents are handled
+  // by the compatibility controller (DriverCompatibilityController) which
+  // understands the mobile app's documentType/side format and maps it to the
+  // internal DocumentType enum. Keeping those routes here shadows the
+  // compatibility routes and breaks document upload from the Driver app.
 
   @Post('me/weekly-goal')
   @Roles(UserRole.DRIVER)

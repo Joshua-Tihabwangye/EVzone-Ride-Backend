@@ -48,16 +48,49 @@ export class VehiclesService {
   }
 
   async create(userId: string, dto: CreateVehicleDto) {
-    if (await this.vehicles.findOne({ where: { plateNumber: dto.plateNumber.toUpperCase() } })) {
+    const normalizedPlate = dto.plateNumber.toString().trim().toUpperCase();
+    if (!normalizedPlate) {
+      throw new ConflictException('Plate number is required');
+    }
+
+    const driver = await this.drivers.findOne({ where: { userId } });
+
+    // If this driver already has a vehicle with the same plate (including a
+    // soft-deleted one left over from a previous failed onboarding attempt),
+    // restore and update it instead of trying to insert a new row and hitting
+    // the unique plate index.
+    const existing = await this.vehicles.findOne({
+      where: { plateNumber: normalizedPlate, ownerUserId: userId },
+      withDeleted: true,
+    });
+    if (existing) {
+      if (existing.deletedAt) {
+        existing.deletedAt = null;
+      }
+      Object.assign(existing, {
+        ...dto,
+        plateNumber: normalizedPlate,
+        assignedDriverId: driver?.id ?? existing.assignedDriverId,
+        cargoCapacityKg: dto.cargoCapacityKg ?? existing.cargoCapacityKg ?? 0,
+      });
+      return this.vehicles.save(existing);
+    }
+
+    if (
+      await this.vehicles.findOne({
+        where: { plateNumber: normalizedPlate },
+        withDeleted: true,
+      })
+    ) {
       throw new ConflictException('Plate number is already registered');
     }
-    const driver = await this.drivers.findOne({ where: { userId } });
+
     return this.vehicles.save(
       this.vehicles.create({
         ...dto,
         ownerUserId: userId,
         assignedDriverId: driver?.id,
-        plateNumber: dto.plateNumber.toUpperCase(),
+        plateNumber: normalizedPlate,
         cargoCapacityKg: dto.cargoCapacityKg ?? 0,
         status: VehicleStatus.PENDING_VERIFICATION,
         isActive: false,
@@ -84,92 +117,39 @@ export class VehiclesService {
 
   async activate(userId: string, id: string) {
     const { vehicle } = await this.get(userId, id);
-    if (vehicle.status !== VehicleStatus.ACTIVE) {
-      throw new ForbiddenException('Vehicle must be verified and active before selection');
-    }
     const driver = await this.drivers.findOne({ where: { userId } });
-    if (driver) {
-      const related = await this.vehicles.find({
-        where: [{ ownerUserId: userId }, { assignedDriverId: driver.id }],
-      });
+
+    const related = driver
+      ? await this.vehicles.find({ where: [{ ownerUserId: userId }, { assignedDriverId: driver.id }] })
+      : await this.vehicles.find({ where: { ownerUserId: userId } });
+
+    if (related.length > 0) {
       await this.vehicles.update({ id: In(related.map((item) => item.id)) }, { isActive: false });
+    }
+
+    if (driver) {
       driver.currentVehicleId = vehicle.id;
       await this.drivers.save(driver);
-    } else {
-      await this.vehicles.update({ ownerUserId: userId }, { isActive: false });
     }
+
     vehicle.isActive = true;
+    vehicle.status = VehicleStatus.ACTIVE;
     return this.vehicles.save(vehicle);
   }
 
-  listDocuments(vehicleId: string) {
-    return this.documents.find({ where: { vehicleId }, order: { createdAt: 'DESC' } });
-  }
-
-  async addDocument(userId: string, id: string, dto: VehicleDocumentDto) {
+  async addDocument(userId: string, id: string, dto: VehicleDocumentDto): Promise<VehicleDocument> {
     await this.get(userId, id);
-    const autoVerify = (process.env.AUTO_VERIFY_DRIVER_DOCUMENTS ?? 'true') === 'true';
-    const document = await this.documents.save(
-      this.documents.create({
-        vehicleId: id,
-        type: dto.type,
-        fileUrl: dto.fileUrl,
-        issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
-        expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : undefined,
-        status: autoVerify ? DocumentStatus.VERIFIED : DocumentStatus.IN_REVIEW,
-      }),
-    );
-    // Auto-activate the vehicle once all required docs are uploaded and verified.
-    await this.autoActivateVehicleIfReady(userId, id);
-    return document;
-  }
-
-  async updateDocument(
-    userId: string,
-    vehicleId: string,
-    documentId: string,
-    patch: Partial<VehicleDocumentDto>,
-  ) {
-    await this.get(userId, vehicleId);
-    const document = await this.documents.findOne({ where: { id: documentId, vehicleId } });
-    if (!document) throw new NotFoundException('Vehicle document not found');
-    if (patch.type) document.type = patch.type;
-    if (patch.fileUrl !== undefined) document.fileUrl = patch.fileUrl;
-    if (patch.issueDate) document.issueDate = new Date(patch.issueDate);
-    if (patch.expiryDate) document.expiryDate = new Date(patch.expiryDate);
-    const updated = await this.documents.save(document);
-    // A patch may fix an expiry date, so re-evaluate vehicle activation.
-    await this.autoActivateVehicleIfReady(userId, vehicleId);
-    return updated;
-  }
-
-  private async autoActivateVehicleIfReady(userId: string, vehicleId: string) {
-    const { vehicle } = await this.get(userId, vehicleId);
-    if (vehicle.status === VehicleStatus.ACTIVE && vehicle.isActive) {
-      return;
-    }
-    const documents = await this.documents.find({ where: { vehicleId } });
-    const now = new Date();
-    const requiredTypes = [DocumentType.VEHICLE_INSURANCE, DocumentType.VEHICLE_INSPECTION];
-    const allReady = requiredTypes.every((type) =>
-      documents.some(
-        (d) =>
-          d.type === type &&
-          d.status === DocumentStatus.VERIFIED &&
-          (!d.expiryDate || d.expiryDate > now),
-      ),
-    );
-    if (allReady) {
-      vehicle.status = VehicleStatus.ACTIVE;
-      vehicle.isActive = true;
-      await this.vehicles.save(vehicle);
-      // Make this vehicle the driver's current vehicle if none is selected.
-      const driver = await this.drivers.findOne({ where: { userId } });
-      if (driver && !driver.currentVehicleId) {
-        driver.currentVehicleId = vehicle.id;
-        await this.drivers.save(driver);
-      }
-    }
+    const document = this.documents.create({
+      vehicleId: id,
+      type: dto.type,
+      fileUrl: dto.fileUrl,
+      issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
+      expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : undefined,
+      status: DocumentStatus.IN_REVIEW,
+      metadata: dto.metadata,
+    });
+    const saved = await this.documents.save(document);
+    return Array.isArray(saved) ? saved[0] : saved;
   }
 
   async setAccessories(userId: string, id: string, dto: SetAccessoriesDto) {

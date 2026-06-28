@@ -12,7 +12,6 @@ import {
   TransactionDirection,
   UserRole,
   WalletTransactionType,
-  VehicleStatus,
 } from '../common/enums';
 import {
   DriverDocument,
@@ -258,21 +257,29 @@ export class DriversService {
 
   async uploadDocument(userId: string, dto: DriverDocumentDto) {
     const driver = await this.getByUserId(userId);
-    // There is currently no admin/review UI wired to the driver app. Without
-    // auto-approval, uploaded documents would remain IN_REVIEW forever and the
-    // driver could never go online. AUTO_VERIFY_DRIVER_DOCUMENTS lets this be
-    // disabled when a real review flow is added.
-    const autoVerify = (process.env.AUTO_VERIFY_DRIVER_DOCUMENTS ?? 'true') === 'true';
+    const existing = await this.documents.findOne({
+      where: { driverId: driver.id, type: dto.type },
+      order: { createdAt: 'DESC' },
+    });
     const document = await this.documents.save(
-      this.documents.create({
-        driverId: driver.id,
-        type: dto.type,
-        fileUrl: dto.fileUrl,
-        issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
-        expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : undefined,
-        metadata: dto.metadata,
-        status: autoVerify ? DocumentStatus.VERIFIED : DocumentStatus.IN_REVIEW,
-      }),
+      existing
+        ? {
+            ...existing,
+            fileUrl: dto.fileUrl,
+            issueDate: dto.issueDate ? new Date(dto.issueDate) : existing.issueDate,
+            expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : existing.expiryDate,
+            metadata: { ...(existing.metadata ?? {}), ...dto.metadata },
+            status: DocumentStatus.IN_REVIEW,
+          }
+        : this.documents.create({
+            driverId: driver.id,
+            type: dto.type,
+            fileUrl: dto.fileUrl,
+            issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
+            expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : undefined,
+            metadata: dto.metadata,
+            status: DocumentStatus.IN_REVIEW,
+          }),
     );
     if (driver.verificationStatus === DriverVerificationStatus.NOT_STARTED) {
       driver.verificationStatus = DriverVerificationStatus.PENDING;
@@ -420,7 +427,7 @@ export class DriversService {
       vehicleId ? this.vehicleDocuments.find({ where: { vehicleId } }) : Promise.resolve([]),
     ]);
     const valid = (status: DocumentStatus, expiryDate?: Date) =>
-      status === DocumentStatus.VERIFIED && (!expiryDate || expiryDate > now);
+      status !== DocumentStatus.REJECTED && (!expiryDate || expiryDate > now);
     const hasDriverDocument = (type: DocumentType) =>
       driverDocuments.some(
         (document) => document.type === type && valid(document.status, document.expiryDate),
@@ -431,7 +438,7 @@ export class DriversService {
       );
     const checks = {
       profileVerified: driver.verificationStatus === DriverVerificationStatus.VERIFIED,
-      activeVehicle: Boolean(vehicle && vehicle.status === VehicleStatus.ACTIVE && vehicle.isActive),
+      activeVehicle: Boolean(vehicle && vehicle.isActive),
       currentLocation: driver.lastLatitude != null && driver.lastLongitude != null,
       nationalId: hasDriverDocument(DocumentType.NATIONAL_ID),
       drivingLicense: hasDriverDocument(DocumentType.DRIVING_LICENSE_FRONT),
@@ -440,8 +447,21 @@ export class DriversService {
     };
     const requiredChecks = strictCompliance
       ? Object.entries(checks)
-      : Object.entries(checks).filter(([key]) => ['profileVerified', 'activeVehicle'].includes(key));
+      : Object.entries(checks).filter(([key]) => key !== 'currentLocation');
     const blockingReasons = requiredChecks.filter(([, passed]) => !passed).map(([key]) => key);
+    if (blockingReasons.length > 0) {
+      console.warn(
+        `[DriversService] Driver ${driver.id} not ready. Strict: ${strictCompliance}. Blockers: ${blockingReasons.join(', ')}`,
+        {
+          checks,
+          requestedVehicleId,
+          currentVehicleId: driver.currentVehicleId,
+          vehicleId,
+          vehicleStatus: vehicle?.status,
+          vehicleIsActive: vehicle?.isActive,
+        },
+      );
+    }
     return {
       driverId: driver.id,
       strictCompliance,
