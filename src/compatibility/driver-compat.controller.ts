@@ -375,12 +375,19 @@ export class DriverCompatibilityController {
   }
 
   @Get('delivery/active')
-  async activeDelivery(@CurrentUser() user: AuthUser) {
+  async activeDelivery() {
     return null;
   }
 
+  @Get('service-requests')
+  async listServiceRequests() {
+    // Stub: the driver app bootstrap expects this list endpoint to exist.
+    // Once a driver-facing service-request repository exists, replace this with a real query.
+    return [];
+  }
+
   @Get('service-requests/active')
-  async activeServiceRequest(@CurrentUser() user: AuthUser) {
+  async activeServiceRequest() {
     return null;
   }
 

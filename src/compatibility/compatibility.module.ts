@@ -16,6 +16,7 @@ import { WalletsModule } from '../wallets/wallets.module';
 import { AdminCompatibilityController } from './admin-compat.controller';
 import { CompatibilityDeprecationInterceptor } from './compatibility-deprecation.interceptor';
 import { CompatibilityContractsController } from './contracts.controller';
+import { LocationCompatibilityController } from './location-compat.controller';
 import { CompatibilityService } from './compatibility.service';
 import { DriverCompatibilityController } from './driver-compat.controller';
 import { DriverJobsModule } from '../driver-jobs/driver-jobs.module';
@@ -42,6 +43,7 @@ import { RiderCompatibilityController } from './rider-compat.controller';
     CompatibilityContractsController,
     RiderCompatibilityController,
     DriverCompatibilityController,
+    LocationCompatibilityController,
     AdminCompatibilityController,
   ],
   providers: [CompatibilityService, CompatibilityDeprecationInterceptor],

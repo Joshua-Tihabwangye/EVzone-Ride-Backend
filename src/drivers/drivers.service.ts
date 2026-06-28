@@ -12,7 +12,6 @@ import {
   TransactionDirection,
   UserRole,
   WalletTransactionType,
-  VehicleStatus,
 } from '../common/enums';
 import {
   DriverDocument,
@@ -328,7 +327,7 @@ export class DriversService {
       vehicleId ? this.vehicleDocuments.find({ where: { vehicleId } }) : Promise.resolve([]),
     ]);
     const valid = (status: DocumentStatus, expiryDate?: Date) =>
-      status === DocumentStatus.VERIFIED && (!expiryDate || expiryDate > now);
+      status !== DocumentStatus.REJECTED && (!expiryDate || expiryDate > now);
     const hasDriverDocument = (type: DocumentType) =>
       driverDocuments.some(
         (document) => document.type === type && valid(document.status, document.expiryDate),
@@ -348,8 +347,21 @@ export class DriversService {
     };
     const requiredChecks = strictCompliance
       ? Object.entries(checks)
-      : Object.entries(checks).filter(([key]) => ['profileVerified', 'activeVehicle'].includes(key));
+      : Object.entries(checks).filter(([key]) => key !== 'currentLocation');
     const blockingReasons = requiredChecks.filter(([, passed]) => !passed).map(([key]) => key);
+    if (blockingReasons.length > 0) {
+      console.warn(
+        `[DriversService] Driver ${driver.id} not ready. Strict: ${strictCompliance}. Blockers: ${blockingReasons.join(', ')}`,
+        {
+          checks,
+          requestedVehicleId,
+          currentVehicleId: driver.currentVehicleId,
+          vehicleId,
+          vehicleStatus: vehicle?.status,
+          vehicleIsActive: vehicle?.isActive,
+        },
+      );
+    }
     return {
       driverId: driver.id,
       strictCompliance,

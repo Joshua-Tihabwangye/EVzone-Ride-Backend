@@ -1,4 +1,15 @@
-import { IsArray, IsBoolean, IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 import { DriverAvailabilityStatus, ServiceType } from '../common/enums';
 
 export class CompatDriverPresenceDto {
@@ -12,6 +23,72 @@ export class CompatDriverPresenceDto {
 
   @IsOptional()
   location?: { latitude: number; longitude: number; accuracy?: number; heading?: number; speed?: number };
+}
+
+export class CompatDriverLocationHeartbeatDto {
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude!: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude!: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  accuracyMeters?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  accuracy?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  speedKph?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  speed?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(360)
+  heading?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  timestamp?: number;
+
+  @IsOptional()
+  @IsString()
+  tripId?: string;
+
+  @IsOptional()
+  @IsString()
+  routeId?: string;
+
+  @IsOptional()
+  @IsEnum(ServiceType)
+  serviceType?: ServiceType;
+
+  @IsOptional()
+  @IsString()
+  serviceId?: string;
 }
 
 export class CompatDriverProfilePatchDto {
