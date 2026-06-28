@@ -1,7 +1,7 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { DocumentStatus, ServiceType, VehicleStatus, VehicleType } from '../common/enums';
+import { DocumentStatus, DocumentType, ServiceType, VehicleStatus, VehicleType } from '../common/enums';
 import { DriverProfile, RentalBlock, Vehicle, VehicleAccessory, VehicleDocument } from '../database/entities';
 import { CreateVehicleDto, SetAccessoriesDto, UpdateVehicleDto, VehicleDocumentDto } from './vehicles.dto';
 

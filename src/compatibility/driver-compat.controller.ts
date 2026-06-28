@@ -40,7 +40,7 @@ import {
 import { FinancialOperationsService } from '../financial-operations/financial-operations.service';
 import { CancelRideDto, CompleteRideDto, VerifyRideOtpDto } from '../rides/rides.dto';
 import { RidesService } from '../rides/rides.service';
-import { CreateVehicleDto, UpdateVehicleDto } from '../vehicles/vehicles.dto';
+import { CreateVehicleDto, UpdateVehicleDto, VehicleDocumentDto } from '../vehicles/vehicles.dto';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import {
   CompatDriverPreferencesDto,
@@ -169,10 +169,11 @@ export class DriverCompatibilityController {
 
   @Get('bootstrap')
   async bootstrap(@CurrentUser() user: AuthUser) {
-    const [profile, vehicles, documents] = await Promise.all([
+    const [profile, vehicles, documents, emergencyContacts] = await Promise.all([
       this.drivers.me(user.id),
       this.vehicles.listMine(user.id),
       this.drivers.listDocuments(user.id),
+      this.emergencyContactRepo.find({ where: { userId: user.id } }),
     ]);
     const driver = profile.driver;
 
@@ -190,6 +191,7 @@ export class DriverCompatibilityController {
 
     const onboarding = await this.buildOnboardingStatus(user, driver, vehicles, documents);
 
+    const profilePrefs = (driver.preferences?.profile ?? {}) as Record<string, unknown>;
     return {
       profile: {
         id: driver.id,
@@ -533,6 +535,63 @@ export class DriverCompatibilityController {
     return this.mapVehicle(vehicle);
   }
 
+  @Patch('documents/:documentId')
+  async updateDriverDocument(
+    @CurrentUser() user: AuthUser,
+    @Param('documentId') documentId: string,
+    @Body() dto: DriverDocumentDto,
+  ) {
+    const updated = await this.drivers.updateDocument(user.id, documentId, dto);
+    return {
+      id: updated.id,
+      userId: user.id,
+      userType: 'DRIVER',
+      documentType: updated.type,
+      fileUrl: updated.fileUrl,
+      status: updated.status,
+      expiryDate: updated.expiryDate ? updated.expiryDate.toISOString() : null,
+      uploadedAt: updated.createdAt.toISOString(),
+      createdAt: updated.createdAt.toISOString(),
+    };
+  }
+
+  @Post('vehicles/:vehicleId/documents')
+  async uploadVehicleDocument(
+    @CurrentUser() user: AuthUser,
+    @Param('vehicleId') vehicleId: string,
+    @Body() dto: VehicleDocumentDto,
+  ) {
+    const document = await this.vehicles.addDocument(user.id, vehicleId, dto);
+    return {
+      id: document.id,
+      vehicleId: document.vehicleId,
+      documentType: document.type,
+      fileUrl: document.fileUrl,
+      status: document.status,
+      expiryDate: document.expiryDate ? document.expiryDate.toISOString() : null,
+      createdAt: document.createdAt.toISOString(),
+    };
+  }
+
+  @Patch('vehicles/:vehicleId/documents/:documentId')
+  async patchVehicleDocument(
+    @CurrentUser() user: AuthUser,
+    @Param('vehicleId') vehicleId: string,
+    @Param('documentId') documentId: string,
+    @Body() dto: VehicleDocumentDto,
+  ) {
+    const document = await this.vehicles.updateDocument(user.id, vehicleId, documentId, dto);
+    return {
+      id: document.id,
+      vehicleId: document.vehicleId,
+      documentType: document.type,
+      fileUrl: document.fileUrl,
+      status: document.status,
+      expiryDate: document.expiryDate ? document.expiryDate.toISOString() : null,
+      createdAt: document.createdAt.toISOString(),
+    };
+  }
+
   @Get('jobs')
   async jobs(@CurrentUser() user: AuthUser) {
     const { items } = await this.driverJobs.listOffers(user.id, undefined);
@@ -769,7 +828,7 @@ export class DriverCompatibilityController {
       color: v.color || '',
       range: v.estimatedRangeKm != null ? String(v.estimatedRangeKm) : '',
       isActive: v.status === 'ACTIVE' || v.isActive === true,
-      documents: v.documents || null,
+      documents: this.mapVehicleDocuments(v.documents),
     };
   }
 
@@ -952,6 +1011,48 @@ export class DriverCompatibilityController {
         plate: detail?.vehicle?.plateNumber,
       },
     };
+  }
+
+  private mapFrontendVehiclePatch(raw: UpdateVehicleDto & Record<string, unknown>): UpdateVehicleDto {
+    const normalize = (value: unknown) => (typeof value === 'string' ? value.toUpperCase() : value);
+    const result: UpdateVehicleDto = {};
+    if (raw.make !== undefined) result.make = raw.make;
+    if (raw.model !== undefined) result.model = raw.model;
+    if (raw.year !== undefined) result.year = raw.year;
+    if (raw.plateNumber !== undefined || raw.plate !== undefined) {
+      result.plateNumber = ((raw.plateNumber ?? raw.plate) as string).toUpperCase();
+    }
+    if (raw.vehicleType !== undefined || raw.type !== undefined) {
+      const rawType = normalize(raw.vehicleType ?? raw.type) as string;
+      // The driver app uses simplified category labels that do not match the
+      // backend VehicleType enum exactly (e.g. "CAR" is not a valid enum value).
+      const typeMap: Record<string, VehicleType> = {
+        CAR: VehicleType.SEDAN,
+        MOTORCYCLE: VehicleType.MOTORCYCLE,
+        VAN: VehicleType.VAN,
+      };
+      result.vehicleType = typeMap[rawType] ?? (rawType as VehicleType);
+    }
+    if (raw.energyType !== undefined) result.energyType = normalize(raw.energyType) as any;
+    if (raw.seats !== undefined) result.seats = raw.seats;
+    if (raw.cargoCapacityKg !== undefined) result.cargoCapacityKg = raw.cargoCapacityKg;
+    if (raw.color !== undefined) result.color = raw.color;
+    if (raw.imageUrl !== undefined) result.imageUrl = raw.imageUrl;
+    if (raw.serviceCapabilities !== undefined)
+      result.serviceCapabilities = raw.serviceCapabilities as ServiceType[];
+    if (raw.features !== undefined) result.features = raw.features;
+    if (raw.accessories != null) result.features = raw.accessories as Record<string, unknown>;
+    if (raw.dailyRentalRate !== undefined) result.dailyRentalRate = raw.dailyRentalRate;
+    if (raw.includedDailyKm !== undefined) result.includedDailyKm = raw.includedDailyKm;
+    if (raw.extraKmRate !== undefined) result.extraKmRate = raw.extraKmRate;
+    if (raw.isActive !== undefined) result.isActive = Boolean(raw.isActive);
+    if (raw.status !== undefined) {
+      const upperStatus = normalize(raw.status) as string;
+      if (['ACTIVE', 'INACTIVE', 'MAINTENANCE'].includes(upperStatus)) {
+        (result as any).status = upperStatus;
+      }
+    }
+    return result;
   }
 
   private mapTripActionResult(detail: any) {

@@ -21,6 +21,15 @@ export class RegisterDto {
   @IsOptional() @IsEnum(UserRole) role?: UserRole;
   @IsOptional() @IsArray() @IsString({ each: true }) roles?: string[];
   @IsOptional() @IsBoolean() invite?: boolean;
+  // Optional driver registration profile fields so the frontend can persist the
+  // full signup details in a single call instead of relying on a follow-up PATCH.
+  @IsOptional() @IsString() country?: string;
+  @IsOptional() @IsString() dateOfBirth?: string;
+  @IsOptional() @IsString() streetAddress?: string;
+  @IsOptional() @IsString() city?: string;
+  @IsOptional() @IsString() district?: string;
+  @IsOptional() @IsString() postalCode?: string;
+  @IsOptional() @IsString() landmark?: string;
 }
 
 export class LoginDto {
