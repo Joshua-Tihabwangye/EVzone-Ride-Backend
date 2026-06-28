@@ -223,6 +223,38 @@ export class DriverCompatibilityController {
     };
   }
 
+  @Post('onboarding/complete')
+  async completeOnboarding(@CurrentUser() user: AuthUser) {
+    const [profile, vehicles, documents] = await Promise.all([
+      this.drivers.me(user.id),
+      this.vehicles.listMine(user.id),
+      this.drivers.listDocuments(user.id),
+    ]);
+    const driver = profile.driver;
+
+    const onboarding = await this.buildOnboardingStatus(user, driver, vehicles, documents);
+
+    if (!onboarding.onboardingCompleted) {
+      throw new BadRequestException({
+        message: 'Onboarding requirements are not complete',
+        code: 'ONBOARDING_INCOMPLETE',
+        nextRequiredStep: onboarding.nextRequiredStep,
+        redirectPath: onboarding.redirectPath,
+      });
+    }
+
+    if (driver.verificationStatus !== DriverVerificationStatus.VERIFIED) {
+      driver.verificationStatus = DriverVerificationStatus.VERIFIED;
+      await this.driverProfiles.save(driver);
+    }
+
+    return {
+      onboardingCompleted: true,
+      verificationStatus: driver.verificationStatus,
+      redirectPath: '/driver/dashboard/offline',
+    };
+  }
+
   private async buildOnboardingStatus(
     user: AuthUser,
     driver: DriverProfile,
@@ -245,7 +277,9 @@ export class DriverCompatibilityController {
       );
     const hasSelectedServiceCategories = Boolean(driver.serviceCapabilities?.length);
     const hasRequiredDriverDocuments =
-      hasDocument(DocumentType.NATIONAL_ID) && hasDocument(DocumentType.DRIVING_LICENSE_FRONT);
+      hasDocument(DocumentType.NATIONAL_ID) &&
+      hasDocument(DocumentType.DRIVING_LICENSE_FRONT) &&
+      hasDocument(DocumentType.GOOD_CONDUCT);
     const hasRequiredVehicleDocuments =
       Boolean(activeVehicle) &&
       hasVehicleDocument(DocumentType.VEHICLE_INSURANCE) &&
@@ -283,7 +317,7 @@ export class DriverCompatibilityController {
       : nextRequiredStep === 'SERVICE_CATEGORIES'
         ? '/driver/register'
         : nextRequiredStep === 'TRAINING'
-          ? '/driver/onboarding/training'
+          ? '/driver/training/intro'
           : '/driver/onboarding/profile';
     return {
       userId: user.id,

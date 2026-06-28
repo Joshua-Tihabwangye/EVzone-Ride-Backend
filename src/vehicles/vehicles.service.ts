@@ -133,6 +133,7 @@ export class VehiclesService {
     }
 
     vehicle.isActive = true;
+    vehicle.status = VehicleStatus.ACTIVE;
     return this.vehicles.save(vehicle);
   }
 

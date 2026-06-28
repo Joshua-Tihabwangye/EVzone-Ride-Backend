@@ -201,16 +201,29 @@ export class DriversService {
 
   async uploadDocument(userId: string, dto: DriverDocumentDto) {
     const driver = await this.getByUserId(userId);
+    const existing = await this.documents.findOne({
+      where: { driverId: driver.id, type: dto.type },
+      order: { createdAt: 'DESC' },
+    });
     const document = await this.documents.save(
-      this.documents.create({
-        driverId: driver.id,
-        type: dto.type,
-        fileUrl: dto.fileUrl,
-        issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
-        expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : undefined,
-        metadata: dto.metadata,
-        status: DocumentStatus.IN_REVIEW,
-      }),
+      existing
+        ? {
+            ...existing,
+            fileUrl: dto.fileUrl,
+            issueDate: dto.issueDate ? new Date(dto.issueDate) : existing.issueDate,
+            expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : existing.expiryDate,
+            metadata: { ...(existing.metadata ?? {}), ...dto.metadata },
+            status: DocumentStatus.IN_REVIEW,
+          }
+        : this.documents.create({
+            driverId: driver.id,
+            type: dto.type,
+            fileUrl: dto.fileUrl,
+            issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
+            expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : undefined,
+            metadata: dto.metadata,
+            status: DocumentStatus.IN_REVIEW,
+          }),
     );
     if (driver.verificationStatus === DriverVerificationStatus.NOT_STARTED) {
       driver.verificationStatus = DriverVerificationStatus.PENDING;
@@ -326,7 +339,7 @@ export class DriversService {
       );
     const checks = {
       profileVerified: driver.verificationStatus === DriverVerificationStatus.VERIFIED,
-      activeVehicle: Boolean(vehicle && vehicle.status === VehicleStatus.ACTIVE && vehicle.isActive),
+      activeVehicle: Boolean(vehicle && vehicle.isActive),
       currentLocation: driver.lastLatitude != null && driver.lastLongitude != null,
       nationalId: hasDriverDocument(DocumentType.NATIONAL_ID),
       drivingLicense: hasDriverDocument(DocumentType.DRIVING_LICENSE_FRONT),
