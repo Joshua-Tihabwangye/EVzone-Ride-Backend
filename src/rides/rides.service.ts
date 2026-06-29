@@ -338,54 +338,75 @@ export class RidesService {
 
   async accept(userId: string, rideId: string) {
     const driver = await this.drivers.getByUserId(userId);
-    const legacyOffer = await this.offers.findOne({
-      where: { rideId, driverId: driver.id, status: OfferStatus.PENDING },
-    });
-    const ride = await this.getRide(rideId);
-    if (![BookingStatus.SEARCHING, BookingStatus.OFFERED].includes(ride.status))
-      throw new BadRequestException('Ride is no longer available');
     const vehicleId = driver.currentVehicleId;
     if (!vehicleId) throw new BadRequestException('No active vehicle selected');
-    const vehicle = await this.vehicles.findOne({ where: { id: vehicleId, status: VehicleStatus.ACTIVE } });
-    if (!vehicle || !vehicle.serviceCapabilities?.includes(ServiceType.RIDE)) {
-      throw new BadRequestException('Selected vehicle is not eligible for rides');
-    }
-    let claimedByMatchingEngine = false;
-    try {
-      await this.matching.claim(userId, ServiceType.RIDE, rideId);
-      claimedByMatchingEngine = true;
-    } catch (error) {
-      if (!legacyOffer || legacyOffer.expiresAt <= new Date()) throw error;
-    }
-    ride.driverId = driver.id;
-    ride.vehicleId = vehicle.id;
-    ride.status = BookingStatus.DRIVER_EN_ROUTE;
-    ride.acceptedAt = new Date();
-    await this.rides.save(ride);
-    if (legacyOffer) {
-      legacyOffer.status = OfferStatus.ACCEPTED;
-      legacyOffer.respondedAt = new Date();
-      await this.offers.save(legacyOffer);
-    }
-    await this.offers.update(
-      { rideId, status: OfferStatus.PENDING },
-      { status: OfferStatus.EXPIRED, respondedAt: new Date() },
-    );
-    driver.availabilityStatus = DriverAvailabilityStatus.BUSY;
-    await this.driverProfiles.save(driver);
-    await this.log(ride.id, 'DRIVER_ACCEPTED', userId, {
-      driverId: driver.id,
-      vehicleId: vehicle.id,
-      matchingEngine: claimedByMatchingEngine,
+
+    return this.rides.manager.transaction(async (manager) => {
+      const ride = await manager.findOne(Ride, {
+        where: { id: rideId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!ride) throw new NotFoundException('Ride not found');
+      if (![BookingStatus.SEARCHING, BookingStatus.OFFERED].includes(ride.status)) {
+        throw new BadRequestException('Ride is no longer available');
+      }
+
+      const vehicle = await manager.findOne(Vehicle, {
+        where: { id: vehicleId, status: VehicleStatus.ACTIVE },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!vehicle || !vehicle.serviceCapabilities?.includes(ServiceType.RIDE)) {
+        throw new BadRequestException('Selected vehicle is not eligible for rides');
+      }
+
+      const legacyOffer = await manager.findOne(RideOffer, {
+        where: { rideId, driverId: driver.id, status: OfferStatus.PENDING },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      let claimedByMatchingEngine = false;
+      try {
+        await this.matching.claim(userId, ServiceType.RIDE, rideId);
+        claimedByMatchingEngine = true;
+      } catch (error) {
+        if (!legacyOffer || legacyOffer.expiresAt <= new Date()) throw error;
+      }
+
+      ride.driverId = driver.id;
+      ride.vehicleId = vehicle.id;
+      ride.status = BookingStatus.DRIVER_EN_ROUTE;
+      ride.acceptedAt = new Date();
+      await manager.save(ride);
+
+      if (legacyOffer) {
+        legacyOffer.status = OfferStatus.ACCEPTED;
+        legacyOffer.respondedAt = new Date();
+        await manager.save(legacyOffer);
+      }
+
+      await manager.update(
+        RideOffer,
+        { rideId, status: OfferStatus.PENDING },
+        { status: OfferStatus.EXPIRED, respondedAt: new Date() },
+      );
+
+      driver.availabilityStatus = DriverAvailabilityStatus.BUSY;
+      await manager.save(driver);
+
+      await this.log(ride.id, 'DRIVER_ACCEPTED', userId, {
+        driverId: driver.id,
+        vehicleId: vehicle.id,
+        matchingEngine: claimedByMatchingEngine,
+      });
+      await this.notifications.create({
+        userId: ride.riderId,
+        title: 'Driver assigned',
+        body: 'Your EVzone driver is on the way to the pickup location.',
+        data: { rideId: ride.id, driverId: driver.id },
+      });
+      this.emitRide(ride);
+      return this.detailForUser(userId, rideId, UserRole.DRIVER);
     });
-    await this.notifications.create({
-      userId: ride.riderId,
-      title: 'Driver assigned',
-      body: 'Your EVzone driver is on the way to the pickup location.',
-      data: { rideId: ride.id, driverId: driver.id },
-    });
-    this.emitRide(ride);
-    return this.detailForUser(userId, rideId, UserRole.DRIVER);
   }
 
   async reject(userId: string, rideId: string, reason?: string) {
