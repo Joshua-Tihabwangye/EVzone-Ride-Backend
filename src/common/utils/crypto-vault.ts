@@ -3,8 +3,10 @@ import {
   createDecipheriv,
   createHash,
   createHmac,
+  createPublicKey,
   randomBytes,
   timingSafeEqual,
+  verify,
 } from 'node:crypto';
 import { getRequiredSecret } from './required-secret.util';
 
@@ -52,4 +54,34 @@ export function verifyPayloadSignature(
   const expected = Buffer.from(signPayload(payload, secret));
   const supplied = Buffer.from(signature.replace(/^sha256=/, ''));
   return expected.length === supplied.length && timingSafeEqual(expected, supplied);
+}
+
+/**
+ * Verifies an RSA PKCS#1 v1.5 signature (base64) of a SHA256 digest.
+ * Accepts PEM, DER, or X.509 certificate public keys.
+ */
+export function verifyRsaSignature(
+  payload: string | Buffer,
+  signatureBase64: string,
+  publicKeyPem: string,
+  algorithm = 'sha256WithRSAEncryption',
+): boolean {
+  try {
+    const publicKey = createPublicKey(publicKeyPem);
+    const data = typeof payload === 'string' ? Buffer.from(payload, 'utf8') : payload;
+    return verify(algorithm, data, publicKey, Buffer.from(signatureBase64, 'base64'));
+  } catch {
+    return false;
+  }
+}
+
+export function publicKeyFingerprint(publicKeyPem: string): string | undefined {
+  try {
+    const publicKey = createPublicKey(publicKeyPem);
+    return createHash('sha256')
+      .update(publicKey.export({ type: 'spki', format: 'der' }))
+      .digest('base64url');
+  } catch {
+    return undefined;
+  }
 }
