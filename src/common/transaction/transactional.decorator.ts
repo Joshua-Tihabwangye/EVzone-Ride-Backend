@@ -34,6 +34,13 @@ export function Transactional(): MethodDecorator {
         );
       }
 
+      // Reuse an active transactional context so nested @Transactional() calls
+      // participate in the same unit of work instead of starting a new transaction.
+      const existing = TransactionStore.getStore();
+      if (existing) {
+        return originalMethod.apply(this, args);
+      }
+
       return dataSource.transaction(async (manager: EntityManager) => {
         return TransactionStore.run(manager, () => originalMethod.apply(this, args));
       });

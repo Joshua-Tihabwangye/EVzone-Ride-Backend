@@ -929,6 +929,7 @@ export class WalletTransaction extends BaseEntity {
 }
 
 @Entity('payments')
+@Index('IDX_payment_user_idempotency', ['userId', 'idempotencyKey'], { unique: true })
 export class Payment extends BaseEntity {
   @Index()
   @Column()
@@ -975,6 +976,9 @@ export class Payment extends BaseEntity {
 
   @Column({ nullable: true })
   refundedAt?: Date;
+
+  @Column({ type: 'decimal', precision: 16, scale: 2, default: 0, transformer: numberTransformer })
+  refundedAmount!: number;
 }
 
 @Entity('payouts')

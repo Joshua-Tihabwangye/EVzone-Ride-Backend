@@ -63,6 +63,44 @@ describe('transaction helper', () => {
     expect(dataSource.transaction).toHaveBeenCalled();
   });
 
+  it('@Transactional decorator reuses an active transactional context', async () => {
+    const manager = { getRepository: jest.fn() } as unknown as EntityManager;
+    const transactionFn = jest.fn(async (fn: (m: EntityManager) => Promise<unknown>) => fn(manager));
+    const dataSource = {
+      transaction: transactionFn,
+    } as unknown as DataSource;
+
+    class InnerService {
+      constructor(public readonly dataSource: DataSource) {}
+
+      @Transactional()
+      async inner() {
+        return getManager();
+      }
+    }
+
+    class OuterService {
+      constructor(
+        public readonly dataSource: DataSource,
+        private readonly inner: InnerService,
+      ) {}
+
+      @Transactional()
+      async outer() {
+        const outerManager = getManager();
+        const innerManager = await this.inner.inner();
+        return { outerManager, innerManager, transactionCalls: transactionFn.mock.calls.length };
+      }
+    }
+
+    const inner = new InnerService(dataSource);
+    const outer = new OuterService(dataSource, inner);
+    const result = await outer.outer();
+    expect(result.outerManager).toBe(manager);
+    expect(result.innerManager).toBe(manager);
+    expect(result.transactionCalls).toBe(1);
+  });
+
   it('@Transactional decorator throws when dataSource is missing', async () => {
     class BadService {
       @Transactional()
