@@ -101,6 +101,7 @@ export class ProductionConfigService implements OnModuleInit {
       this.check('seed.disabled', !this.truthy('SEED_DEMO'), 'SEED_DEMO must be false'),
       this.secretCheck('JWT_SECRET'),
       this.secretCheck('INTEGRATION_ENCRYPTION_KEY'),
+      this.secretCheck('FILE_SIGNATURE_SECRET'),
       this.secretCheck('CORPORATEPAY_WEBHOOK_SECRET'),
       this.secretCheck('CORPORATEPAY_SIGNING_SECRET'),
       this.check('redis.configured', Boolean(this.value('REDIS_URL')), 'REDIS_URL is required'),
