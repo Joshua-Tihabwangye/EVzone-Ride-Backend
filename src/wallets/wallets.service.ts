@@ -158,9 +158,14 @@ export class WalletsService {
       lock: { mode: 'pessimistic_write' },
     });
     if (!wallet) {
-      await wallets.upsert([{ userId, currency: 'UGX', availableBalance: 0, active: true }], {
-        conflictPaths: ['userId'],
-      });
+      // Use DO NOTHING so a concurrent insert does not overwrite an already-credited wallet.
+      await wallets
+        .createQueryBuilder()
+        .insert()
+        .into(Wallet)
+        .values({ userId, currency: 'UGX', availableBalance: 0, pendingBalance: 0, active: true } as any)
+        .orIgnore()
+        .execute();
       wallet = await wallets.findOne({
         where: { userId },
         lock: { mode: 'pessimistic_write' },
@@ -174,11 +179,11 @@ export class WalletsService {
 
   private async ensureAndLockWallets(userIds: string[]): Promise<Wallet[]> {
     const ordered = [...new Set(userIds)].sort();
-    const wallets: Wallet[] = [];
+    const locked = new Map<string, Wallet>();
     for (const userId of ordered) {
-      wallets.push(await this.ensureAndLockWallet(userId));
+      locked.set(userId, await this.ensureAndLockWallet(userId));
     }
-    return wallets;
+    return userIds.map((userId) => locked.get(userId)!);
   }
 
   private async creditLocked(
