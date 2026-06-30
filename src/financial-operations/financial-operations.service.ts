@@ -1,8 +1,16 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { randomUUID } from 'node:crypto';
 import { encryptSecret } from '../common/utils/crypto-vault';
 import { CashoutRequest, DriverProfile, StoredPaymentMethod } from '../database/entities';
+import { PayoutOrchestratorService } from '../payouts/payout-orchestrator.service';
 import { WalletsService } from '../wallets/wallets.service';
 import {
   CreateCashoutRequestDto,
@@ -10,9 +18,12 @@ import {
   ReviewCashoutRequestDto,
   UpdateStoredPaymentMethodDto,
 } from './financial-operations.dto';
+import { CashoutRequestStatus } from '../common/enums';
 
 @Injectable()
 export class FinancialOperationsService {
+  private readonly logger = new Logger(FinancialOperationsService.name);
+
   constructor(
     @InjectRepository(StoredPaymentMethod)
     private readonly methods: Repository<StoredPaymentMethod>,
@@ -21,6 +32,7 @@ export class FinancialOperationsService {
     @InjectRepository(DriverProfile)
     private readonly drivers: Repository<DriverProfile>,
     private readonly wallets: WalletsService,
+    private readonly payoutOrchestrator: PayoutOrchestratorService,
   ) {}
 
   listMethods(userId: string) {
@@ -77,23 +89,45 @@ export class FinancialOperationsService {
   }
 
   async requestCashout(userId: string, dto: CreateCashoutRequestDto) {
+    const reference = dto.idempotencyKey?.trim() ?? `CO-${randomUUID()}`;
+    const existing = await this.cashouts.findOne({ where: { userId, reference } });
+    if (existing) return existing;
+
     const wallet = await this.wallets.get(userId);
-    const pending = await this.cashouts.find({ where: { userId, status: 'PENDING' } });
+    const pending = await this.cashouts.find({
+      where: { userId, status: CashoutRequestStatus.PENDING },
+    });
     const reserved = pending.reduce((sum, item) => sum + Number(item.amount), 0);
-    if (Number(wallet.availableBalance) - reserved < dto.amount) {
+    if (Number(wallet.availableBalance) - Number(wallet.reservedForCashout) - reserved < dto.amount) {
       throw new BadRequestException('Available balance is insufficient after pending cashouts');
     }
+
     const driver = await this.drivers.findOne({ where: { userId } });
     const record = await this.cashouts.save(
       this.cashouts.create({
         userId,
         driverId: driver?.id,
+        reference,
         amount: dto.amount,
-        status: 'PENDING',
+        currency: dto.currency ?? 'UGX',
+        status: CashoutRequestStatus.PENDING,
         method: dto.method,
         metadata: dto.metadata,
       }),
     );
+
+    try {
+      await this.wallets.reserveCashout(userId, dto.amount, reference, 'Cashout request reserve', {
+        cashoutRequestId: record.id,
+      });
+    } catch (error) {
+      this.logger.warn(`Cashout reserve failed: ${error instanceof Error ? error.message : String(error)}`);
+      record.status = CashoutRequestStatus.FAILED;
+      record.failureReason = 'Failed to reserve wallet balance';
+      await this.cashouts.save(record);
+      throw error;
+    }
+
     if ((process.env.CASHOUT_AUTO_APPROVE ?? '').toLowerCase() === 'true') {
       return this.reviewCashout(record.id, 'SYSTEM', { status: 'APPROVED' });
     }
@@ -104,7 +138,7 @@ export class FinancialOperationsService {
     return this.cashouts.find({ where: { userId }, order: { createdAt: 'DESC' } });
   }
 
-  listCashouts(status?: string) {
+  listCashouts(status?: CashoutRequestStatus) {
     return this.cashouts.find({
       where: status ? { status } : undefined,
       order: { createdAt: 'DESC' },
@@ -115,40 +149,52 @@ export class FinancialOperationsService {
   async cancelCashout(userId: string, id: string) {
     const record = await this.cashouts.findOne({ where: { id, userId } });
     if (!record) throw new NotFoundException('Cashout request not found');
-    if (record.status !== 'PENDING') throw new ConflictException('Only pending cashouts can be cancelled');
-    record.status = 'CANCELLED';
-    return this.cashouts.save(record);
+    if (record.status !== CashoutRequestStatus.PENDING)
+      throw new ConflictException('Only pending cashouts can be cancelled');
+    record.status = CashoutRequestStatus.CANCELLED;
+    await this.cashouts.save(record);
+    await this.releaseReserve(record);
+    return record;
   }
 
   async reviewCashout(id: string, reviewerId: string, dto: ReviewCashoutRequestDto) {
     const record = await this.cashouts.findOne({ where: { id } });
     if (!record) throw new NotFoundException('Cashout request not found');
-    if (record.status !== 'PENDING') throw new ConflictException('Cashout request already reviewed');
+    if (record.status !== CashoutRequestStatus.PENDING)
+      throw new ConflictException('Cashout request already reviewed');
 
     record.reviewedByUserId = reviewerId;
     record.reviewedAt = new Date();
     if (dto.status === 'REJECTED') {
-      record.status = 'REJECTED';
+      record.status = CashoutRequestStatus.REJECTED;
       record.failureReason = dto.reason;
-      return this.cashouts.save(record);
+      await this.cashouts.save(record);
+      await this.releaseReserve(record);
+      return record;
     }
 
-    const destination = this.destination(record.method);
+    const result = await this.payoutOrchestrator.payoutFromCashout(id, reviewerId, {
+      providerName: dto.provider,
+      idempotencyKey: record.reference,
+    });
+    return result.cashout;
+  }
+
+  private async releaseReserve(record: CashoutRequest) {
     try {
-      const payout = await this.wallets.withdraw(record.userId, Number(record.amount), destination);
-      record.status = 'PAID';
-      record.processedAt = new Date();
-      record.metadata = {
-        ...(record.metadata ?? {}),
-        payoutId: payout.id,
-        payoutReference: payout.reference,
-      };
-      return this.cashouts.save(record);
+      await this.wallets.releaseCashout(
+        record.userId,
+        Number(record.amount),
+        record.reference,
+        'Cashout release',
+        {
+          cashoutRequestId: record.id,
+        },
+      );
     } catch (error) {
-      record.status = 'FAILED';
-      record.failureReason = error instanceof Error ? error.message : String(error);
-      await this.cashouts.save(record);
-      throw error;
+      this.logger.warn(
+        `Failed to release reserve for cashout ${record.id}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 

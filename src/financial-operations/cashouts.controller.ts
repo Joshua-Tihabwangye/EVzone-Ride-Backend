@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '../common/enums';
+import { CashoutRequestStatus, UserRole } from '../common/enums';
 import { AuthUser } from '../common/interfaces';
 import { CreateCashoutRequestDto, ReviewCashoutRequestDto } from './financial-operations.dto';
 import { FinancialOperationsService } from './financial-operations.service';
@@ -31,7 +31,7 @@ export class CashoutsController {
   @Get()
   @Roles(UserRole.ADMIN, UserRole.SUPPORT)
   list(@Query('status') status?: string) {
-    return this.service.listCashouts(status);
+    return this.service.listCashouts(status as CashoutRequestStatus);
   }
 
   @Patch(':id/review')
