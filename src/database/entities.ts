@@ -2887,6 +2887,12 @@ export class WebhookEventRecord extends BaseEntity {
   @Column({ nullable: true, type: 'text' })
   error?: string;
 
+  @Column({ default: 0 })
+  attempts!: number;
+
+  @Column({ nullable: true })
+  nextAttemptAt?: Date;
+
   @Index()
   @Column({ nullable: true })
   relatedPaymentId?: string;
