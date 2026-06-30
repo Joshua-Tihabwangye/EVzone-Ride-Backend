@@ -1109,6 +1109,6 @@ export class SeedService implements OnApplicationBootstrap {
       }),
     );
 
-    this.logger.log('Demo data seeded. Password for all demo users: Password123!');
+    this.logger.log('Demo data seeded.');
   }
 }

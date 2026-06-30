@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums';
 import { AuthUser } from '../../common/interfaces';
+import { RequireIdempotency } from '../../idempotency/require-idempotency.decorator';
 import { DispatchUnitService } from '../application/dispatch-unit.service';
 import { UniversalOfferService } from '../application/universal-offer.service';
 import { UniversalTripService } from '../application/universal-trip.service';
@@ -65,12 +66,14 @@ export class DispatchDriverController {
 
   @Post('offers/:offerId/accept')
   @Roles(UserRole.DRIVER)
+  @RequireIdempotency()
   async acceptOffer(
     @CurrentUser() user: AuthUser,
     @Param('offerId') offerId: string,
     @Body() dto: AcceptUniversalOfferDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.offerService.accept(user.id, offerId, dto);
+    return this.offerService.accept(user.id, offerId, dto, idempotencyKey);
   }
 
   @Post('offers/:offerId/decline')

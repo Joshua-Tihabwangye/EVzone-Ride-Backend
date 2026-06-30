@@ -4,7 +4,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { GeofenceCheckDto, PlaceSearchDto, ReverseGeocodeDto, RouteEstimateDto } from './geolocation.dto';
 import { DriverLocatorService } from './driver-locator.service';
 import { GeolocationService } from './geolocation.service';
-import { PostgisBootstrapService } from './postgis-bootstrap.service';
+import { PostgisStatusService } from './postgis-status.service';
 
 @ApiTags('Geolocation')
 @Controller('geo')
@@ -12,7 +12,7 @@ export class GeolocationController {
   constructor(
     private readonly service: GeolocationService,
     private readonly locator: DriverLocatorService,
-    private readonly postgis: PostgisBootstrapService,
+    private readonly postgis: PostgisStatusService,
   ) {}
 
   @Get('infrastructure/status')

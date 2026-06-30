@@ -371,6 +371,13 @@ export enum InspectionType {
   RETURN = 'RETURN',
 }
 
+export enum FileAssetStatus {
+  PENDING_SCAN = 'PENDING_SCAN',
+  CLEAN = 'CLEAN',
+  QUARANTINED = 'QUARANTINED',
+  REJECTED = 'REJECTED',
+}
+
 export enum TrainingProgressStatus {
   NOT_STARTED = 'NOT_STARTED',
   IN_PROGRESS = 'IN_PROGRESS',

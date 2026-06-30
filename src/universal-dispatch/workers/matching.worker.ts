@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
+import { ProcessRoleService } from '../../infrastructure/process-role.service';
 import { UniversalServiceRequest } from '../domain/universal-dispatch.entities';
 import { UniversalRequestStatus } from '../domain/universal-dispatch.enums';
 import { UniversalMatchingService } from '../application/universal-matching.service';
@@ -15,10 +16,12 @@ export class MatchingWorker {
     @InjectRepository(UniversalServiceRequest)
     private readonly requests: Repository<UniversalServiceRequest>,
     private readonly matching: UniversalMatchingService,
+    private readonly roles: ProcessRoleService,
   ) {}
 
   @Cron(CronExpression.EVERY_5_SECONDS)
   async run(): Promise<void> {
+    if (!this.roles.runsWorkers()) return;
     if (this.processing) return;
     this.processing = true;
     try {

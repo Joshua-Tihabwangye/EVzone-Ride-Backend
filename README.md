@@ -378,10 +378,9 @@ A working `.env` is included. Important variables:
 
 | Variable                         | Default                 | Purpose                                                  |
 | -------------------------------- | ----------------------- | -------------------------------------------------------- |
-| `DB_TYPE`                        | `sqljs`                 | `sqljs` or `postgres`                                    |
-| `SQLITE_PATH`                    | `./data/evzone.sqlite`  | Local database file                                      |
+| `DB_TYPE`                        | `postgres`              | PostgreSQL only (`postgres`)                             |
 | `DATABASE_URL`                   | local PostgreSQL URL    | PostgreSQL connection                                    |
-| `DB_SYNCHRONIZE`                 | `true`                  | Automatic schema setup for this plug-and-play package    |
+| `DB_SYNCHRONIZE`                 | `false`                 | Must be `false` in production; migrations are required   |
 | `SEED_DEMO`                      | `true`                  | Load demo users, drivers, vehicles and pricing           |
 | `JWT_SECRET`                     | included local secret   | JWT signing secret                                       |
 | `JWT_ACCESS_TTL`                 | `15m`                   | Access token lifetime                                    |

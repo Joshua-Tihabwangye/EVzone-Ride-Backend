@@ -7,7 +7,10 @@ import request from 'supertest';
 import { UniversalDispatchModule } from '../src/universal-dispatch/universal-dispatch.module';
 import { InfrastructureModule } from '../src/infrastructure/infrastructure.module';
 import { GeolocationModule } from '../src/geolocation/geolocation.module';
-import { UniversalServiceFamily, UniversalServiceType } from '../src/universal-dispatch/domain/universal-dispatch.enums';
+import {
+  UniversalServiceFamily,
+  UniversalServiceType,
+} from '../src/universal-dispatch/domain/universal-dispatch.enums';
 import { ENTITIES } from '../src/database/entities';
 
 describe('Universal dispatch API endpoints (e2e)', () => {

@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
-import { OrganizationStatus, UserRole } from '../common/enums';
+import { OrganizationStatus, UserRole, WebhookEventStatus } from '../common/enums';
 import { AuthUser } from '../common/interfaces';
 import {
   ReviewDocumentDto,
@@ -186,5 +186,20 @@ export class AdminController {
   @Get('audit-logs')
   auditLogs(@Query('page') page = '1', @Query('limit') limit = '50') {
     return this.service.auditLogs(Number(page), Math.min(Number(limit), 100));
+  }
+
+  @Get('webhook-events')
+  listWebhookEvents(
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+    @Query('status') status?: WebhookEventStatus,
+    @Query('provider') provider?: string,
+  ) {
+    return this.service.listWebhookEvents(Number(page), Math.min(Number(limit), 100), status, provider);
+  }
+
+  @Post('webhook-events/:id/retry')
+  retryWebhookEvent(@Param('id') id: string) {
+    return this.service.retryWebhookEvent(id);
   }
 }

@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { LessThan, Repository } from 'typeorm';
+import { getRequiredSecret } from '../common/utils/required-secret.util';
 import { IdempotencyRecord } from '../database/entities';
 import { verifyCorporatePayRequest } from './corporate-partner-signature';
 
@@ -35,7 +36,14 @@ export class CorporatePayPartnerGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<RequestLike>();
     const mode = (process.env.CORPORATEPAY_MODE ?? 'sandbox').toLowerCase();
     const configuredApiKey =
-      process.env.CORPORATEPAY_PARTNER_API_KEY ?? (mode === 'remote' ? '' : 'evzone-corporatepay-local-key');
+      mode === 'remote'
+        ? (process.env.CORPORATEPAY_PARTNER_API_KEY ?? '')
+        : getRequiredSecret(
+            'CORPORATEPAY_PARTNER_API_KEY',
+            process.env.CORPORATEPAY_PARTNER_API_KEY,
+            process.env.NODE_ENV,
+            { allowLocalFallback: true, localFallback: 'evzone-corporatepay-local-key' },
+          );
     const apiKey = header(request, 'x-corporatepay-api-key');
     const apiKeyOnlyAllowed =
       mode !== 'remote' &&
@@ -59,8 +67,14 @@ export class CorporatePayPartnerGuard implements CanActivate {
     const signature = header(request, 'x-corporatepay-signature');
     const expectedClientId = process.env.CORPORATEPAY_PARTNER_CLIENT_ID ?? 'corporatepay';
     const secret =
-      process.env.CORPORATEPAY_PARTNER_SHARED_SECRET ??
-      (mode === 'remote' ? '' : 'evzone-corporatepay-local-shared-secret');
+      mode === 'remote'
+        ? (process.env.CORPORATEPAY_PARTNER_SHARED_SECRET ?? '')
+        : getRequiredSecret(
+            'CORPORATEPAY_PARTNER_SHARED_SECRET',
+            process.env.CORPORATEPAY_PARTNER_SHARED_SECRET,
+            process.env.NODE_ENV,
+            { allowLocalFallback: true, localFallback: 'evzone-corporatepay-local-shared-secret' },
+          );
 
     if (!clientId || !timestamp || !nonce || !signature || !secret) {
       throw new UnauthorizedException('CorporatePay partner authentication headers are required');

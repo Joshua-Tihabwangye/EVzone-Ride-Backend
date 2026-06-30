@@ -78,6 +78,10 @@ export class CreateCashoutRequestDto {
   method!: Record<string, unknown>;
 
   @IsOptional()
+  @IsString()
+  idempotencyKey?: string;
+
+  @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
 }

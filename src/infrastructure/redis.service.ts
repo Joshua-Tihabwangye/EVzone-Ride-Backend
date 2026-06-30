@@ -62,6 +62,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       configured: Boolean(this.config.get<string>('REDIS_URL')),
       connected: this.connected,
       fallback: this.connected ? null : 'IN_MEMORY',
+      productionReady:
+        this.config.get<string>('NODE_ENV') !== 'production' ||
+        (Boolean(this.config.get<string>('REDIS_URL')) && this.connected),
       memoryKeys: this.memory.size,
       geoIndexes: this.geo.size,
     };

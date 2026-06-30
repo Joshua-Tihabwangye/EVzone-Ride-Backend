@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { validationSchema, validationOptions } from './config/env.validation';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -56,11 +57,17 @@ import { SafetyModule } from './safety/safety.module';
 import { TouristModule } from './tourist/tourist.module';
 import { UsersModule } from './users/users.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 import { WalletsModule } from './wallets/wallets.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env.local', '.env'] }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
+      validationSchema,
+      validationOptions,
+    }),
     TypeOrmModule.forRootAsync({ useFactory: createTypeOrmOptions }),
     DatabaseModule,
     InfrastructureModule,
@@ -89,6 +96,7 @@ import { WalletsModule } from './wallets/wallets.module';
     PricingModule,
     WalletsModule,
     PaymentsModule,
+    WebhooksModule,
     CorporatePayModule,
     CorporateIntegrationModule,
     CommutesModule,

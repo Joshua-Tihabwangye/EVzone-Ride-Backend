@@ -137,7 +137,7 @@ export class DriversService {
     await this.users.save(user);
 
     const profilePrefs = (driver.preferences ?? {}) as Record<string, unknown>;
-    const profile: Record<string, unknown> = { ...(profilePrefs.profile as Record<string, unknown> ?? {}) };
+    const profile: Record<string, unknown> = { ...((profilePrefs.profile as Record<string, unknown>) ?? {}) };
     if (patch.city !== undefined) profile.city = patch.city;
     if (patch.country !== undefined) profile.country = patch.country;
     if (patch.dateOfBirth !== undefined) profile.dateOfBirth = patch.dateOfBirth;
@@ -405,9 +405,7 @@ export class DriversService {
     const allReady = requiredTypes.every((type) =>
       documents.some(
         (d) =>
-          d.type === type &&
-          d.status === DocumentStatus.VERIFIED &&
-          (!d.expiryDate || d.expiryDate > now),
+          d.type === type && d.status === DocumentStatus.VERIFIED && (!d.expiryDate || d.expiryDate > now),
       ),
     );
     if (allReady) {

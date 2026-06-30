@@ -1,0 +1,39 @@
+title = "EVzone Ride Backend Secret Scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "evzone-demo-password"
+description = "Hardcoded demo password"
+regex = '''Password123!'''
+keywords = ["Password123"]
+
+[[rules]]
+id = "evzone-local-secrets"
+description = "Local-only fallback secret patterns"
+regex = '''evzone-(local|docker|school|corporatepay|integration|signing|access)-secret'''
+keywords = ["evzone-local", "evzone-docker", "evzone-school", "evzone-corporatepay"]
+
+[[rules]]
+id = "cloudinary-api-secret"
+description = "Cloudinary API secret"
+regex = '''CLOUDINARY_API_SECRET\s*[:=]\s*['"]?([a-zA-Z0-9_-]{20,})'''
+keywords = ["CLOUDINARY_API_SECRET"]
+secretGroup = 1
+
+[[rules]]
+id = "jwt-secret-literal"
+description = "JWT secret literal fallback"
+regex = '''(JWT_SECRET|secretOrKey|secret:)\s*[:=]\s*['"]([a-zA-Z0-9_!@#$%^&*-]{16,})['"]'''
+keywords = ["JWT_SECRET", "secretOrKey"]
+secretGroup = 2
+
+[allowlist]
+paths = [
+  '''\.gitleaks\.toml$''',
+  '''\.env\.example$''',
+  '''scripts\/secret-scan\.mjs$''',
+  '''docs\/SECURITY\.md$''',
+  '''src\/common\/utils\/required-secret\.util\.ts$''',
+]

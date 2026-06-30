@@ -69,6 +69,12 @@ Back up both. For managed deployments, use managed PostgreSQL and object storage
 9. Add database backups and tested restoration procedures.
 10. Restrict Swagger and administrative endpoints at the network layer.
 
+## Fail-closed production mode
+
+When `NODE_ENV=production`, the API validates the runtime configuration during startup and refuses to boot with unsafe defaults. Production must use explicit CORS origins, PostgreSQL migrations instead of schema sync, no demo seed data, strong non-default secrets, Redis, Kafka, real payment/push/storage providers, upload scanning, strict driver compliance, HMAC partner authentication, and a real cashout payout provider.
+
+The bundled `docker-compose.yml` is a local production-shaped demo stack and intentionally runs as `NODE_ENV=development` because it uses seeded data and local/mock providers. To run production, provide a separate environment that passes `/api/v1/ready` and `/api/v1/infrastructure/readiness`.
+
 ## Horizontal scaling
 
 The HTTP application is stateless except for local uploads and Socket.IO process memory. Before running multiple replicas:
@@ -124,7 +130,6 @@ GEO_REQUEST_TIMEOUT_MS=5000
 
 Operational watchdog thresholds are configurable through `OPERATIONS_WATCHDOG_*`, `DRIVER_HEARTBEAT_TIMEOUT_MS`, `TRIP_REQUEST_TIMEOUT_MS` and `ACTIVE_SERVICE_STUCK_THRESHOLD_MS`.
 
-
 For Kafka event streaming, Cloudinary storage and Firebase push delivery:
 
 ```env
@@ -134,7 +139,9 @@ CLOUDINARY_DISABLED=false
 CLOUDINARY_CLOUD_NAME=replace-me
 CLOUDINARY_API_KEY=replace-me
 CLOUDINARY_API_SECRET=replace-me
+FILE_SCAN_PROVIDER=CLAMAV
 FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
+CASHOUT_PAYOUT_PROVIDER=replace-with-real-provider
 ```
 
 When any optional provider is unavailable, the API reports the active fallback through `/api/v1/infrastructure/status` and related provider-status endpoints. Kafka falls back to the durable database outbox, files fall back to local persistent storage, push remains persisted in-app, and driver discovery can fall back from PostGIS to Redis GEO or Haversine distance.

@@ -9,7 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import {
   CorporatePayTransactionStatus,
   ManualBookingStatus,
@@ -21,6 +21,8 @@ import {
   WebhookEventStatus,
 } from '../common/enums';
 import { AuthUser } from '../common/interfaces';
+import { getRepository, runInTransaction } from '../common/transaction';
+import { getRequiredSecret } from '../common/utils/required-secret.util';
 import { signPayload, verifyPayloadSignature } from '../common/utils/crypto-vault';
 import { stringValue } from '../common/utils/values';
 import {
@@ -58,6 +60,7 @@ export class CorporatePayService {
     @InjectRepository(IntegrationOutbox) private readonly outbox: Repository<IntegrationOutbox>,
     @InjectRepository(ManualBooking) private readonly manualBookings: Repository<ManualBooking>,
     @InjectRepository(Payment) private readonly paymentRepository: Repository<Payment>,
+    private readonly dataSource: DataSource,
     private readonly organizations: OrganizationsService,
     private readonly payments: PaymentsService,
     private readonly events: EventEmitter2,
@@ -278,61 +281,106 @@ export class CorporatePayService {
     return this.transactions.save(transaction);
   }
 
-  async webhook(rawBody: string, signature: string | undefined, dto: CorporatePayWebhookDto) {
-    const secret = process.env.CORPORATEPAY_WEBHOOK_SECRET ?? 'evzone-corporatepay-local-secret';
-    const valid = verifyPayloadSignature(rawBody, signature, secret);
+  async webhook(
+    rawBody: string,
+    signature: string | undefined,
+    dto: CorporatePayWebhookDto,
+    headers?: Record<string, string | string[] | undefined>,
+  ) {
+    const secret = getRequiredSecret(
+      'CORPORATEPAY_WEBHOOK_SECRET',
+      process.env.CORPORATEPAY_WEBHOOK_SECRET,
+      process.env.NODE_ENV,
+      { allowLocalFallback: true, localFallback: 'evzone-corporatepay-local-secret' },
+    );
+    const signatureValid = verifyPayloadSignature(rawBody, signature, secret);
+    const timestampCheck = this.validateTimestampHeader(headers);
+    const valid = signatureValid && timestampCheck.valid;
+
     let event = await this.webhookEvents.findOne({ where: { externalEventId: dto.id } });
     if (event) return { accepted: true, duplicate: true, eventId: event.id };
+
     event = await this.webhookEvents.save(
       this.webhookEvents.create({
         externalEventId: dto.id,
         eventType: dto.type,
         status: valid ? WebhookEventStatus.VERIFIED : WebhookEventStatus.REJECTED,
-        signatureValid: valid,
+        signatureValid,
         payload: dto as unknown as Record<string, unknown>,
       }),
     );
-    if (!valid) throw new ForbiddenException('Invalid CorporatePay webhook signature');
+
+    if (!signatureValid) {
+      throw new ForbiddenException('Invalid CorporatePay webhook signature');
+    }
+    if (!timestampCheck.valid) {
+      throw new ForbiddenException(
+        timestampCheck.reason ?? 'CorporatePay webhook timestamp out of tolerance',
+      );
+    }
+
     try {
-      const reference = stringValue(dto.data.reference);
-      const externalTransactionId = stringValue(dto.data.transactionId ?? dto.data.externalTransactionId);
-      const transaction =
-        (reference ? await this.transactions.findOne({ where: { reference } }) : undefined) ??
-        (externalTransactionId
-          ? await this.transactions.findOne({ where: { externalTransactionId } })
-          : undefined);
-      if (!transaction)
-        throw new NotFoundException('CorporatePay transaction referenced by webhook was not found');
-      const type = dto.type.toUpperCase();
-      if (type.includes('PAID') || type.includes('SETTLED') || type.includes('SUCCEEDED')) {
-        await this.finalizePaid(transaction, externalTransactionId || `WEBHOOK-${dto.id}`);
-      } else if (type.includes('DECLINED')) {
-        transaction.status = CorporatePayTransactionStatus.DECLINED;
-        transaction.lastError = stringValue(dto.data.reason, 'CorporatePay declined the transaction');
-        await this.transactions.save(transaction);
-      } else if (type.includes('FAILED')) {
-        transaction.status = CorporatePayTransactionStatus.FAILED;
-        transaction.lastError = stringValue(dto.data.reason, 'CorporatePay transaction failed');
-        await this.transactions.save(transaction);
-      } else if (type.includes('REFUND')) {
-        transaction.status = CorporatePayTransactionStatus.REFUNDED;
-        transaction.refundedAt = new Date();
-        await this.transactions.save(transaction);
-      } else if (type.includes('APPROVED')) {
-        transaction.status = CorporatePayTransactionStatus.APPROVED;
-        transaction.approvedAt = new Date();
-        await this.transactions.save(transaction);
-      }
+      await runInTransaction(this.dataSource, async () => {
+        const reference = stringValue(dto.data.reference);
+        const externalTransactionId = stringValue(dto.data.transactionId ?? dto.data.externalTransactionId);
+        const transactionsRepo = getRepository(CorporatePayTransaction);
+        const transaction =
+          (reference ? await transactionsRepo.findOne({ where: { reference } }) : undefined) ??
+          (externalTransactionId
+            ? await transactionsRepo.findOne({ where: { externalTransactionId } })
+            : undefined);
+        if (!transaction)
+          throw new NotFoundException('CorporatePay transaction referenced by webhook was not found');
+        const type = dto.type.toUpperCase();
+        if (type.includes('PAID') || type.includes('SETTLED') || type.includes('SUCCEEDED')) {
+          await this.finalizePaid(transaction, externalTransactionId || `WEBHOOK-${dto.id}`);
+        } else if (type.includes('DECLINED')) {
+          transaction.status = CorporatePayTransactionStatus.DECLINED;
+          transaction.lastError = stringValue(dto.data.reason, 'CorporatePay declined the transaction');
+          await transactionsRepo.save(transaction);
+        } else if (type.includes('FAILED')) {
+          transaction.status = CorporatePayTransactionStatus.FAILED;
+          transaction.lastError = stringValue(dto.data.reason, 'CorporatePay transaction failed');
+          await transactionsRepo.save(transaction);
+        } else if (type.includes('REFUND')) {
+          transaction.status = CorporatePayTransactionStatus.REFUNDED;
+          transaction.refundedAt = new Date();
+          await transactionsRepo.save(transaction);
+        } else if (type.includes('APPROVED')) {
+          transaction.status = CorporatePayTransactionStatus.APPROVED;
+          transaction.approvedAt = new Date();
+          await transactionsRepo.save(transaction);
+        }
+      });
       event.status = WebhookEventStatus.PROCESSED;
       event.processedAt = new Date();
       await this.webhookEvents.save(event);
-      return { accepted: true, eventId: event.id, transactionId: transaction.id };
+      return { accepted: true, eventId: event.id };
     } catch (error) {
       event.status = WebhookEventStatus.FAILED;
       event.error = error instanceof Error ? error.message : String(error);
       await this.webhookEvents.save(event);
       throw error;
     }
+  }
+
+  private validateTimestampHeader(headers?: Record<string, string | string[] | undefined>): {
+    valid: boolean;
+    reason?: string;
+  } {
+    const raw = headers?.['x-corporatepay-timestamp'];
+    const timestamp = Array.isArray(raw) ? raw[0] : raw;
+    if (!timestamp) return { valid: true };
+    const toleranceSeconds = Number(process.env.WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS ?? 300);
+    const parsed = /(^\d{4}-)|(^\d{4}\/)/.test(timestamp) ? Date.parse(timestamp) : Number(timestamp) * 1000;
+    if (!Number.isFinite(parsed)) {
+      return { valid: false, reason: 'CorporatePay webhook timestamp is invalid' };
+    }
+    const deltaSeconds = Math.abs(Date.now() - parsed) / 1000;
+    if (deltaSeconds > toleranceSeconds) {
+      return { valid: false, reason: 'CorporatePay webhook timestamp is outside the allowed tolerance' };
+    }
+    return { valid: true };
   }
 
   async reconcile(user: AuthUser, dto: ReconcileCorporatePayDto) {
@@ -496,7 +544,12 @@ export class CorporatePayService {
             : {}),
           'X-EVzone-Signature': signPayload(
             JSON.stringify(body),
-            process.env.CORPORATEPAY_SIGNING_SECRET ?? 'evzone-local-signing-secret',
+            getRequiredSecret(
+              'CORPORATEPAY_SIGNING_SECRET',
+              process.env.CORPORATEPAY_SIGNING_SECRET,
+              process.env.NODE_ENV,
+              { allowLocalFallback: true, localFallback: 'evzone-local-signing-secret' },
+            ),
           ),
         },
         body: JSON.stringify(body),
@@ -543,7 +596,9 @@ export class CorporatePayService {
   private async finalizePaid(transaction: CorporatePayTransaction, externalId: string) {
     if (transaction.status === CorporatePayTransactionStatus.PAID) return transaction;
     if (!transaction.paymentId) throw new BadRequestException('Local payment record is missing');
-    const localPayment = await this.paymentRepository.findOne({ where: { id: transaction.paymentId } });
+    const paymentsRepo = getRepository(Payment, this.paymentRepository.manager);
+    const transactionsRepo = getRepository(CorporatePayTransaction, this.transactions.manager);
+    const localPayment = await paymentsRepo.findOne({ where: { id: transaction.paymentId } });
     if (!localPayment) throw new NotFoundException('Local payment record not found');
     if (localPayment.status !== PaymentStatus.PAID) {
       await this.payments.confirm(transaction.userId, localPayment.id, `CORPORATEPAY-${externalId}`);
@@ -552,9 +607,10 @@ export class CorporatePayService {
     transaction.status = CorporatePayTransactionStatus.PAID;
     transaction.paidAt = new Date();
     transaction.lastError = undefined;
-    await this.transactions.save(transaction);
+    await transactionsRepo.save(transaction);
     if (transaction.manualBookingId) {
-      await this.manualBookings.update(transaction.manualBookingId, {
+      const manualBookingsRepo = getRepository(ManualBooking, this.manualBookings.manager);
+      await manualBookingsRepo.update(transaction.manualBookingId, {
         corporatePayTransactionId: transaction.id,
         status: ManualBookingStatus.CONFIRMED,
         confirmedAt: new Date(),

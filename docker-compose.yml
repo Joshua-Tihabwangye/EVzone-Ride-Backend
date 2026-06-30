@@ -2,7 +2,7 @@ services:
   postgres:
     image: postgis/postgis:16-3.4-alpine
     ports:
-    - "5432:5432"
+      - '5432:5432'
     restart: unless-stopped
     environment:
       POSTGRES_USER: evzone
@@ -37,20 +37,23 @@ services:
       redis:
         condition: service_healthy
     environment:
-      NODE_ENV: production
+      # Local production-shaped demo stack. Real production must pass the fail-closed
+      # configuration validator instead of using mock providers and seeded data.
+      NODE_ENV: development
       HOST: 0.0.0.0
       PORT: 3001
       CORS_ORIGINS: '*'
       SOCKET_CORS_ORIGINS: '*'
       DB_TYPE: postgres
       DATABASE_URL: postgresql://evzone:evzone-group@postgres:5432/evzone
-      DB_SYNCHRONIZE: 'true'
+      DB_SYNCHRONIZE: 'false'
       DB_MIGRATIONS_RUN: 'true'
       DB_LOGGING: 'false'
       DB_POOL_SIZE: 20
-      POSTGIS_AUTO_SETUP: 'true'
+      DB_POOL_MIN: 2
+      DB_CONNECTION_TIMEOUT_MS: 30000
       SEED_DEMO: 'true'
-      JWT_SECRET: evzone-docker-access-secret-2026
+      JWT_SECRET: '${JWT_SECRET:-}'
       JWT_ACCESS_TTL: 15m
       JWT_REFRESH_TTL_DAYS: 30
       OIDC_AUTHORITY: https://accounts.evzone.app
@@ -63,10 +66,10 @@ services:
       STORAGE_PATH: /app/storage
       PUBLIC_BASE_URL: http://localhost:3001
       MAX_FILE_SIZE_BYTES: 15728640
-      CLOUDINARY_DISABLED: '${CLOUDINARY_DISABLED:-false}'
-      CLOUDINARY_CLOUD_NAME: '${evzone}'
-      CLOUDINARY_API_KEY: '${581822896554343}'
-      CLOUDINARY_API_SECRET: '${_QiFeVKTKwI1Ogt-l1rulQcbtqw}'
+      CLOUDINARY_DISABLED: 'true'
+      CLOUDINARY_CLOUD_NAME: '${CLOUDINARY_CLOUD_NAME:-}'
+      CLOUDINARY_API_KEY: '${CLOUDINARY_API_KEY:-}'
+      CLOUDINARY_API_SECRET: '${CLOUDINARY_API_SECRET:-}'
       REDIS_URL: redis://redis:6379
       REDIS_DISABLED: 'false'
       REDIS_SOCKET_ADAPTER_ENABLED: 'true'
@@ -101,10 +104,10 @@ services:
       DOMAIN_EVENT_FLUSH_INTERVAL_MS: 10000
       CORPORATEPAY_MODE: sandbox
       CORPORATEPAY_MOCK_AUTO_APPROVE: 'true'
-      CORPORATEPAY_WEBHOOK_SECRET: evzone-corporatepay-docker-secret
-      CORPORATEPAY_SIGNING_SECRET: evzone-corporatepay-signing-docker-secret
-      SCHOOL_WEBHOOK_SECRET: evzone-school-docker-secret
-      INTEGRATION_ENCRYPTION_KEY: evzone-docker-integration-encryption-key
+      CORPORATEPAY_WEBHOOK_SECRET: '${CORPORATEPAY_WEBHOOK_SECRET:-}'
+      CORPORATEPAY_SIGNING_SECRET: '${CORPORATEPAY_SIGNING_SECRET:-}'
+      SCHOOL_WEBHOOK_SECRET: '${SCHOOL_WEBHOOK_SECRET:-}'
+      INTEGRATION_ENCRYPTION_KEY: '${INTEGRATION_ENCRYPTION_KEY:-}'
       API_PUBLIC_URL: http://localhost:3001
       IDEMPOTENCY_TTL_SECONDS: 86400
       GEO_LOOKUP_BASE_URL: https://nominatim.openstreetmap.org
@@ -126,11 +129,11 @@ services:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
     ports:
-      - "5050:80"
+      - '5050:80'
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@evzone.example.com
       PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
     depends_on:
       postgres:
         condition: service_healthy

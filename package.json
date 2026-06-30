@@ -15,11 +15,16 @@
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
+    "contract:check": "node scripts/check-openapi-contract.mjs",
+    "openapi:export": "node scripts/export-openapi.mjs",
+    "openapi:diff": "node scripts/diff-openapi.mjs",
+    "security:secrets": "node scripts/secret-scan.mjs",
     "typeorm": "typeorm-ts-node-commonjs",
     "db:schema:drop": "npm run typeorm -- schema:drop -d src/database/data-source.ts",
     "db:migration:generate": "npm run typeorm -- migration:generate src/database/migrations/AutoMigration -d src/database/data-source.ts",
     "db:migration:run": "npm run typeorm -- migration:run -d src/database/data-source.ts",
     "db:migration:revert": "npm run typeorm -- migration:revert -d src/database/data-source.ts",
+    "db:migration:run:prod": "node dist/database/data-source.js migration:run",
     "smoke": "node scripts/smoke-test.mjs",
     "smoke:platform": "node scripts/platform-smoke-test.mjs",
     "smoke:hardening": "node scripts/hardening-smoke-test.mjs",
@@ -31,6 +36,7 @@
     "smoke:corporatepay": "node scripts/corporatepay-partner-smoke-test.mjs",
     "smoke:corporatepay:school": "node scripts/corporatepay-school-shuttle-smoke-test.mjs",
     "smoke:dispatch": "node scripts/universal-dispatch-smoke-test.mjs",
+    "smoke:cors": "node scripts/smoke-cors.mjs",
     "test:dispatch": "jest --runInBand src/universal-dispatch"
   },
   "dependencies": {
@@ -58,6 +64,7 @@
     "firebase-admin": "^13.7.0",
     "helmet": "8.2.0",
     "ioredis": "5.10.1",
+    "joi": "^18.2.3",
     "kafkajs": "2.2.4",
     "nodemailer": "6.9.16",
     "passport": "0.7.0",
@@ -66,7 +73,6 @@
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "socket.io": "4.8.3",
-    "sql.js": "1.14.1",
     "typeorm": "0.3.30"
   },
   "devDependencies": {
@@ -90,6 +96,7 @@
     "jest": "30.2.0",
     "prettier": "3.7.4",
     "source-map-support": "0.5.21",
+    "sql.js": "1.14.1",
     "supertest": "7.2.2",
     "ts-jest": "29.4.6",
     "ts-loader": "9.5.4",
