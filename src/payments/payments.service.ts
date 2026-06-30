@@ -15,6 +15,7 @@ import {
 } from '../database/entities';
 import { NotificationsService } from '../notifications/notifications.service';
 import { WalletsService } from '../wallets/wallets.service';
+import { CommissioningService } from '../commissioning/commissioning.service';
 import { CreatePaymentDto } from './payments.dto';
 import { PaymentProviderFactory } from './providers/payment-provider.factory';
 
@@ -40,6 +41,7 @@ export class PaymentsService {
     private readonly notifications: NotificationsService,
     private readonly events: EventEmitter2,
     private readonly providerFactory: PaymentProviderFactory,
+    private readonly commissioning: CommissioningService,
   ) {}
 
   async createIntent(userId: string, dto: CreatePaymentDto, serviceOverride?: ServicePaymentData) {
@@ -201,19 +203,15 @@ export class PaymentsService {
     if (payment.serviceType === ServiceType.SCHOOL_SHUTTLE) return;
     const service = await this.getServiceData(payment.serviceType, payment.serviceId);
     if (!service.providerUserId || service.providerUserId === payment.userId) return;
-    const providerShare = Math.round(payment.amount * 0.85 * 100) / 100;
-    await this.wallets.credit(
-      service.providerUserId,
-      providerShare,
-      WalletTransactionType.EARNING,
-      `EARN-${payment.reference}`,
-      `${payment.serviceType} earnings`,
-      {
-        serviceId: payment.serviceId,
-        serviceType: payment.serviceType,
-        platformFee: payment.amount - providerShare,
-      },
-    );
+    await this.commissioning.applyPaymentCommission({
+      reference: payment.reference,
+      serviceType: payment.serviceType,
+      serviceId: payment.serviceId,
+      amount: Number(payment.amount),
+      currency: payment.currency,
+      providerUserId: service.providerUserId,
+      payerUserId: payment.userId,
+    });
   }
 
   private async providerUserId(driverId?: string): Promise<string | undefined> {
