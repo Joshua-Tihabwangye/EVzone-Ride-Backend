@@ -100,6 +100,7 @@ export class AccountingService {
     let result: JournalTransaction;
     if (manager) {
       result = await execute(manager);
+      return this.detail(result.id, manager);
     } else {
       const existing = await this.journals.findOne({ where: { reference: input.reference } });
       if (existing) return this.detail(existing.id);
@@ -251,16 +252,19 @@ export class AccountingService {
     return reversal;
   }
 
-  async detail(idOrReference: string) {
-    const journal = await this.journals
-      .createQueryBuilder('journal')
-      .where('journal.id = :value', { value: idOrReference })
-      .orWhere('journal.reference = :value', { value: idOrReference })
-      .getOne();
+  async detail(idOrReference: string, manager?: EntityManager) {
+    const journalsRepo = manager ? manager.getRepository(JournalTransaction) : this.journals;
+    const entriesRepo = manager ? manager.getRepository(LedgerEntry) : this.entries;
+    const accountsRepo = manager ? manager.getRepository(LedgerAccount) : this.accounts;
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrReference);
+    const journal = isUuid
+      ? await journalsRepo.findOne({ where: { id: idOrReference } })
+      : await journalsRepo.findOne({ where: { reference: idOrReference } });
     if (!journal) throw new NotFoundException('Journal not found');
-    const entries = await this.entries.find({ where: { journalId: journal.id } });
+    const entries = await entriesRepo.find({ where: { journalId: journal.id } });
     const accounts = entries.length
-      ? await this.accounts.find({ where: entries.map((entry) => ({ id: entry.accountId })) })
+      ? await accountsRepo.find({ where: entries.map((entry) => ({ id: entry.accountId })) })
       : [];
     return {
       journal,
