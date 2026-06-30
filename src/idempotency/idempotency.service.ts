@@ -1,7 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash } from 'node:crypto';
-import { LessThan, Repository } from 'typeorm';
+import { EntityManager, LessThan, Repository } from 'typeorm';
 import { IdempotencyRecord } from '../database/entities';
 
 export interface IdempotencyBeginResult {
@@ -16,13 +16,19 @@ export class IdempotencyService {
     private readonly records: Repository<IdempotencyRecord>,
   ) {}
 
-  async begin(input: {
-    key: string;
-    scope: string;
-    userId?: string;
-    requestBody?: unknown;
-    ttlSeconds?: number;
-  }): Promise<IdempotencyBeginResult> {
+  async begin(
+    input: {
+      key: string;
+      scope: string;
+      userId?: string;
+      requestBody?: unknown;
+      ttlSeconds?: number;
+    },
+    manager?: EntityManager,
+  ): Promise<IdempotencyBeginResult> {
+    const ttl = input.ttlSeconds ?? 86_400;
+    const repo = manager ? manager.getRepository(IdempotencyRecord) : this.records;
+
     await this.records.delete({ expiresAt: LessThan(new Date()) });
     const keyHash = this.hash(`${input.userId ?? 'anonymous'}:${input.scope}:${input.key.trim()}`);
     const requestHash = this.hash(JSON.stringify(input.requestBody ?? null));
@@ -37,19 +43,19 @@ export class IdempotencyService {
         throw new ConflictException('IDEMPOTENT_REQUEST_IN_PROGRESS');
       }
       existing.status = 'PROCESSING';
-      existing.expiresAt = new Date(Date.now() + (input.ttlSeconds ?? 86400) * 1000);
+      existing.expiresAt = new Date(Date.now() + ttl * 1000);
       return { record: await this.records.save(existing), replay: false };
     }
 
     try {
-      const record = await this.records.save(
-        this.records.create({
+      const record = await repo.save(
+        repo.create({
           keyHash,
           scope: input.scope,
           userId: input.userId,
           requestHash,
           status: 'PROCESSING',
-          expiresAt: new Date(Date.now() + (input.ttlSeconds ?? 86400) * 1000),
+          expiresAt: new Date(Date.now() + ttl * 1000),
         }),
       );
       return { record, replay: false };
@@ -60,18 +66,37 @@ export class IdempotencyService {
     }
   }
 
-  async complete(recordId: string, responseBody: unknown, responseStatus = 200): Promise<void> {
-    const record = await this.records.findOne({ where: { id: recordId } });
+  async complete(
+    recordId: string,
+    responseBody: unknown,
+    responseStatus = 200,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const repo = manager ? manager.getRepository(IdempotencyRecord) : this.records;
+    const record = await repo.findOne({ where: { id: recordId } });
     if (!record) return;
     record.status = 'COMPLETED';
     record.responseBody = responseBody;
     record.responseStatus = responseStatus;
     record.completedAt = new Date();
-    await this.records.save(record);
+    await repo.save(record);
   }
 
-  async fail(recordId: string): Promise<void> {
-    await this.records.delete(recordId);
+  /**
+   * Failure-safe idempotency cleanup. We intentionally do **not** delete the
+   * record: keeping it in PROCESSING with an extended TTL prevents accidental
+   * replays while the original failure reason is still being investigated,
+   * and avoids later requests reusing the same key to retry a failed operation
+   * automatically.
+   */
+  async fail(recordId: string, manager?: EntityManager): Promise<void> {
+    const repo = manager ? manager.getRepository(IdempotencyRecord) : this.records;
+    const record = await repo.findOne({ where: { id: recordId } });
+    if (!record) return;
+
+    const ttlSeconds = Number(process.env.IDEMPOTENCY_TTL_SECONDS ?? 86_400);
+    record.expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+    await repo.save(record);
   }
 
   private hash(value: string): string {
