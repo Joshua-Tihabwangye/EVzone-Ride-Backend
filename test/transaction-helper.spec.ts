@@ -1,10 +1,5 @@
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import {
-  getManager,
-  getRepository,
-  runInTransaction,
-  Transactional,
-} from '../src/common/transaction';
+import { getManager, getRepository, runInTransaction, Transactional } from '../src/common/transaction';
 
 describe('transaction helper', () => {
   it('runInTransaction exposes manager through getManager', async () => {

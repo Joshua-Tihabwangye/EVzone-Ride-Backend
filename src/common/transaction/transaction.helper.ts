@@ -19,7 +19,10 @@ export function getManager(fallback?: EntityManager): EntityManager | undefined 
  * Returns a TypeORM Repository bound to the current transactional EntityManager.
  * Throws if no transactional context is active and no fallback manager is provided.
  */
-export function getRepository<T extends object>(entity: EntityTarget<T>, fallback?: EntityManager): Repository<T> {
+export function getRepository<T extends object>(
+  entity: EntityTarget<T>,
+  fallback?: EntityManager,
+): Repository<T> {
   const manager = getManager(fallback);
   if (!manager) {
     throw new Error(
