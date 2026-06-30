@@ -20,6 +20,7 @@ import {
   EmergencyStatus,
   EmergencyType,
   EnergyType,
+  FileAssetStatus,
   InspectionType,
   InvitationStatus,
   NotificationType,
@@ -326,8 +327,8 @@ export class FileAsset extends BaseEntity {
   @Column()
   sizeBytes!: number;
 
-  @Column()
-  url!: string;
+  @Column({ nullable: true })
+  url?: string;
 
   @Column({ default: 'LOCAL' })
   storageProvider!: string;
@@ -340,6 +341,21 @@ export class FileAsset extends BaseEntity {
 
   @Column({ type: 'varchar', default: 'PRIVATE' })
   visibility!: 'PUBLIC' | 'PRIVATE';
+
+  @Column({ type: 'simple-enum', enum: FileAssetStatus, default: FileAssetStatus.PENDING_SCAN })
+  status!: FileAssetStatus;
+
+  @Column({ nullable: true })
+  scanResult?: string;
+
+  @Column({ type: 'simple-json', nullable: true })
+  scanDetails?: Record<string, unknown>;
+
+  @Column({ nullable: true })
+  scannedAt?: Date;
+
+  @Column({ nullable: true })
+  rejectionReason?: string;
 
   @Column({ type: 'simple-json', nullable: true })
   metadata?: Record<string, unknown>;
