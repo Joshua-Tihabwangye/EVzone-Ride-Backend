@@ -7,6 +7,9 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { AccessTokenVerifierService } from './access-token-verifier.service';
+import { RiderAuthController } from './rider-auth.controller';
+import { RiderAuthService } from './rider-auth.service';
+import { SmtpMailService } from './smtp-mail.service';
 
 @Module({
   imports: [
@@ -22,8 +25,8 @@ import { AccessTokenVerifierService } from './access-token-verifier.service';
       }),
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, AccessTokenVerifierService],
-  exports: [AuthService, JwtModule, AccessTokenVerifierService],
+  controllers: [AuthController, RiderAuthController],
+  providers: [AuthService, JwtStrategy, AccessTokenVerifierService, RiderAuthService, SmtpMailService],
+  exports: [AuthService, JwtModule, AccessTokenVerifierService, RiderAuthService],
 })
 export class AuthModule {}
