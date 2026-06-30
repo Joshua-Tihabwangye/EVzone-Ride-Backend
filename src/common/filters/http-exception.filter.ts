@@ -41,10 +41,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
           : exception,
     };
 
-    if (status >= 500) {
-      this.logger.error(logPayload, 'Request failed with unexpected error');
-    } else {
-      this.logger.warn(logPayload, 'Request failed with client error');
+    const isHealthCheck =
+      request.originalUrl.startsWith('/api/v1/health') || request.originalUrl.startsWith('/api/v1/ready');
+
+    if (!isHealthCheck) {
+      if (status >= 500) {
+        this.logger.error(logPayload, 'Request failed with unexpected error');
+      } else {
+        this.logger.warn(logPayload, 'Request failed with client error');
+      }
     }
 
     response.status(status).json({

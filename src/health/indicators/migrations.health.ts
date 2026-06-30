@@ -17,7 +17,9 @@ export class MigrationsHealthIndicator extends HealthIndicator {
 
   async isHealthy(key: string): Promise<HealthIndicatorResult> {
     try {
-      const rows = await this.dataSource.query('SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 1');
+      const rows = await this.dataSource.query(
+        'SELECT name FROM typeorm_migrations ORDER BY timestamp DESC LIMIT 1',
+      );
       const latest = (rows?.[0]?.name as string | undefined) ?? null;
       const isHealthy = latest === EXPECTED_LATEST_MIGRATION;
       const result = this.getStatus(key, isHealthy, {
