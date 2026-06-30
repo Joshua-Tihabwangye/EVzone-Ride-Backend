@@ -9,7 +9,16 @@ import {
   TransactionDirection,
   WalletTransactionType,
 } from '../common/enums';
-import { EarningsLedger, JournalTransaction, LedgerAccount, LedgerEntry } from '../database/entities';
+import {
+  EarningsLedger,
+  JournalTransaction,
+  LedgerAccount,
+  LedgerAccountPeriodBalance,
+  LedgerEntry,
+} from '../database/entities';
+import { AccountingPeriodService } from './accounting-period.service';
+import { ChartOfAccountsService } from './chart-of-accounts.service';
+import { isWalletAccountCode, parseWalletAccountCode } from './chart-of-accounts';
 import { PostJournalDto } from './accounting.dto';
 
 @Injectable()
@@ -22,9 +31,11 @@ export class AccountingService {
     @InjectRepository(LedgerEntry) private readonly entries: Repository<LedgerEntry>,
     @InjectRepository(EarningsLedger) private readonly earnings: Repository<EarningsLedger>,
     private readonly events: EventEmitter2,
+    private readonly chartOfAccounts: ChartOfAccountsService,
+    private readonly periodService: AccountingPeriodService,
   ) {}
 
-  async postJournal(input: PostJournalDto) {
+  async postJournal(input: PostJournalDto, managerOverride?: EntityManager) {
     const currency = input.currency ?? 'UGX';
     const rounded = (value: number) => Math.round(Number(value) * 100) / 100;
     const debits = rounded(
@@ -45,14 +56,9 @@ export class AccountingService {
       });
     }
 
-    const existing = await this.journals.findOne({ where: { reference: input.reference } });
-    if (existing) return this.detail(existing.id);
+    const executor = async (manager: EntityManager) => {
+      await this.periodService.assertPeriodOpen(new Date(), manager);
 
-    const result = await this.dataSource.transaction(async (manager) => {
-      const duplicate = await manager.findOne(JournalTransaction, {
-        where: { reference: input.reference },
-      });
-      if (duplicate) return duplicate;
       let journal = await manager.save(
         JournalTransaction,
         manager.create(JournalTransaction, {
@@ -63,16 +69,20 @@ export class AccountingService {
           serviceId: input.serviceId,
           metadata: input.metadata,
           status: JournalStatus.PENDING,
+          organizationId: input.organizationId,
         }),
       );
 
       for (const line of input.lines) {
+        await this.validateAccountCode(line.accountCode, currency);
         const account = await this.ensureAccount(manager, {
           code: line.accountCode,
           name: line.accountName,
           accountType: line.accountType,
+          accountCategory: line.accountCategory,
           ownerType: line.ownerType,
           ownerId: line.ownerId,
+          organizationId: line.organizationId ?? input.organizationId,
           currency,
         });
         const amount = rounded(line.amount);
@@ -98,25 +108,29 @@ export class AccountingService {
       journal.postedAt = new Date();
       journal = await manager.save(JournalTransaction, journal);
       return journal;
-    });
+    };
+
+    const journal = managerOverride
+      ? await executor(managerOverride)
+      : await this.dataSource.transaction(executor);
 
     this.events.emit('domain.event', {
       topic: 'accounting',
       eventType: 'accounting.journal.posted',
       aggregateType: 'JournalTransaction',
-      aggregateId: result.id,
-      eventKey: result.reference,
+      aggregateId: journal.id,
+      eventKey: journal.reference,
       payload: {
-        journalId: result.id,
-        reference: result.reference,
-        transactionType: result.transactionType,
-        serviceType: result.serviceType,
-        serviceId: result.serviceId,
+        journalId: journal.id,
+        reference: journal.reference,
+        transactionType: journal.transactionType,
+        serviceType: journal.serviceType,
+        serviceId: journal.serviceId,
         debits,
         credits,
       },
     });
-    return this.detail(result.id);
+    return this.detail(journal.id, managerOverride);
   }
 
   async postWalletMovement(input: {
@@ -128,6 +142,7 @@ export class AccountingService {
     currency?: string;
     description?: string;
     metadata?: Record<string, unknown>;
+    organizationId?: string;
   }) {
     const currency = input.currency ?? 'UGX';
     const walletDirection = input.direction;
@@ -135,42 +150,56 @@ export class AccountingService {
       walletDirection === TransactionDirection.CREDIT
         ? TransactionDirection.DEBIT
         : TransactionDirection.CREDIT;
-    const journal = await this.postJournal({
-      reference: `WALLET-${input.reference}-${input.direction}-${input.userId}`,
-      transactionType: `WALLET_${input.type}`,
-      description: input.description,
-      serviceType: this.enumServiceType(input.metadata?.serviceType),
-      serviceId: this.text(input.metadata?.serviceId),
-      currency,
-      metadata: { ...input.metadata, sourceReference: input.reference },
-      lines: [
-        {
-          accountCode: `WALLET:${currency}:${input.userId}`,
-          accountName: `User wallet ${input.userId}`,
-          accountType: LedgerAccountType.LIABILITY,
-          ownerType: 'USER',
-          ownerId: input.userId,
-          direction: walletDirection,
-          amount: input.amount,
-          memo: input.description,
-        },
-        {
-          accountCode: `CLEARING:${currency}`,
-          accountName: `${currency} settlement clearing`,
-          accountType: LedgerAccountType.ASSET,
-          ownerType: 'SYSTEM',
-          direction: counterDirection,
-          amount: input.amount,
-          memo: input.description,
-        },
-      ],
-    });
 
+    const journalReference = `WALLET-${input.reference}-${input.direction}-${input.userId}`;
+    const existingJournal = await this.journals.findOne({ where: { reference: journalReference } });
+    if (existingJournal) {
+      return this.detail(existingJournal.id);
+    }
+
+    const journalResult = await this.postJournal(
+      {
+        reference: journalReference,
+        transactionType: `WALLET_${input.type}`,
+        description: input.description,
+        serviceType: this.enumServiceType(input.metadata?.serviceType),
+        serviceId: this.text(input.metadata?.serviceId),
+        currency,
+        organizationId: input.organizationId,
+        metadata: { ...input.metadata, sourceReference: input.reference },
+        lines: [
+          {
+            accountCode: `WALLET:${currency}:${input.userId}`,
+            accountName: `User wallet ${input.userId}`,
+            accountType: LedgerAccountType.LIABILITY,
+            accountCategory: 'LIABILITY',
+            ownerType: 'USER',
+            ownerId: input.userId,
+            organizationId: input.organizationId,
+            direction: walletDirection,
+            amount: input.amount,
+            memo: input.description,
+          },
+          {
+            accountCode: `CLEARING:${currency}`,
+            accountName: `${currency} settlement clearing`,
+            accountType: LedgerAccountType.ASSET,
+            accountCategory: 'ASSET',
+            ownerType: 'SYSTEM',
+            direction: counterDirection,
+            amount: input.amount,
+            memo: input.description,
+          },
+        ],
+      },
+      undefined,
+    );
+
+    const journalRecord = journalResult.journal;
     if (
       input.direction === TransactionDirection.CREDIT &&
       [WalletTransactionType.EARNING, WalletTransactionType.TIP].includes(input.type)
     ) {
-      const journalRecord = journal.journal;
       const exists = await this.earnings.findOne({
         where: { userId: input.userId, journalId: journalRecord.id },
       });
@@ -192,7 +221,7 @@ export class AccountingService {
         );
       }
     }
-    return journal;
+    return journalResult;
   }
 
   async reverse(reference: string, reason: string, actorUserId?: string) {
@@ -205,12 +234,15 @@ export class AccountingService {
     const accounts = await this.accounts.find({
       where: entries.map((entry) => ({ id: entry.accountId })),
     });
+
     const reversal = await this.postJournal({
       reference: `REV-${reference}`,
       transactionType: `REVERSAL_${original.transactionType}`,
       description: reason,
       serviceType: original.serviceType,
       serviceId: original.serviceId,
+      currency: original.currency,
+      organizationId: original.organizationId,
       metadata: { originalJournalId: original.id, actorUserId },
       lines: entries.map((entry) => {
         const account = accounts.find((candidate) => candidate.id === entry.accountId);
@@ -219,8 +251,10 @@ export class AccountingService {
           accountCode: account.code,
           accountName: account.name,
           accountType: account.accountType,
+          accountCategory: account.accountCategory,
           ownerType: account.ownerType,
           ownerId: account.ownerId,
+          organizationId: account.organizationId,
           direction:
             entry.direction === TransactionDirection.DEBIT
               ? TransactionDirection.CREDIT
@@ -230,6 +264,7 @@ export class AccountingService {
         };
       }),
     });
+
     original.status = JournalStatus.REVERSED;
     original.reversedAt = new Date();
     original.metadata = { ...(original.metadata ?? {}), reversalReference: `REV-${reference}` };
@@ -237,14 +272,16 @@ export class AccountingService {
     return reversal;
   }
 
-  async detail(idOrReference: string) {
-    const journal = await this.journals
+  async detail(idOrReference: string, manager?: EntityManager) {
+    const journalRepo = manager ? manager.getRepository(JournalTransaction) : this.journals;
+    const journal = await journalRepo
       .createQueryBuilder('journal')
       .where('journal.id = :value', { value: idOrReference })
       .orWhere('journal.reference = :value', { value: idOrReference })
       .getOne();
     if (!journal) throw new NotFoundException('Journal not found');
-    const entries = await this.entries.find({ where: { journalId: journal.id } });
+    const entriesRepo = manager ? manager.getRepository(LedgerEntry) : this.entries;
+    const entries = await entriesRepo.find({ where: { journalId: journal.id } });
     const accounts = entries.length
       ? await this.accounts.find({ where: entries.map((entry) => ({ id: entry.accountId })) })
       : [];
@@ -281,7 +318,14 @@ export class AccountingService {
     });
   }
 
-  async trialBalance(currency = 'UGX') {
+  async trialBalance(currency = 'UGX', year?: number, month?: number) {
+    if (year && month) {
+      return this.trialBalanceFromPeriod(currency, year, month);
+    }
+    return this.trialBalanceFull(currency);
+  }
+
+  private async trialBalanceFull(currency = 'UGX') {
     const [accounts, entries] = await Promise.all([
       this.accounts.find({ where: { currency, active: true }, order: { code: 'ASC' } }),
       this.entries.find({ where: { currency } }),
@@ -298,21 +342,67 @@ export class AccountingService {
         .reduce((sum, entry) => sum + Number(entry.amount), 0),
     );
     const groups = Object.values(LedgerAccountType).map((type) => ({
-      accountType: type,
+      type,
+      accounts: accounts
+        .filter((account) => account.accountType === type)
+        .map((account) => ({
+          ...account,
+          balance: round(Number(account.balance)),
+        })),
       balance: round(
         accounts
           .filter((account) => account.accountType === type)
           .reduce((sum, account) => sum + Number(account.balance), 0),
       ),
     }));
+    return { currency, totalDebits, totalCredits, balanced: totalDebits === totalCredits, groups };
+  }
+
+  private async trialBalanceFromPeriod(currency: string, year: number, month: number) {
+    const balances = await this.dataSource
+      .getRepository(LedgerAccountPeriodBalance)
+      .find({ where: { year, month } });
+    const accountIds = balances.map((b) => b.accountId);
+    const accounts = accountIds.length
+      ? await this.accounts.find({ where: accountIds.map((id) => ({ id })) })
+      : [];
+    const accountById = new Map(accounts.map((a) => [a.id, a]));
+    const round = (value: number) => Math.round(value * 100) / 100;
+
+    const filteredAccounts = accounts.filter((a) => a.currency === currency);
+    const groups = Object.values(LedgerAccountType).map((type) => ({
+      type,
+      accounts: filteredAccounts.filter((account) => account.accountType === type),
+      balance: round(
+        balances
+          .filter((b) => accountById.get(b.accountId)?.accountType === type)
+          .reduce((sum, b) => sum + Number(b.closingBalance), 0),
+      ),
+    }));
+    const totalDebits = round(balances.reduce((sum, b) => sum + Number(b.totalDebits), 0));
+    const totalCredits = round(balances.reduce((sum, b) => sum + Number(b.totalCredits), 0));
     return {
       currency,
-      generatedAt: new Date(),
+      year,
+      month,
+      totalDebits,
+      totalCredits,
       balanced: totalDebits === totalCredits,
-      totals: { debits: totalDebits, credits: totalCredits, difference: round(totalDebits - totalCredits) },
       groups,
-      accounts,
     };
+  }
+
+  private async validateAccountCode(code: string, currency: string) {
+    if (isWalletAccountCode(code)) {
+      const parsed = parseWalletAccountCode(code);
+      if (!parsed || parsed.currency !== currency) {
+        throw new BadRequestException(`Invalid wallet account code ${code}`);
+      }
+      return;
+    }
+    if (!this.chartOfAccounts.isKnownAccountCode(code)) {
+      throw new BadRequestException(`Account code ${code} is not in the Chart of Accounts`);
+    }
   }
 
   private async ensureAccount(
@@ -321,24 +411,47 @@ export class AccountingService {
       code: string;
       name: string;
       accountType: LedgerAccountType;
+      accountCategory?: string;
       ownerType?: string;
       ownerId?: string;
+      organizationId?: string;
       currency: string;
     },
-  ) {
+  ): Promise<LedgerAccount> {
     let account = await manager.findOne(LedgerAccount, { where: { code: input.code } });
     if (!account) {
-      account = await manager.save(
-        LedgerAccount,
-        manager.create(LedgerAccount, {
-          ...input,
-          ownerType: input.ownerType ?? 'SYSTEM',
-          balance: 0,
-          active: true,
-        }),
-      );
+      account = manager.create(LedgerAccount, {
+        code: input.code,
+        name: input.name,
+        accountType: input.accountType,
+        accountCategory: input.accountCategory ?? this.inferCategory(input.accountType),
+        ownerType: input.ownerType ?? 'SYSTEM',
+        ownerId: input.ownerId,
+        organizationId: input.organizationId,
+        currency: input.currency,
+        balance: 0,
+        active: true,
+      });
+      account = await manager.save(LedgerAccount, account);
     }
     return account;
+  }
+
+  private inferCategory(accountType: LedgerAccountType): string {
+    switch (accountType) {
+      case LedgerAccountType.ASSET:
+        return 'ASSET';
+      case LedgerAccountType.LIABILITY:
+        return 'LIABILITY';
+      case LedgerAccountType.EQUITY:
+        return 'EQUITY';
+      case LedgerAccountType.REVENUE:
+        return 'REVENUE';
+      case LedgerAccountType.EXPENSE:
+        return 'EXPENSE';
+      default:
+        return 'ASSET';
+    }
   }
 
   private balanceEffect(
@@ -346,20 +459,26 @@ export class AccountingService {
     direction: TransactionDirection,
     amount: number,
   ): number {
-    const debitNormal = [LedgerAccountType.ASSET, LedgerAccountType.EXPENSE].includes(accountType);
-    const increases = debitNormal
-      ? direction === TransactionDirection.DEBIT
-      : direction === TransactionDirection.CREDIT;
-    return increases ? amount : -amount;
+    const isDebit = direction === TransactionDirection.DEBIT;
+    switch (accountType) {
+      case LedgerAccountType.ASSET:
+      case LedgerAccountType.EXPENSE:
+        return isDebit ? amount : -amount;
+      case LedgerAccountType.LIABILITY:
+      case LedgerAccountType.REVENUE:
+      case LedgerAccountType.EQUITY:
+        return isDebit ? -amount : amount;
+      default:
+        return isDebit ? amount : -amount;
+    }
   }
 
   private enumServiceType(value: unknown): ServiceType | undefined {
-    return typeof value === 'string' && Object.values(ServiceType).includes(value as ServiceType)
-      ? (value as ServiceType)
-      : undefined;
+    if (typeof value !== 'string') return undefined;
+    return Object.values(ServiceType).includes(value as ServiceType) ? (value as ServiceType) : undefined;
   }
 
   private text(value: unknown): string | undefined {
-    return typeof value === 'string' && value.length > 0 ? value : undefined;
+    return typeof value === 'string' ? value : undefined;
   }
 }
