@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron } from '@nestjs/schedule';
@@ -34,6 +35,7 @@ import {
   ManualBooking,
   Payment,
 } from '../database/entities';
+import { WorkerHeartbeatService } from '../infrastructure/worker-heartbeat.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { PaymentsService } from '../payments/payments.service';
 import {
@@ -64,6 +66,7 @@ export class CorporatePayService {
     private readonly organizations: OrganizationsService,
     private readonly payments: PaymentsService,
     private readonly events: EventEmitter2,
+    @Optional() private readonly heartbeat?: WorkerHeartbeatService,
   ) {}
 
   async linkAccount(user: AuthUser, dto: LinkCorporatePayAccountDto) {
@@ -484,6 +487,7 @@ export class CorporatePayService {
         await this.outbox.save(item);
       }
     }
+    await this.heartbeat?.record('CorporatePayService.retryOutbox', 30);
   }
 
   private async sendToProvider(

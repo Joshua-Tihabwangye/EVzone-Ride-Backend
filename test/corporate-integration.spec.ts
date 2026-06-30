@@ -21,6 +21,7 @@ import {
   VehicleType,
 } from '../src/common/enums';
 import { CorporateIntegrationService } from '../src/corporate-integration/corporate-integration.service';
+import { WorkerHeartbeatService } from '../src/infrastructure/worker-heartbeat.service';
 import {
   CorporatePayAccount,
   CorporatePayAuthorization,
@@ -221,6 +222,11 @@ describe('CorporatePay partner API v9 contract', () => {
       {} as TouristService,
       {} as AmbulanceService,
       {} as RentalsService,
+      {
+        record: jest.fn(),
+        getStatus: jest.fn(),
+        getStatuses: jest.fn(),
+      } as unknown as WorkerHeartbeatService,
     );
   }, 60_000);
 

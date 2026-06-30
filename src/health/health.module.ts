@@ -6,6 +6,7 @@ import { KafkaHealthIndicator } from './indicators/kafka.health';
 import { MigrationsHealthIndicator } from './indicators/migrations.health';
 import { RedisHealthIndicator } from './indicators/redis.health';
 import { StorageHealthIndicator } from './indicators/storage.health';
+import { WorkersHealthIndicator } from './indicators/workers.health';
 
 @Module({
   imports: [TerminusModule],
@@ -16,6 +17,7 @@ import { StorageHealthIndicator } from './indicators/storage.health';
     RedisHealthIndicator,
     KafkaHealthIndicator,
     StorageHealthIndicator,
+    WorkersHealthIndicator,
   ],
 })
 export class HealthModule {}

@@ -25,6 +25,7 @@ import { ScheduledDispatchWorker } from './workers/scheduled-dispatch.worker';
 import { DispatchDriverController } from './controllers/dispatch-driver.controller';
 import { DispatchRiderController } from './controllers/dispatch-rider.controller';
 import { DispatchAdminController } from './controllers/dispatch-admin.controller';
+import { HealthModule } from '../health/health.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { DriversModule } from '../drivers/drivers.module';

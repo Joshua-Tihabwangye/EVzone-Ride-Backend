@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
+import { WorkerHeartbeatService } from '../../infrastructure/worker-heartbeat.service';
 import { ProcessRoleService } from '../../infrastructure/process-role.service';
 import { UniversalDispatchOffer, UniversalServiceRequest } from '../domain/universal-dispatch.entities';
 import { UniversalOfferStatus, UniversalRequestStatus } from '../domain/universal-dispatch.enums';
@@ -16,6 +17,7 @@ export class OfferExpiryWorker {
     @InjectRepository(UniversalServiceRequest)
     private readonly requests: Repository<UniversalServiceRequest>,
     private readonly roles: ProcessRoleService,
+    @Optional() private readonly heartbeat?: WorkerHeartbeatService,
   ) {}
 
   @Cron(CronExpression.EVERY_10_SECONDS)
@@ -46,5 +48,6 @@ export class OfferExpiryWorker {
         await this.requests.save(request);
       }
     }
+    await this.heartbeat?.record('OfferExpiryWorker.run', 10);
   }
 }

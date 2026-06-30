@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
+import { WorkerHeartbeatService } from '../../infrastructure/worker-heartbeat.service';
 import { ProcessRoleService } from '../../infrastructure/process-role.service';
 import { UniversalServiceRequest } from '../domain/universal-dispatch.entities';
 import { UniversalRequestStatus } from '../domain/universal-dispatch.enums';
@@ -17,6 +18,7 @@ export class MatchingWorker {
     private readonly requests: Repository<UniversalServiceRequest>,
     private readonly matching: UniversalMatchingService,
     private readonly roles: ProcessRoleService,
+    @Optional() private readonly heartbeat?: WorkerHeartbeatService,
   ) {}
 
   @Cron(CronExpression.EVERY_5_SECONDS)
@@ -49,6 +51,7 @@ export class MatchingWorker {
       }
     } finally {
       this.processing = false;
+      await this.heartbeat?.record('MatchingWorker.run', 5);
     }
   }
 }

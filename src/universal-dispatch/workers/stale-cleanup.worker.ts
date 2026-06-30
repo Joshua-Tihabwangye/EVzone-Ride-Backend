@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { WorkerHeartbeatService } from '../../infrastructure/worker-heartbeat.service';
 import { ProcessRoleService } from '../../infrastructure/process-role.service';
 import { UniversalDispatchUnit } from '../domain/universal-dispatch.entities';
 import { DispatchUnitStatus } from '../domain/universal-dispatch.enums';
@@ -18,6 +19,7 @@ export class StaleCleanupWorker {
     private readonly config: ConfigService,
     private readonly liveState: DispatchLiveStateService,
     private readonly roles: ProcessRoleService,
+    @Optional() private readonly heartbeat?: WorkerHeartbeatService,
   ) {}
 
   @Cron(CronExpression.EVERY_30_SECONDS)
@@ -39,5 +41,6 @@ export class StaleCleanupWorker {
       await this.liveState.removeLiveSnapshot(unit.id, unit.marketId);
       this.logger.log(`Marked stale dispatch unit ${unit.id} offline`);
     }
+    await this.heartbeat?.record('StaleCleanupWorker.run', 30);
   }
 }
