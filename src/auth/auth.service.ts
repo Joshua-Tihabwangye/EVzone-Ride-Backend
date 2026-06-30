@@ -108,7 +108,8 @@ export class AuthService {
       }
     }
 
-    const requestedDriver = requestedRoles.some((role) => role.includes('driver')) || dto.role === UserRole.DRIVER;
+    const requestedDriver =
+      requestedRoles.some((role) => role.includes('driver')) || dto.role === UserRole.DRIVER;
     const role = requestsAdmin
       ? UserRole.ADMIN
       : requestedDriver
@@ -445,7 +446,9 @@ export class AuthService {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
     const [driver, organizations] = await Promise.all([
-      user.role === UserRole.DRIVER ? this.ensureDriverOnboarding(userId) : this.driverProfiles.findOne({ where: { userId } }),
+      user.role === UserRole.DRIVER
+        ? this.ensureDriverOnboarding(userId)
+        : this.driverProfiles.findOne({ where: { userId } }),
       this.organizations.find({ where: { primaryOwnerUserId: userId }, order: { createdAt: 'ASC' } }),
     ]);
     const metadata = user.metadata ?? {};
@@ -518,7 +521,9 @@ export class AuthService {
     const missingItems = DRIVER_ONBOARDING_CHECKLIST.filter((item) => !existingKeys.has(item.key));
     if (missingItems.length) {
       await this.onboardingChecklist.save(
-        missingItems.map((item) => this.onboardingChecklist.create({ applicationId: application.id, ...item })),
+        missingItems.map((item) =>
+          this.onboardingChecklist.create({ applicationId: application.id, ...item }),
+        ),
       );
     }
 
@@ -557,9 +562,13 @@ export class AuthService {
       ? await this.vehicleDocuments.find({ where: { vehicleId: activeVehicle.id } })
       : [];
     const hasUploadedDriverDocument = (type: DocumentType) =>
-      driverDocuments.some((document) => document.type === type && document.status !== DocumentStatus.REJECTED);
+      driverDocuments.some(
+        (document) => document.type === type && document.status !== DocumentStatus.REJECTED,
+      );
     const hasUploadedVehicleDocument = (type: DocumentType) =>
-      vehicleDocuments.some((document) => document.type === type && document.status !== DocumentStatus.REJECTED);
+      vehicleDocuments.some(
+        (document) => document.type === type && document.status !== DocumentStatus.REJECTED,
+      );
 
     const hasSelectedServiceCategories = Boolean(driver.serviceCapabilities?.length);
     const hasProfile = Boolean(user.firstName && user.lastName && (user.email || user.phone));

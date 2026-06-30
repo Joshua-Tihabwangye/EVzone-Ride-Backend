@@ -32,8 +32,12 @@ export class AuthDriverOnboardingSchema1782345600000 implements MigrationInterfa
         "lastLoginAt" timestamptz
       )
     `);
-    await queryRunner.query('CREATE UNIQUE INDEX IF NOT EXISTS "IDX_users_email" ON "users" ("email") WHERE "email" IS NOT NULL');
-    await queryRunner.query('CREATE UNIQUE INDEX IF NOT EXISTS "IDX_users_phone" ON "users" ("phone") WHERE "phone" IS NOT NULL');
+    await queryRunner.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "IDX_users_email" ON "users" ("email") WHERE "email" IS NOT NULL',
+    );
+    await queryRunner.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "IDX_users_phone" ON "users" ("phone") WHERE "phone" IS NOT NULL',
+    );
     await queryRunner.query(
       'CREATE UNIQUE INDEX IF NOT EXISTS "IDX_users_external_subject" ON "users" ("externalSubject") WHERE "externalSubject" IS NOT NULL',
     );
@@ -51,7 +55,9 @@ export class AuthDriverOnboardingSchema1782345600000 implements MigrationInterfa
         "lockedBalance" numeric(16,2) NOT NULL DEFAULT 0
       )
     `);
-    await queryRunner.query('CREATE UNIQUE INDEX IF NOT EXISTS "IDX_wallets_user_currency" ON "wallets" ("userId", "currency")');
+    await queryRunner.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "IDX_wallets_user_currency" ON "wallets" ("userId", "currency")',
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "refresh_tokens" (
@@ -67,8 +73,12 @@ export class AuthDriverOnboardingSchema1782345600000 implements MigrationInterfa
         "ipAddress" varchar
       )
     `);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_refresh_tokens_user" ON "refresh_tokens" ("userId")');
-    await queryRunner.query('CREATE UNIQUE INDEX IF NOT EXISTS "IDX_refresh_tokens_hash" ON "refresh_tokens" ("tokenHash")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_refresh_tokens_user" ON "refresh_tokens" ("userId")',
+    );
+    await queryRunner.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "IDX_refresh_tokens_hash" ON "refresh_tokens" ("tokenHash")',
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "otp_codes" (
@@ -85,7 +95,9 @@ export class AuthDriverOnboardingSchema1782345600000 implements MigrationInterfa
         "attempts" integer NOT NULL DEFAULT 0
       )
     `);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_otp_codes_destination" ON "otp_codes" ("destination")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_otp_codes_destination" ON "otp_codes" ("destination")',
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "password_reset_tokens" (
@@ -100,8 +112,12 @@ export class AuthDriverOnboardingSchema1782345600000 implements MigrationInterfa
         "requestedFromIp" varchar
       )
     `);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_password_reset_tokens_user" ON "password_reset_tokens" ("userId")');
-    await queryRunner.query('CREATE UNIQUE INDEX IF NOT EXISTS "IDX_password_reset_tokens_hash" ON "password_reset_tokens" ("tokenHash")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_password_reset_tokens_user" ON "password_reset_tokens" ("userId")',
+    );
+    await queryRunner.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "IDX_password_reset_tokens_hash" ON "password_reset_tokens" ("tokenHash")',
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "driver_profiles" (
@@ -130,7 +146,9 @@ export class AuthDriverOnboardingSchema1782345600000 implements MigrationInterfa
         "preferences" text
       )
     `);
-    await queryRunner.query('CREATE UNIQUE INDEX IF NOT EXISTS "IDX_driver_profiles_user" ON "driver_profiles" ("userId")');
+    await queryRunner.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "IDX_driver_profiles_user" ON "driver_profiles" ("userId")',
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "driver_documents" (
@@ -150,7 +168,9 @@ export class AuthDriverOnboardingSchema1782345600000 implements MigrationInterfa
         "metadata" text
       )
     `);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_driver_documents_driver" ON "driver_documents" ("driverId")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_driver_documents_driver" ON "driver_documents" ("driverId")',
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "vehicles" (
@@ -180,8 +200,12 @@ export class AuthDriverOnboardingSchema1782345600000 implements MigrationInterfa
       )
     `);
     await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_vehicles_owner" ON "vehicles" ("ownerUserId")');
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_vehicles_driver" ON "vehicles" ("assignedDriverId")');
-    await queryRunner.query('CREATE UNIQUE INDEX IF NOT EXISTS "IDX_vehicles_plate" ON "vehicles" ("plateNumber")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_vehicles_driver" ON "vehicles" ("assignedDriverId")',
+    );
+    await queryRunner.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "IDX_vehicles_plate" ON "vehicles" ("plateNumber")',
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "vehicle_documents" (
@@ -198,7 +222,9 @@ export class AuthDriverOnboardingSchema1782345600000 implements MigrationInterfa
         "rejectionReason" varchar
       )
     `);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_vehicle_documents_vehicle" ON "vehicle_documents" ("vehicleId")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_vehicle_documents_vehicle" ON "vehicle_documents" ("vehicleId")',
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "emergency_contacts" (
@@ -213,7 +239,9 @@ export class AuthDriverOnboardingSchema1782345600000 implements MigrationInterfa
         "isPrimary" boolean NOT NULL DEFAULT false
       )
     `);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_emergency_contacts_user" ON "emergency_contacts" ("userId")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_emergency_contacts_user" ON "emergency_contacts" ("userId")',
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "onboarding_applications" (
@@ -232,7 +260,9 @@ export class AuthDriverOnboardingSchema1782345600000 implements MigrationInterfa
         "reviewNotes" text
       )
     `);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_onboarding_applications_user" ON "onboarding_applications" ("userId")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_onboarding_applications_user" ON "onboarding_applications" ("userId")',
+    );
     await queryRunner.query(
       'CREATE INDEX IF NOT EXISTS "IDX_onboarding_applications_type_status" ON "onboarding_applications" ("applicationType", "status")',
     );
@@ -273,8 +303,12 @@ export class AuthDriverOnboardingSchema1782345600000 implements MigrationInterfa
         "completedAt" timestamptz
       )
     `);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_training_progress_driver" ON "training_progress" ("driverId")');
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_training_progress_module" ON "training_progress" ("moduleId")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_training_progress_driver" ON "training_progress" ("driverId")',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_training_progress_module" ON "training_progress" ("moduleId")',
+    );
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {

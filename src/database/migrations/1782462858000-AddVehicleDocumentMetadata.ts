@@ -6,9 +6,7 @@ export class AddVehicleDocumentMetadata1782462858000 implements MigrationInterfa
   async up(queryRunner: QueryRunner): Promise<void> {
     if (queryRunner.connection.options.type !== 'postgres') return;
 
-    await queryRunner.query(
-      `ALTER TABLE "vehicle_documents" ADD COLUMN IF NOT EXISTS "metadata" jsonb`,
-    );
+    await queryRunner.query(`ALTER TABLE "vehicle_documents" ADD COLUMN IF NOT EXISTS "metadata" jsonb`);
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {

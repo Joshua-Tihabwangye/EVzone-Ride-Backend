@@ -17,11 +17,7 @@ export class AddVehicleBatteryAndRange1782460800000 implements MigrationInterfac
   async down(queryRunner: QueryRunner): Promise<void> {
     if (queryRunner.connection.options.type !== 'postgres') return;
 
-    await queryRunner.query(
-      `ALTER TABLE "vehicles" DROP COLUMN IF EXISTS "batteryCapacityKwh"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "vehicles" DROP COLUMN IF EXISTS "estimatedRangeKm"`,
-    );
+    await queryRunner.query(`ALTER TABLE "vehicles" DROP COLUMN IF EXISTS "batteryCapacityKwh"`);
+    await queryRunner.query(`ALTER TABLE "vehicles" DROP COLUMN IF EXISTS "estimatedRangeKm"`);
   }
 }

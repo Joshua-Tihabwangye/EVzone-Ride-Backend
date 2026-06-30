@@ -14,8 +14,6 @@ export class AddDriverTrainingCompleted1782462859000 implements MigrationInterfa
   async down(queryRunner: QueryRunner): Promise<void> {
     if (queryRunner.connection.options.type !== 'postgres') return;
 
-    await queryRunner.query(
-      `ALTER TABLE "driver_profiles" DROP COLUMN IF EXISTS "trainingCompleted"`,
-    );
+    await queryRunner.query(`ALTER TABLE "driver_profiles" DROP COLUMN IF EXISTS "trainingCompleted"`);
   }
 }
