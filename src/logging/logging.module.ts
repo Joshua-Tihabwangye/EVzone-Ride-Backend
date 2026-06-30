@@ -42,7 +42,12 @@ import { AppLogger } from './logger.service';
             autoLogging: {
               ignore: (req) => {
                 const url = req.url ?? '';
-                return url.startsWith('/api/v1/health') || url.startsWith('/docs') || url === '/';
+                return (
+                  url.startsWith('/api/v1/health') ||
+                  url.startsWith('/api/v1/ready') ||
+                  url.startsWith('/docs') ||
+                  url === '/'
+                );
               },
             },
             transport: pretty
