@@ -1,9 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
 import { Repository } from 'typeorm';
 import { AccountingService } from '../accounting/accounting.service';
-import { PaymentStatus, TransactionDirection, WalletTransactionType } from '../common/enums';
+import { PaymentStatus, PayoutStatus, TransactionDirection, WalletTransactionType } from '../common/enums';
 import { Payout, User, Wallet, WalletTransaction } from '../database/entities';
 
 @Injectable()
@@ -85,21 +85,125 @@ export class WalletsService {
     };
   }
 
-  async withdraw(userId: string, amount: number, destination: string) {
-    const reference = `PAYOUT-${randomUUID()}`;
-    await this.debit(userId, amount, WalletTransactionType.PAYOUT, reference, 'Driver payout');
-    const payout = await this.payouts.save(
-      this.payouts.create({
-        driverId: userId,
+  async reserveCashout(
+    userId: string,
+    amount: number,
+    reference: string,
+    description = 'Cashout reserve',
+    metadata?: Record<string, unknown>,
+  ) {
+    if (amount <= 0) throw new BadRequestException('Amount must be greater than zero');
+    const wallet = await this.ensureWallet(userId);
+    const existing = await this.transactions.findOne({
+      where: { walletId: wallet.id, reference, direction: TransactionDirection.DEBIT },
+    });
+    if (existing) return { wallet, transaction: existing };
+
+    if (Number(wallet.availableBalance) < amount)
+      throw new BadRequestException('Insufficient wallet balance');
+
+    wallet.availableBalance = Number(wallet.availableBalance) - amount;
+    wallet.reservedForCashout = Number(wallet.reservedForCashout) + amount;
+    await this.saveWallet(wallet);
+
+    const transaction = await this.transactions.save(
+      this.transactions.create({
+        walletId: wallet.id,
+        type: WalletTransactionType.CASHOUT_RESERVE,
+        direction: TransactionDirection.DEBIT,
         amount,
-        currency: 'UGX',
-        status: PaymentStatus.PAID,
-        destination,
+        balanceAfter: wallet.availableBalance,
         reference,
-        metadata: { provider: 'EVZONE_LOCAL', settledAt: new Date().toISOString() },
+        status: PaymentStatus.PAID,
+        description,
+        metadata,
       }),
     );
-    return payout;
+    return { wallet, transaction };
+  }
+
+  async releaseCashout(
+    userId: string,
+    amount: number,
+    reference: string,
+    description = 'Cashout release',
+    metadata?: Record<string, unknown>,
+  ) {
+    if (amount <= 0) throw new BadRequestException('Amount must be greater than zero');
+    const wallet = await this.ensureWallet(userId);
+    const existing = await this.transactions.findOne({
+      where: { walletId: wallet.id, reference, direction: TransactionDirection.CREDIT },
+    });
+    if (existing) return { wallet, transaction: existing };
+
+    if (Number(wallet.reservedForCashout) < amount)
+      throw new BadRequestException('Reserved balance is less than release amount');
+
+    wallet.availableBalance = Number(wallet.availableBalance) + amount;
+    wallet.reservedForCashout = Number(wallet.reservedForCashout) - amount;
+    await this.saveWallet(wallet);
+
+    const transaction = await this.transactions.save(
+      this.transactions.create({
+        walletId: wallet.id,
+        type: WalletTransactionType.CASHOUT_RELEASE,
+        direction: TransactionDirection.CREDIT,
+        amount,
+        balanceAfter: wallet.availableBalance,
+        reference,
+        status: PaymentStatus.PAID,
+        description,
+        metadata,
+      }),
+    );
+    return { wallet, transaction };
+  }
+
+  async debitReserved(
+    userId: string,
+    amount: number,
+    reference: string,
+    description = 'Driver payout',
+    metadata?: Record<string, unknown>,
+  ) {
+    if (amount <= 0) throw new BadRequestException('Amount must be greater than zero');
+    const wallet = await this.ensureWallet(userId);
+    const existing = await this.transactions.findOne({
+      where: { walletId: wallet.id, reference, direction: TransactionDirection.DEBIT },
+    });
+    if (existing) return { wallet, transaction: existing };
+
+    if (Number(wallet.reservedForCashout) < amount)
+      throw new BadRequestException('Reserved balance is insufficient for payout');
+
+    wallet.reservedForCashout = Number(wallet.reservedForCashout) - amount;
+    await this.saveWallet(wallet);
+
+    const transaction = await this.transactions.save(
+      this.transactions.create({
+        walletId: wallet.id,
+        type: WalletTransactionType.PAYOUT,
+        direction: TransactionDirection.DEBIT,
+        amount,
+        balanceAfter: wallet.availableBalance,
+        reference,
+        status: PaymentStatus.PAID,
+        description,
+        metadata,
+      }),
+    );
+
+    await this.accounting.postWalletMovement({
+      userId,
+      amount,
+      direction: TransactionDirection.DEBIT,
+      type: WalletTransactionType.PAYOUT,
+      reference,
+      currency: wallet.currency,
+      description,
+      metadata,
+    });
+    return { wallet, transaction };
   }
 
   async credit(
@@ -188,10 +292,46 @@ export class WalletsService {
     return { wallet, transaction };
   }
 
+  async withdraw(userId: string, amount: number, destination: string) {
+    const reference = `PAYOUT-${randomUUID()}`;
+    const wallet = await this.ensureWallet(userId);
+    if (Number(wallet.availableBalance) - Number(wallet.reservedForCashout) < amount) {
+      throw new BadRequestException('Insufficient available balance');
+    }
+    await this.debit(userId, amount, WalletTransactionType.PAYOUT, reference, 'Manual wallet withdrawal');
+    const payout = await this.payouts.save(
+      this.payouts.create({
+        driverId: userId,
+        amount,
+        currency: 'UGX',
+        status: PayoutStatus.PENDING,
+        destination,
+        reference,
+        idempotencyKey: reference,
+        provider: 'MANUAL',
+        metadata: { source: 'WALLET_WITHDRAW' },
+      }),
+    );
+    return payout;
+  }
+
   private async ensureWallet(userId: string): Promise<Wallet> {
     let wallet = await this.wallets.findOne({ where: { userId } });
     if (!wallet)
-      wallet = await this.wallets.save(this.wallets.create({ userId, currency: 'UGX', availableBalance: 0 }));
+      wallet = await this.wallets.save(
+        this.wallets.create({ userId, currency: 'UGX', availableBalance: 0, reservedForCashout: 0 }),
+      );
     return wallet;
+  }
+
+  private async saveWallet(wallet: Wallet): Promise<Wallet> {
+    try {
+      return await this.wallets.save(wallet);
+    } catch (error) {
+      if ((error as { name?: string })?.name === 'OptimisticLockVersionMismatchError') {
+        throw new ConflictException('Wallet was modified concurrently');
+      }
+      throw error;
+    }
   }
 }
