@@ -593,9 +593,16 @@ export enum CorporatePayEvidenceType {
 export enum ReconciliationStatus {
   OPEN = 'OPEN',
   MATCHED = 'MATCHED',
-  MISMATCHED = 'MISMATCHED',
+  VARIANCE = 'VARIANCE',
   RESOLVED = 'RESOLVED',
   IGNORED = 'IGNORED',
+}
+
+export enum ReconciliationRunStatus {
+  OPEN = 'OPEN',
+  RUNNING = 'RUNNING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
 }
 
 export enum WebhookEventStatus {

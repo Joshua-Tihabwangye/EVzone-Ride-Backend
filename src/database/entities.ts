@@ -77,6 +77,8 @@ import {
   TripPauseStatus,
 } from '../common/enums';
 import { numberTransformer } from '../common/utils/money';
+import { ReconciliationRecord } from '../reconciliation/entities/reconciliation-record.entity';
+import { ReconciliationRun } from '../reconciliation/entities/reconciliation-run.entity';
 import { UNIVERSAL_DISPATCH_ENTITIES } from '../universal-dispatch/domain/universal-dispatch.entities';
 
 export abstract class BaseEntity {
@@ -5180,6 +5182,8 @@ export const ENTITIES = [
   JournalTransaction,
   LedgerEntry,
   EarningsLedger,
+  ReconciliationRun,
+  ReconciliationRecord,
   TripPauseRequest,
   UserPlace,
   RentalBranch,

@@ -351,7 +351,7 @@ export class CorporatePayService {
         expectedAmount: transaction.amount,
         settledAmount: dto.settledAmount,
         variance,
-        status: variance === 0 ? ReconciliationStatus.MATCHED : ReconciliationStatus.MISMATCHED,
+        status: variance === 0 ? ReconciliationStatus.MATCHED : ReconciliationStatus.VARIANCE,
         statementDate: dto.statementDate ? new Date(dto.statementDate) : new Date(),
         metadata: dto.metadata,
       }),
