@@ -11,20 +11,23 @@ export class MockPaymentProvider implements PaymentProviderAdapter {
   readonly name = 'MOCK';
 
   async verify(input: PaymentVerificationInput): Promise<PaymentVerificationResult> {
+    const production = process.env.NODE_ENV === 'production';
     const amountCode = String(Math.abs(Math.floor(input.expectedAmount)) % 10_000).padStart(4, '0');
     const acceptedTokens = new Set(['0000', amountCode, 'EVZONE-DEMO-SUCCESS']);
     const developmentAutoApprove =
-      process.env.NODE_ENV !== 'production' &&
-      (process.env.MOCK_PAYMENT_AUTO_APPROVE ?? 'true').toLowerCase() === 'true';
+      !production && (process.env.MOCK_PAYMENT_AUTO_APPROVE ?? 'true').toLowerCase() === 'true';
     const approved =
-      developmentAutoApprove || Boolean(input.providerToken && acceptedTokens.has(input.providerToken));
+      !production &&
+      (developmentAutoApprove || Boolean(input.providerToken && acceptedTokens.has(input.providerToken)));
     return {
       approved,
       providerReference: approved ? `MOCK-${randomUUID()}` : undefined,
       status: approved ? 'succeeded' : 'failed',
       reason: approved
         ? undefined
-        : 'Mock verification failed. Use 0000, EVZONE-DEMO-SUCCESS, or the amount-derived four-digit code.',
+        : production
+          ? 'Mock payment provider is not allowed in production.'
+          : 'Mock verification failed. Use 0000, EVZONE-DEMO-SUCCESS, or the amount-derived four-digit code.',
       response: {
         expectedReference: input.expectedReference,
         expectedAmount: input.expectedAmount,
@@ -35,12 +38,14 @@ export class MockPaymentProvider implements PaymentProviderAdapter {
   }
 
   status() {
+    const production = process.env.NODE_ENV === 'production';
     return {
       provider: this.name,
       configured: true,
-      autoApprove:
-        process.env.NODE_ENV !== 'production' &&
-        (process.env.MOCK_PAYMENT_AUTO_APPROVE ?? 'true').toLowerCase() === 'true',
+      connected: false,
+      fallback: 'MOCK',
+      autoApprove: !production && (process.env.MOCK_PAYMENT_AUTO_APPROVE ?? 'true').toLowerCase() === 'true',
+      productionReady: !production,
     };
   }
 }

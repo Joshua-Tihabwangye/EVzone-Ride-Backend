@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
 import { Repository } from 'typeorm';
@@ -14,6 +15,7 @@ export class WalletsService {
     @InjectRepository(Payout) private readonly payouts: Repository<Payout>,
     @InjectRepository(User) private readonly users: Repository<User>,
     private readonly accounting: AccountingService,
+    private readonly events: EventEmitter2,
   ) {}
 
   async get(userId: string) {
@@ -32,8 +34,8 @@ export class WalletsService {
   }
 
   async topUp(userId: string, amount: number, providerToken?: string) {
-    if (process.env.NODE_ENV === 'production' && providerToken !== 'EVZONE-DEMO-SUCCESS') {
-      throw new BadRequestException('A valid payment provider token is required');
+    if (process.env.NODE_ENV === 'production') {
+      throw new BadRequestException('Wallet top-up must use a configured payment provider in production');
     }
     return this.credit(
       userId,
@@ -86,6 +88,9 @@ export class WalletsService {
   }
 
   async withdraw(userId: string, amount: number, destination: string) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new BadRequestException('Direct wallet withdrawal is disabled in production; use cashout review');
+    }
     const reference = `PAYOUT-${randomUUID()}`;
     await this.debit(userId, amount, WalletTransactionType.PAYOUT, reference, 'Driver payout');
     const payout = await this.payouts.save(
@@ -141,6 +146,13 @@ export class WalletsService {
       description,
       metadata,
     });
+    this.events.emit('domain.event', {
+      eventType: 'wallet.credited',
+      aggregateType: 'Wallet',
+      aggregateId: wallet.id,
+      eventKey: reference,
+      payload: { userId, walletId: wallet.id, transactionId: transaction.id, amount, type, reference },
+    });
     return { wallet, transaction };
   }
 
@@ -184,6 +196,13 @@ export class WalletsService {
       currency: wallet.currency,
       description,
       metadata,
+    });
+    this.events.emit('domain.event', {
+      eventType: 'wallet.debited',
+      aggregateType: 'Wallet',
+      aggregateId: wallet.id,
+      eventKey: reference,
+      payload: { userId, walletId: wallet.id, transactionId: transaction.id, amount, type, reference },
     });
     return { wallet, transaction };
   }

@@ -99,10 +99,20 @@ export class FilesService {
   }
 
   status() {
+    const scanProvider = (this.config.get<string>('FILE_SCAN_PROVIDER') ?? 'NONE').trim().toUpperCase();
+    const scanningConfigured = ['CLAMAV', 'WEBHOOK', 'VENDOR'].includes(scanProvider);
     return {
       primaryProvider: this.cloudinaryEnabled ? 'CLOUDINARY' : 'LOCAL',
+      configured: this.cloudinaryEnabled,
+      connected: this.cloudinaryEnabled,
+      fallback: this.cloudinaryEnabled ? null : 'LOCAL',
       cloudinaryConfigured: this.cloudinaryEnabled,
       localFallbackPath: this.storagePath,
+      scanProvider,
+      scanningConfigured,
+      productionReady:
+        this.config.get<string>('NODE_ENV') !== 'production' ||
+        (this.cloudinaryEnabled && scanningConfigured),
       maxFileSizeBytes: Number(this.config.get<string>('MAX_FILE_SIZE_BYTES') ?? 15 * 1024 * 1024),
     };
   }

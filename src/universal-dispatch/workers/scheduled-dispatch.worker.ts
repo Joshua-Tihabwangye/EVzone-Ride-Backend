@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
+import { ProcessRoleService } from '../../infrastructure/process-role.service';
 import { UniversalServiceRequest } from '../domain/universal-dispatch.entities';
 import { UniversalRequestStatus, UniversalScheduleType } from '../domain/universal-dispatch.enums';
 import { UniversalMatchingService } from '../application/universal-matching.service';
@@ -14,10 +15,12 @@ export class ScheduledDispatchWorker {
     @InjectRepository(UniversalServiceRequest)
     private readonly requests: Repository<UniversalServiceRequest>,
     private readonly matching: UniversalMatchingService,
+    private readonly roles: ProcessRoleService,
   ) {}
 
   @Cron(CronExpression.EVERY_MINUTE)
   async run(): Promise<void> {
+    if (!this.roles.runsWorkers()) return;
     const now = new Date();
     const ready = await this.requests.find({
       where: {

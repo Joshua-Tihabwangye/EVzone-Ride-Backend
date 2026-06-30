@@ -10,6 +10,7 @@ import {
   Ride,
   VehicleDocument,
 } from '../database/entities';
+import { ProcessRoleService } from '../infrastructure/process-role.service';
 
 export interface WatchdogResult {
   staleDriversOffline: number;
@@ -33,10 +34,15 @@ export class OperationsWatchdogService implements OnModuleInit, OnModuleDestroy 
     @InjectRepository(DriverDocument) private readonly driverDocuments: Repository<DriverDocument>,
     @InjectRepository(VehicleDocument) private readonly vehicleDocuments: Repository<VehicleDocument>,
     @InjectRepository(OperationalAlert) private readonly alerts: Repository<OperationalAlert>,
+    private readonly roles: ProcessRoleService,
   ) {}
 
   onModuleInit(): void {
     if ((process.env.OPERATIONS_WATCHDOG_ENABLED ?? 'true').toLowerCase() === 'false') return;
+    if (!this.roles.runsWorkers()) {
+      this.logger.log('Operations watchdog disabled for this process role');
+      return;
+    }
     const interval = Number(process.env.OPERATIONS_WATCHDOG_INTERVAL_MS ?? 30_000);
     this.timer = setInterval(() => void this.run().catch((error) => this.logger.error(error)), interval);
     this.timer.unref();
@@ -51,6 +57,7 @@ export class OperationsWatchdogService implements OnModuleInit, OnModuleDestroy 
       enabled: (process.env.OPERATIONS_WATCHDOG_ENABLED ?? 'true').toLowerCase() !== 'false',
       running: this.running,
       intervalMs: Number(process.env.OPERATIONS_WATCHDOG_INTERVAL_MS ?? 30_000),
+      process: this.roles.status(),
       lastResult: this.lastResult,
     };
   }

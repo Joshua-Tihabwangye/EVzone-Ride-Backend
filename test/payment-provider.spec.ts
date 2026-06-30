@@ -35,7 +35,7 @@ describe('mock payment provider', () => {
     expect(result.status).toBe('failed');
   });
 
-  it('accepts the deterministic amount code in production sandbox mode', async () => {
+  it('rejects deterministic demo codes in production', async () => {
     process.env.NODE_ENV = 'production';
     process.env.MOCK_PAYMENT_AUTO_APPROVE = 'false';
     const result = await new MockPaymentProvider().verify({
@@ -44,6 +44,7 @@ describe('mock payment provider', () => {
       expectedCurrency: 'UGX',
       expectedReference: 'PAY-AMOUNT-CODE',
     });
-    expect(result.approved).toBe(true);
+    expect(result.approved).toBe(false);
+    expect(result.reason).toContain('not allowed in production');
   });
 });

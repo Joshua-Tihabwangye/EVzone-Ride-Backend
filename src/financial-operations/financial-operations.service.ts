@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { encryptSecret } from '../common/utils/crypto-vault';
@@ -21,6 +22,7 @@ export class FinancialOperationsService {
     @InjectRepository(DriverProfile)
     private readonly drivers: Repository<DriverProfile>,
     private readonly wallets: WalletsService,
+    private readonly events: EventEmitter2,
   ) {}
 
   listMethods(userId: string) {
@@ -94,6 +96,19 @@ export class FinancialOperationsService {
         metadata: dto.metadata,
       }),
     );
+    this.events.emit('domain.event', {
+      eventType: 'cashout.requested',
+      aggregateType: 'CashoutRequest',
+      aggregateId: record.id,
+      eventKey: record.userId,
+      payload: {
+        cashoutId: record.id,
+        userId: record.userId,
+        driverId: record.driverId,
+        amount: record.amount,
+        status: record.status,
+      },
+    });
     if ((process.env.CASHOUT_AUTO_APPROVE ?? '').toLowerCase() === 'true') {
       return this.reviewCashout(record.id, 'SYSTEM', { status: 'APPROVED' });
     }
@@ -134,6 +149,17 @@ export class FinancialOperationsService {
     }
 
     const destination = this.destination(record.method);
+    const payoutProvider = (process.env.CASHOUT_PAYOUT_PROVIDER ?? 'LOCAL').toUpperCase();
+    if (process.env.NODE_ENV === 'production' && payoutProvider === 'LOCAL') {
+      record.status = 'APPROVED';
+      record.metadata = {
+        ...(record.metadata ?? {}),
+        payoutProvider,
+        payoutBlocked: 'Real payout provider is required in production',
+      };
+      await this.cashouts.save(record);
+      throw new BadRequestException('A real cashout payout provider is required in production');
+    }
     try {
       const payout = await this.wallets.withdraw(record.userId, Number(record.amount), destination);
       record.status = 'PAID';

@@ -7,6 +7,7 @@ import { Kafka, Producer } from 'kafkajs';
 import { In, LessThanOrEqual, Repository } from 'typeorm';
 import { DomainEventStatus } from '../common/enums';
 import { DomainEventRecord } from '../database/entities';
+import { ProcessRoleService } from './process-role.service';
 
 export interface DomainEventInput {
   eventId?: string;
@@ -31,10 +32,15 @@ export class DomainEventsService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @InjectRepository(DomainEventRecord) private readonly records: Repository<DomainEventRecord>,
     private readonly config: ConfigService,
+    private readonly roles: ProcessRoleService,
   ) {}
 
   async onModuleInit(): Promise<void> {
     await this.connectKafka();
+    if (!this.roles.runsWorkers()) {
+      this.logger.log('Domain-event flush timer disabled for this process role');
+      return;
+    }
     const interval = Number(this.config.get<string>('DOMAIN_EVENT_FLUSH_INTERVAL_MS') ?? 10_000);
     this.timer = setInterval(() => void this.flush(), Math.max(1000, interval));
     this.timer.unref();
@@ -123,6 +129,8 @@ export class DomainEventsService implements OnModuleInit, OnModuleDestroy {
       brokers: this.brokers().map((broker) => broker.replace(/^[^@]+@/, '***@')),
       clientId: this.config.get<string>('KAFKA_CLIENT_ID') ?? 'evzone-ride',
       fallback: this.kafkaConnected ? null : 'DURABLE_OUTBOX_AND_CONSOLE',
+      productionReady:
+        this.config.get<string>('NODE_ENV') !== 'production' || (this.kafkaEnabled() && this.kafkaConnected),
     };
   }
 
