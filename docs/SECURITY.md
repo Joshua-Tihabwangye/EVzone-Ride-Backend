@@ -22,6 +22,33 @@
 - Remote integration calls have request timeouts and use an outbox for retry rather than silently losing events.
 - Rotate `INTEGRATION_ENCRYPTION_KEY`, webhook secrets and API credentials before production deployment.
 
+## Secret rotation and scanning
+
+Before any production or staging deployment, rotate every secret that was previously present in the repository or local configuration files:
+
+| Secret / Credential | Where to rotate | Notes |
+|---------------------|-----------------|-------|
+| `JWT_SECRET` | Generate a cryptographically random string (≥ 32 characters) and set via the deployment secret manager. | Used to sign JWT access tokens. |
+| `INTEGRATION_ENCRYPTION_KEY` | Generate a fresh 256-bit key and set via the deployment secret manager. | Used to encrypt stored integration credentials; re-encryption of existing records is required after rotation. |
+| `CORPORATEPAY_WEBHOOK_SECRET` | Rotate in the CorporatePay partner dashboard. | Used to verify inbound webhook signatures. |
+| `CORPORATEPAY_SIGNING_SECRET` | Rotate in the CorporatePay partner dashboard. | Used to sign outbound CorporatePay requests. |
+| `CORPORATEPAY_PARTNER_SHARED_SECRET` | Rotate in the CorporatePay partner dashboard. | Used for server-to-server request signatures. |
+| `CORPORATEPAY_PARTNER_API_KEY` | Re-issue in the CorporatePay partner dashboard. | Used for partner API authentication. |
+| `SCHOOL_WEBHOOK_SECRET` | Generate a fresh secret for each school fleet connection. | Used to verify inbound school sync webhooks. |
+| Cloudinary `API_KEY` / `API_SECRET` | Rotate in the Cloudinary console. | Only needed when `CLOUDINARY_DISABLED=false`. |
+| `FLUTTERWAVE_SECRET_KEY` / webhook secret | Rotate in the Flutterwave dashboard. | Only needed when `PAYMENT_PROVIDER=FLUTTERWAVE`. |
+| Postgres credentials | Rotate in the database and update `DATABASE_URL`. | Use TLS and a least-privilege user. |
+
+Local development fallbacks are centralized in `src/common/utils/required-secret.util.ts` and are intentionally weak. They must never be used outside `development` or `test` environments.
+
+Run secret scanning before pushing:
+
+```bash
+npm run security:secrets
+```
+
+This requires [gitleaks](https://github.com/gitleaks/gitleaks) to be installed. The configuration is in `.gitleaks.toml`.
+
 ## Version 3 controls
 
 - Every response includes a correlation ID. A caller-supplied `X-Request-Id` is bounded before propagation.

@@ -18,6 +18,7 @@
     "contract:check": "node scripts/check-openapi-contract.mjs",
     "openapi:export": "node scripts/export-openapi.mjs",
     "openapi:diff": "node scripts/diff-openapi.mjs",
+    "security:secrets": "node scripts/secret-scan.mjs",
     "typeorm": "typeorm-ts-node-commonjs",
     "db:schema:drop": "npm run typeorm -- schema:drop -d src/database/data-source.ts",
     "db:migration:generate": "npm run typeorm -- migration:generate src/database/migrations/AutoMigration -d src/database/data-source.ts",
