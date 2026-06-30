@@ -42,5 +42,5 @@ export function parseCorsOrigins(
     }
   }
 
-  return origins.length === 1 ? origins[0] : origins;
+  return origins;
 }

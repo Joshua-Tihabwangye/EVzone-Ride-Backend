@@ -36,6 +36,7 @@
     "smoke:corporatepay": "node scripts/corporatepay-partner-smoke-test.mjs",
     "smoke:corporatepay:school": "node scripts/corporatepay-school-shuttle-smoke-test.mjs",
     "smoke:dispatch": "node scripts/universal-dispatch-smoke-test.mjs",
+    "smoke:cors": "node scripts/smoke-cors.mjs",
     "test:dispatch": "jest --runInBand src/universal-dispatch"
   },
   "dependencies": {

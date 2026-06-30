@@ -62,12 +62,12 @@ export const validationSchema = Joi.object({
     }
 
     if ((value.CORS_ORIGINS ?? '').trim() === '*') {
-      return helpers.error('cors.wildcard', { label: 'CORS_ORIGINS' });
+      return helpers.error('cors.wildcard', { origin: 'CORS_ORIGINS' });
     }
 
     const socketOrigins = (value.SOCKET_CORS_ORIGINS ?? value.CORS_ORIGINS ?? '').trim();
     if (socketOrigins === '*') {
-      return helpers.error('cors.wildcard', { label: 'SOCKET_CORS_ORIGINS' });
+      return helpers.error('cors.wildcard', { origin: 'SOCKET_CORS_ORIGINS' });
     }
 
     if (isTruthy(value.DB_SYNCHRONIZE)) {
@@ -81,7 +81,7 @@ export const validationSchema = Joi.object({
     return value;
   })
   .messages({
-    'cors.wildcard': '{#label} cannot be wildcard (*) in staging/production',
+    'cors.wildcard': '{#origin} cannot be wildcard (*) in staging/production',
     'db.sync': 'DB_SYNCHRONIZE must be false in staging/production',
     'db.migrations': 'DB_MIGRATIONS_RUN must be true in staging/production',
   });
