@@ -46,11 +46,12 @@ services:
       SOCKET_CORS_ORIGINS: '*'
       DB_TYPE: postgres
       DATABASE_URL: postgresql://evzone:evzone-group@postgres:5432/evzone
-      DB_SYNCHRONIZE: 'true'
+      DB_SYNCHRONIZE: 'false'
       DB_MIGRATIONS_RUN: 'true'
       DB_LOGGING: 'false'
       DB_POOL_SIZE: 20
-      POSTGIS_AUTO_SETUP: 'true'
+      DB_POOL_MIN: 2
+      DB_CONNECTION_TIMEOUT_MS: 30000
       SEED_DEMO: 'true'
       JWT_SECRET: evzone-docker-access-secret-2026
       JWT_ACCESS_TTL: 15m
@@ -65,10 +66,10 @@ services:
       STORAGE_PATH: /app/storage
       PUBLIC_BASE_URL: http://localhost:3001
       MAX_FILE_SIZE_BYTES: 15728640
-      CLOUDINARY_DISABLED: '${CLOUDINARY_DISABLED:-false}'
-      CLOUDINARY_CLOUD_NAME: '${evzone}'
-      CLOUDINARY_API_KEY: '${581822896554343}'
-      CLOUDINARY_API_SECRET: '${_QiFeVKTKwI1Ogt-l1rulQcbtqw}'
+      CLOUDINARY_DISABLED: 'true'
+      CLOUDINARY_CLOUD_NAME: '${CLOUDINARY_CLOUD_NAME:-}'
+      CLOUDINARY_API_KEY: '${CLOUDINARY_API_KEY:-}'
+      CLOUDINARY_API_SECRET: '${CLOUDINARY_API_SECRET:-}'
       REDIS_URL: redis://redis:6379
       REDIS_DISABLED: 'false'
       REDIS_SOCKET_ADAPTER_ENABLED: 'true'

@@ -8,7 +8,12 @@ function run(command, args, env = {}) {
   return spawnSync(command, args, {
     stdio: 'inherit',
     shell: process.platform === 'win32',
-    env: { ...process.env, ...env },
+    env: {
+      ...process.env,
+      DATABASE_URL:
+        process.env.DATABASE_URL ?? 'postgresql://evzone:evzone@localhost:5432/evzone',
+      ...env,
+    },
   });
 }
 

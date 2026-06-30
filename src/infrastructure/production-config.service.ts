@@ -90,6 +90,11 @@ export class ProductionConfigService implements OnModuleInit {
         this.value('DB_TYPE', 'postgres').toLowerCase() === 'postgres',
         'DB_TYPE must be postgres',
       ),
+      this.check(
+        'db.databaseUrl',
+        Boolean(this.value('DATABASE_URL')) && !this.value('DATABASE_URL').includes('localhost'),
+        'DATABASE_URL must be set and point to a real PostgreSQL host',
+      ),
       this.check('db.noSync', !this.truthy('DB_SYNCHRONIZE'), 'DB_SYNCHRONIZE must be false'),
       this.check('db.migrations', this.truthy('DB_MIGRATIONS_RUN', true), 'DB_MIGRATIONS_RUN must be true'),
       this.check('seed.disabled', !this.truthy('SEED_DEMO'), 'SEED_DEMO must be false'),

@@ -31,6 +31,7 @@ const safeProductionEnv = {
   CORS_ORIGINS: 'https://app.evzone.example',
   SOCKET_CORS_ORIGINS: 'https://app.evzone.example',
   DB_TYPE: 'postgres',
+  DATABASE_URL: 'postgresql://evzone:strong-password@postgres:5432/evzone',
   DB_SYNCHRONIZE: 'false',
   DB_MIGRATIONS_RUN: 'true',
   SEED_DEMO: 'false',
