@@ -1,4 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
+import { ServiceZone } from '../../database/entities';
 import { DispatchReasonCode, DispatchUnitStatus } from '../domain/universal-dispatch.enums';
 import {
   DispatchPolicyConfig,
@@ -6,30 +9,43 @@ import {
   EligibilityResult,
 } from '../domain/universal-dispatch.types';
 import { UniversalServiceRequest } from '../domain/universal-dispatch.entities';
-import { haversineDistanceKm } from '../domain/universal-dispatch.utils';
+import { haversineDistanceKm, isPointInPolygon } from '../domain/universal-dispatch.utils';
 
 interface EvaluationContext {
   request: UniversalServiceRequest;
   policy: DispatchPolicyConfig;
   now: Date;
   excludedDriverIds?: Set<string>;
+  zones: ServiceZone[];
 }
 
 @Injectable()
 export class EligibilityEngineService {
-  evaluate(
+  constructor(
+    @InjectRepository(ServiceZone)
+    private readonly zones: Repository<ServiceZone>,
+  ) {}
+
+  async evaluate(
     request: UniversalServiceRequest,
     unit: { id: string; snapshot?: DispatchUnitSnapshot },
     policy: DispatchPolicyConfig,
     now = new Date(),
     excludedDriverIds?: Set<string>,
-  ): EligibilityResult {
+  ): Promise<EligibilityResult> {
     const snapshot = unit.snapshot;
     if (!snapshot) {
       return { eligible: false, reasonCodes: [DispatchReasonCode.DRIVER_INACTIVE], facts: {} };
     }
 
-    const ctx: EvaluationContext = { request, policy, now, excludedDriverIds };
+    const zones =
+      policy.operatingZoneIds && policy.operatingZoneIds.length > 0
+        ? await this.zones.find({
+            where: { id: In(policy.operatingZoneIds), active: true },
+          })
+        : [];
+
+    const ctx: EvaluationContext = { request, policy, now, excludedDriverIds, zones };
     const checks: Array<() => EligibilityResult | null> = [
       () => this.checkDriverActive(ctx, snapshot),
       () => this.checkDriverVerified(ctx, snapshot),
@@ -42,6 +58,7 @@ export class EligibilityEngineService {
       () => this.checkLiveState(ctx, snapshot),
       () => this.checkScheduleConflict(ctx, snapshot),
       () => this.checkEnergy(ctx, snapshot),
+      () => this.checkOperatingZone(ctx, snapshot),
       () => this.checkRiderDriverExclusion(ctx, snapshot),
     ];
 
@@ -338,6 +355,37 @@ export class EligibilityEngineService {
         eligible: false,
         reasonCodes: [DispatchReasonCode.EV_RANGE_INSUFFICIENT],
         facts: { usableRangeKm, requiredRangeKm: requiredRange },
+      };
+    }
+    return null;
+  }
+
+  private checkOperatingZone(
+    ctx: EvaluationContext,
+    snapshot: DispatchUnitSnapshot,
+  ): EligibilityResult | null {
+    if (ctx.zones.length === 0) return null;
+
+    const latitude = snapshot.liveState?.latitude;
+    const longitude = snapshot.liveState?.longitude;
+    if (latitude == null || longitude == null) {
+      return {
+        eligible: false,
+        reasonCodes: [DispatchReasonCode.OPERATING_ZONE_RESTRICTED],
+        facts: { operatingZoneIds: ctx.policy.operatingZoneIds },
+      };
+    }
+
+    const inside = ctx.zones.some((zone) => isPointInPolygon({ latitude, longitude }, zone.polygon));
+    if (!inside) {
+      return {
+        eligible: false,
+        reasonCodes: [DispatchReasonCode.OPERATING_ZONE_RESTRICTED],
+        facts: {
+          operatingZoneIds: ctx.policy.operatingZoneIds,
+          latitude,
+          longitude,
+        },
       };
     }
     return null;

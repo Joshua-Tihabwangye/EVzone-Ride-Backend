@@ -123,12 +123,15 @@ describe('EligibilityEngineService', () => {
     passengerCount: 1,
   };
 
+  const createMockZones = () =>
+    ({ find: jest.fn().mockResolvedValue([]) }) as unknown as ReturnType<typeof jest.fn<unknown, unknown[]>>;
+
   beforeEach(() => {
-    service = new EligibilityEngineService();
+    service = new EligibilityEngineService(createMockZones() as never);
   });
 
-  it('accepts a fully eligible unit', () => {
-    const result = service.evaluate(
+  it('accepts a fully eligible unit', async () => {
+    const result = await service.evaluate(
       baseRequest as UniversalServiceRequest,
       { id: 'du_1', snapshot: baseSnapshot },
       basePolicy,
@@ -137,12 +140,12 @@ describe('EligibilityEngineService', () => {
     expect(result.reasonCodes).toHaveLength(0);
   });
 
-  it('rejects unverified driver', () => {
+  it('rejects unverified driver', async () => {
     const snapshot = {
       ...baseSnapshot,
       compliance: { ...baseSnapshot.compliance, driverVerified: false },
     };
-    const result = service.evaluate(
+    const result = await service.evaluate(
       baseRequest as UniversalServiceRequest,
       { id: 'du_1', snapshot },
       basePolicy,
@@ -151,12 +154,12 @@ describe('EligibilityEngineService', () => {
     expect(result.reasonCodes).toContain(DispatchReasonCode.DRIVER_UNVERIFIED);
   });
 
-  it('rejects vehicle class not allowed', () => {
+  it('rejects vehicle class not allowed', async () => {
     const snapshot = {
       ...baseSnapshot,
       vehicle: { ...baseSnapshot.vehicle, vehicleType: 'TRUCK' },
     };
-    const result = service.evaluate(
+    const result = await service.evaluate(
       baseRequest as UniversalServiceRequest,
       { id: 'du_1', snapshot },
       basePolicy,
@@ -165,9 +168,9 @@ describe('EligibilityEngineService', () => {
     expect(result.reasonCodes).toContain(DispatchReasonCode.VEHICLE_CLASS_NOT_ALLOWED);
   });
 
-  it('rejects insufficient capacity', () => {
+  it('rejects insufficient capacity', async () => {
     const request = { ...baseRequest, passengerCount: 6 };
-    const result = service.evaluate(
+    const result = await service.evaluate(
       request as UniversalServiceRequest,
       { id: 'du_1', snapshot: baseSnapshot },
       basePolicy,
@@ -176,7 +179,7 @@ describe('EligibilityEngineService', () => {
     expect(result.reasonCodes).toContain(DispatchReasonCode.CAPACITY_INSUFFICIENT);
   });
 
-  it('rejects stale location', () => {
+  it('rejects stale location', async () => {
     const snapshot = {
       ...baseSnapshot,
       liveState: {
@@ -184,7 +187,7 @@ describe('EligibilityEngineService', () => {
         lastSeenAt: new Date(Date.now() - 120_000).toISOString(),
       },
     };
-    const result = service.evaluate(
+    const result = await service.evaluate(
       baseRequest as UniversalServiceRequest,
       { id: 'du_1', snapshot },
       basePolicy,
@@ -193,13 +196,13 @@ describe('EligibilityEngineService', () => {
     expect(result.reasonCodes).toContain(DispatchReasonCode.LOCATION_STALE);
   });
 
-  it('rejects EV with insufficient range', () => {
+  it('rejects EV with insufficient range', async () => {
     const snapshot = {
       ...baseSnapshot,
       vehicle: { ...baseSnapshot.vehicle, energyType: 'ELECTRIC' },
       liveState: { ...baseSnapshot.liveState, usableRangeKm: 5 },
     };
-    const result = service.evaluate(
+    const result = await service.evaluate(
       baseRequest as UniversalServiceRequest,
       { id: 'du_1', snapshot },
       basePolicy,
@@ -208,8 +211,8 @@ describe('EligibilityEngineService', () => {
     expect(result.reasonCodes).toContain(DispatchReasonCode.EV_RANGE_INSUFFICIENT);
   });
 
-  it('rejects excluded driver', () => {
-    const result = service.evaluate(
+  it('rejects excluded driver', async () => {
+    const result = await service.evaluate(
       baseRequest as UniversalServiceRequest,
       { id: 'du_1', snapshot: baseSnapshot },
       basePolicy,

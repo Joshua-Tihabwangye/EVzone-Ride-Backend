@@ -48,6 +48,7 @@ export interface DispatchPolicyConfig {
   allowedFallbacks: string[];
   substitutions: Record<string, string[]>;
   serviceSpecific: Record<string, unknown>;
+  operatingZoneIds?: string[];
 }
 
 export interface DispatchComplianceSnapshot {
