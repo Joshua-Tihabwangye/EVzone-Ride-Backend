@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { Between, DataSource, Repository } from 'typeorm';
 import {
   CashoutRequestStatus,
   PaymentStatus,
@@ -354,6 +354,28 @@ export class PayoutOrchestratorService {
 
   async findExistingPayout(cashoutRequestId: string, idempotencyKey: string): Promise<Payout | null> {
     return this.payouts.findOne({ where: { cashoutRequestId, idempotencyKey } });
+  }
+
+  async getSettlementRecords(periodStart: Date, periodEnd: Date, provider?: string) {
+    const where: Record<string, unknown> = {
+      status: PayoutStatus.COMPLETED,
+      completedAt: Between(periodStart, periodEnd),
+    };
+    if (provider) where.provider = provider;
+    return this.payouts.find({
+      where,
+      order: { completedAt: 'DESC' },
+      select: [
+        'id',
+        'reference',
+        'providerReference',
+        'amount',
+        'currency',
+        'provider',
+        'completedAt',
+        'fee',
+      ],
+    });
   }
 
   private async refundWallet(userId: string, amount: number, reference: string) {

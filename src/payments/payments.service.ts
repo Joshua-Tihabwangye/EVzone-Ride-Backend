@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { PaymentMethod, PaymentStatus, ServiceType, WalletTransactionType } from '../common/enums';
 import {
   AmbulanceRequest,
@@ -280,6 +280,19 @@ export class PaymentsService {
       }
     }
     throw new NotFoundException('Service booking not found');
+  }
+
+  async getSettlementRecords(periodStart: Date, periodEnd: Date, provider?: string) {
+    const where: Record<string, unknown> = {
+      status: PaymentStatus.PAID,
+      paidAt: Between(periodStart, periodEnd),
+    };
+    if (provider) where.provider = provider;
+    return this.payments.find({
+      where,
+      order: { paidAt: 'DESC' },
+      select: ['id', 'reference', 'providerReference', 'amount', 'currency', 'provider', 'paidAt'],
+    });
   }
 
   private async updateServicePaymentStatus(
