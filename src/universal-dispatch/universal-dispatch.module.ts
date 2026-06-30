@@ -13,6 +13,7 @@ import { RankingEngineService } from './application/ranking-engine.service';
 import { UniversalMatchingService } from './application/universal-matching.service';
 import { UniversalOfferService } from './application/universal-offer.service';
 import { UniversalTripService } from './application/universal-trip.service';
+import { LegacyDispatchAdapterService } from './application/legacy-dispatch-adapter.service';
 import { DispatchGeoIndexService } from './infrastructure/dispatch-geo-index.service';
 import { DispatchLiveStateService } from './infrastructure/dispatch-live-state.service';
 import { RouteMatrixService } from './infrastructure/route-matrix.service';
@@ -53,6 +54,7 @@ import { VehiclesModule } from '../vehicles/vehicles.module';
     UniversalMatchingService,
     UniversalOfferService,
     UniversalTripService,
+    LegacyDispatchAdapterService,
     DispatchGeoIndexService,
     DispatchLiveStateService,
     RouteMatrixService,
@@ -73,6 +75,7 @@ import { VehiclesModule } from '../vehicles/vehicles.module';
     UniversalMatchingService,
     UniversalOfferService,
     UniversalTripService,
+    LegacyDispatchAdapterService,
     DispatchGeoIndexService,
     DispatchLiveStateService,
     RouteMatrixService,
