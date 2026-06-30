@@ -24,7 +24,7 @@ import {
   NotificationType,
   OrganizationMemberRole,
   OrganizationStatus,
-  PaymentStatus,
+  PayoutStatus,
   ServiceType,
   SupportPriority,
   SupportTicketStatus,
@@ -2246,9 +2246,11 @@ export class FleetPortalService {
     return VehicleStatus.INACTIVE;
   }
 
-  private payoutStatus(status: PaymentStatus): 'pending' | 'processing' | 'paid' {
-    if (status === PaymentStatus.PAID) return 'paid';
-    if (status === PaymentStatus.AUTHORIZED) return 'processing';
+  private payoutStatus(status: PayoutStatus): 'pending' | 'processing' | 'paid' | 'failed' | 'cancelled' {
+    if (status === PayoutStatus.COMPLETED) return 'paid';
+    if (status === PayoutStatus.PROCESSING) return 'processing';
+    if (status === PayoutStatus.FAILED) return 'failed';
+    if (status === PayoutStatus.CANCELLED) return 'cancelled';
     return 'pending';
   }
 

@@ -20,7 +20,7 @@ import { LocationCompatibilityController } from './location-compat.controller';
 import { CompatibilityService } from './compatibility.service';
 import { DriverCompatibilityController } from './driver-compat.controller';
 import { DriverJobsModule } from '../driver-jobs/driver-jobs.module';
-import { EmergencyContact } from '../database/entities';
+
 import { RiderCompatibilityController } from './rider-compat.controller';
 
 @Module({

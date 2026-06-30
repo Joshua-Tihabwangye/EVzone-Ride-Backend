@@ -9,9 +9,7 @@ export class LedgerImmutabilityAndCoa1784000000000 implements MigrationInterface
     await queryRunner.query(
       `ALTER TABLE "ledger_accounts" ADD COLUMN IF NOT EXISTS "accountCategory" varchar DEFAULT 'ASSET'`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "ledger_accounts" ADD COLUMN IF NOT EXISTS "organizationId" uuid`,
-    );
+    await queryRunner.query(`ALTER TABLE "ledger_accounts" ADD COLUMN IF NOT EXISTS "organizationId" uuid`);
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "IDX_ledger_accounts_organizationId" ON "ledger_accounts" ("organizationId")`,
     );
@@ -61,9 +59,7 @@ export class LedgerImmutabilityAndCoa1784000000000 implements MigrationInterface
        $$ LANGUAGE plpgsql;`,
     );
 
-    await queryRunner.query(
-      `DROP TRIGGER IF EXISTS trg_ledger_entries_immutable ON "ledger_entries";`,
-    );
+    await queryRunner.query(`DROP TRIGGER IF EXISTS trg_ledger_entries_immutable ON "ledger_entries";`);
     await queryRunner.query(
       `CREATE TRIGGER trg_ledger_entries_immutable
        BEFORE UPDATE OR DELETE ON "ledger_entries"
@@ -86,23 +82,13 @@ export class LedgerImmutabilityAndCoa1784000000000 implements MigrationInterface
     await queryRunner.query(
       `DROP TRIGGER IF EXISTS trg_journal_transactions_immutable ON "journal_transactions";`,
     );
-    await queryRunner.query(
-      `DROP TRIGGER IF EXISTS trg_ledger_entries_immutable ON "ledger_entries";`,
-    );
+    await queryRunner.query(`DROP TRIGGER IF EXISTS trg_ledger_entries_immutable ON "ledger_entries";`);
     await queryRunner.query(`DROP FUNCTION IF EXISTS enforce_ledger_immutability();`);
 
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_ledger_entries_journal_account_direction";`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_ledger_entries_journal_account_direction";`);
     await queryRunner.query(`DROP TABLE IF EXISTS "ledger_account_period_balances";`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_ledger_accounts_organizationId";`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "ledger_accounts" DROP COLUMN IF EXISTS "organizationId";`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "ledger_accounts" DROP COLUMN IF EXISTS "accountCategory";`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_ledger_accounts_organizationId";`);
+    await queryRunner.query(`ALTER TABLE "ledger_accounts" DROP COLUMN IF EXISTS "organizationId";`);
+    await queryRunner.query(`ALTER TABLE "ledger_accounts" DROP COLUMN IF EXISTS "accountCategory";`);
   }
 }
