@@ -54,6 +54,9 @@ export const validationSchema = Joi.object({
   CORPORATEPAY_WEBHOOK_SECRET: requiredSecretInProduction,
   CORPORATEPAY_SIGNING_SECRET: requiredSecretInProduction,
   SCHOOL_WEBHOOK_SECRET: requiredSecretInProduction,
+  PAYTOTA_SECRET_KEY: requiredSecretInProduction,
+  PAYTOTA_WEBHOOK_PUBLIC_KEY: requiredSecretInProduction,
+  FLUTTERWAVE_WEBHOOK_SECRET: requiredSecretInProduction,
 })
   .custom((value, helpers) => {
     const nodeEnv = (value.NODE_ENV ?? 'development').toLowerCase();
