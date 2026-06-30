@@ -10,6 +10,7 @@ import { requestContextMiddleware } from './common/request-context';
 import { buildSwaggerConfig, SWAGGER_SITE_TITLE, SWAGGER_UI_PATH } from './infrastructure/swagger-config';
 import { enhanceSwaggerDocument } from './infrastructure/swagger-document-post-processor';
 import { RedisIoAdapter } from './realtime/redis-io.adapter';
+import { parseCorsOrigins } from './common/utils/cors-origins.helper';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -17,14 +18,31 @@ async function bootstrap(): Promise<void> {
   });
 
   app.use(requestContextMiddleware);
-  app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
+
+  const corsOrigins = parseCorsOrigins(process.env.CORS_ORIGINS, process.env.NODE_ENV, 'CORS_ORIGINS');
+  const cspConnectSrc = corsOrigins === true ? [] : Array.isArray(corsOrigins) ? corsOrigins : [corsOrigins];
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'blob:'],
+          connectSrc: ["'self'", ...cspConnectSrc],
+        },
+      },
+      crossOriginResourcePolicy: false,
+    }),
+  );
   app.use(compression());
   app.enableCors({
-    origin:
-      (process.env.CORS_ORIGINS ?? '*') === '*'
-        ? true
-        : (process.env.CORS_ORIGINS ?? '').split(',').map((item) => item.trim()),
+    origin: corsOrigins,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'Idempotency-Key'],
   });
   app.useStaticAssets(resolve(process.env.STORAGE_PATH ?? './storage'), { prefix: '/uploads/' });
   app.setGlobalPrefix('api/v1');
