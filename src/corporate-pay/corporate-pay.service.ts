@@ -21,6 +21,7 @@ import {
   WebhookEventStatus,
 } from '../common/enums';
 import { AuthUser } from '../common/interfaces';
+import { getRequiredSecret } from '../common/utils/required-secret.util';
 import { signPayload, verifyPayloadSignature } from '../common/utils/crypto-vault';
 import { stringValue } from '../common/utils/values';
 import {
@@ -279,7 +280,12 @@ export class CorporatePayService {
   }
 
   async webhook(rawBody: string, signature: string | undefined, dto: CorporatePayWebhookDto) {
-    const secret = process.env.CORPORATEPAY_WEBHOOK_SECRET ?? 'evzone-corporatepay-local-secret';
+    const secret = getRequiredSecret(
+      'CORPORATEPAY_WEBHOOK_SECRET',
+      process.env.CORPORATEPAY_WEBHOOK_SECRET,
+      process.env.NODE_ENV,
+      { allowLocalFallback: true, localFallback: 'evzone-corporatepay-local-secret' },
+    );
     const valid = verifyPayloadSignature(rawBody, signature, secret);
     let event = await this.webhookEvents.findOne({ where: { externalEventId: dto.id } });
     if (event) return { accepted: true, duplicate: true, eventId: event.id };
@@ -496,7 +502,12 @@ export class CorporatePayService {
             : {}),
           'X-EVzone-Signature': signPayload(
             JSON.stringify(body),
-            process.env.CORPORATEPAY_SIGNING_SECRET ?? 'evzone-local-signing-secret',
+            getRequiredSecret(
+              'CORPORATEPAY_SIGNING_SECRET',
+              process.env.CORPORATEPAY_SIGNING_SECRET,
+              process.env.NODE_ENV,
+              { allowLocalFallback: true, localFallback: 'evzone-local-signing-secret' },
+            ),
           ),
         },
         body: JSON.stringify(body),

@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { WEAK_SECRET_PATTERN } from '../common/utils/required-secret.util';
 import { DomainEventsService } from './domain-events.service';
 import { ProcessRoleService } from './process-role.service';
 import { RedisService } from './redis.service';
@@ -224,10 +225,7 @@ export class ProductionConfigService implements OnModuleInit {
 
   private secretCheck(key: string): ProductionCheck {
     const value = this.value(key);
-    const unsafe =
-      !value ||
-      value.length < 32 ||
-      /local|docker|demo|example|change-in-production|secret-2026/i.test(value);
+    const unsafe = !value || value.length < 32 || WEAK_SECRET_PATTERN.test(value);
     return this.check(`secret.${key}`, !unsafe, `${key} must be a strong non-default secret`);
   }
 

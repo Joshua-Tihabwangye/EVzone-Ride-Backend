@@ -6,10 +6,15 @@ import {
   randomBytes,
   timingSafeEqual,
 } from 'node:crypto';
+import { getRequiredSecret } from './required-secret.util';
 
 function key(): Buffer {
-  const source =
-    process.env.INTEGRATION_ENCRYPTION_KEY ?? process.env.JWT_SECRET ?? 'evzone-local-integration-key';
+  const source = getRequiredSecret(
+    'INTEGRATION_ENCRYPTION_KEY',
+    process.env.INTEGRATION_ENCRYPTION_KEY ?? process.env.JWT_SECRET,
+    process.env.NODE_ENV,
+    { allowLocalFallback: true, localFallback: 'evzone-local-integration-key' },
+  );
   return createHash('sha256').update(source).digest();
 }
 
