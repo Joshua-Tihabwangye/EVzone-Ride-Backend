@@ -6,6 +6,7 @@ import {
   Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  VersionColumn,
 } from 'typeorm';
 import {
   AccountStatus,
@@ -27,6 +28,8 @@ import {
   PackageSize,
   PaymentMethod,
   PaymentStatus,
+  PayoutStatus,
+  CashoutRequestStatus,
   RentalStatus,
   RideCategory,
   RideMode,
@@ -698,6 +701,9 @@ export class TrainingModule extends BaseEntity {
 
   @Column({ default: true })
   active!: boolean;
+
+  @VersionColumn()
+  version!: number;
 }
 
 @Entity('training_progress')
@@ -891,6 +897,9 @@ export class Wallet extends BaseEntity {
   @Column({ type: 'decimal', precision: 16, scale: 2, default: 0, transformer: numberTransformer })
   pendingBalance!: number;
 
+  @Column({ type: 'decimal', precision: 16, scale: 2, default: 0, transformer: numberTransformer })
+  reservedForCashout!: number;
+
   @Column({ default: true })
   active!: boolean;
 }
@@ -977,11 +986,23 @@ export class Payment extends BaseEntity {
   refundedAt?: Date;
 }
 
+@Index('IDX_payouts_cashout_idempotency', ['cashoutRequestId', 'idempotencyKey'], { unique: true })
 @Entity('payouts')
 export class Payout extends BaseEntity {
   @Index()
   @Column()
   driverId!: string;
+
+  @Index({ unique: true })
+  @Column()
+  reference!: string;
+
+  @Column()
+  idempotencyKey!: string;
+
+  @Index()
+  @Column({ nullable: true })
+  cashoutRequestId?: string;
 
   @Column({ type: 'decimal', precision: 16, scale: 2, transformer: numberTransformer })
   amount!: number;
@@ -989,15 +1010,59 @@ export class Payout extends BaseEntity {
   @Column({ default: 'UGX' })
   currency!: string;
 
-  @Column({ type: 'simple-enum', enum: PaymentStatus, default: PaymentStatus.PENDING })
-  status!: PaymentStatus;
+  @Column({ type: 'simple-enum', enum: PayoutStatus, default: PayoutStatus.PENDING })
+  status!: PayoutStatus;
+
+  @Column({ default: 'flutterwave' })
+  provider!: string;
 
   @Column()
   destination!: string;
 
-  @Index({ unique: true })
-  @Column()
-  reference!: string;
+  @Column({ type: 'simple-json', nullable: true })
+  destinationDetails?: Record<string, unknown>;
+
+  @Column({ nullable: true })
+  providerReference?: string;
+
+  @Column({ nullable: true })
+  providerBatchId?: string;
+
+  @Column({ nullable: true })
+  providerTransactionId?: string;
+
+  @Column({ type: 'decimal', precision: 16, scale: 2, nullable: true, transformer: numberTransformer })
+  fee?: number;
+
+  @Column({ nullable: true, type: 'text' })
+  failureReason?: string;
+
+  @Column({ nullable: true })
+  initiatedAt?: Date;
+
+  @Column({ nullable: true })
+  completedAt?: Date;
+
+  @Column({ nullable: true })
+  failedAt?: Date;
+
+  @Column({ nullable: true })
+  reversedAt?: Date;
+
+  @Column({ nullable: true })
+  verifiedAt?: Date;
+
+  @Column({ nullable: true })
+  reconciledAt?: Date;
+
+  @Column({ nullable: true })
+  initiatedByUserId?: string;
+
+  @Column({ type: 'simple-json', nullable: true })
+  providerPayload?: Record<string, unknown>;
+
+  @Column({ type: 'simple-json', nullable: true })
+  providerError?: Record<string, unknown>;
 
   @Column({ type: 'simple-json', nullable: true })
   metadata?: Record<string, unknown>;
@@ -3328,17 +3393,37 @@ export class CashoutRequest extends BaseEntity {
   @Column({ nullable: true })
   driverId?: string;
 
+  @Index({ unique: true })
+  @Column()
+  reference!: string;
+
   @Column({ type: 'decimal', precision: 16, scale: 2, transformer: numberTransformer })
   amount!: number;
 
-  @Column({ default: 'PENDING' })
-  status!: string;
+  @Column({ default: 'UGX' })
+  currency!: string;
+
+  @Column({ type: 'simple-enum', enum: CashoutRequestStatus, default: CashoutRequestStatus.PENDING })
+  status!: CashoutRequestStatus;
 
   @Column({ type: 'simple-json' })
   method!: Record<string, unknown>;
 
   @Column({ type: 'simple-json', nullable: true })
   metadata?: Record<string, unknown>;
+
+  @Index()
+  @Column({ nullable: true })
+  payoutId?: string;
+
+  @Column({ nullable: true })
+  provider?: string;
+
+  @Column({ nullable: true })
+  providerReference?: string;
+
+  @Column({ nullable: true })
+  ledgerJournalReference?: string;
 
   @Column({ nullable: true })
   reviewedByUserId?: string;

@@ -266,6 +266,25 @@ export enum PaymentStatus {
   CANCELLED = 'CANCELLED',
 }
 
+export enum PayoutStatus {
+  PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+  REVERSED = 'REVERSED',
+}
+
+export enum CashoutRequestStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  PROCESSING = 'PROCESSING',
+  PAID = 'PAID',
+  FAILED = 'FAILED',
+  REJECTED = 'REJECTED',
+  CANCELLED = 'CANCELLED',
+}
+
 export enum PaymentMethod {
   CASH = 'CASH',
   EVZONE_WALLET = 'EVZONE_WALLET',
@@ -285,6 +304,8 @@ export enum WalletTransactionType {
   TIP = 'TIP',
   ADJUSTMENT = 'ADJUSTMENT',
   EARNING = 'EARNING',
+  CASHOUT_RESERVE = 'CASHOUT_RESERVE',
+  CASHOUT_RELEASE = 'CASHOUT_RELEASE',
 }
 
 export enum TransactionDirection {
