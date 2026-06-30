@@ -9,14 +9,12 @@ function mockManager(repos: Record<string, unknown>): EntityManager {
   return {
     getRepository: (entity: unknown) => {
       const name = typeof entity === 'function' ? entity.name : String(entity);
-      return (
-        repos[name] ?? {
-          findOne: jest.fn(),
-          save: jest.fn(async (value: unknown) => value),
-          create: jest.fn((value: unknown) => value),
-          update: jest.fn(),
-        }
-      ) as never;
+      return (repos[name] ?? {
+        findOne: jest.fn(),
+        save: jest.fn(async (value: unknown) => value),
+        create: jest.fn((value: unknown) => value),
+        update: jest.fn(),
+      }) as never;
     },
   } as unknown as EntityManager;
 }

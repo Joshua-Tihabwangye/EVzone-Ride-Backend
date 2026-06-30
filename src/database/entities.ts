@@ -3323,6 +3323,7 @@ export class StoredPaymentMethod extends BaseEntity {
 }
 
 @Entity('cashout_requests')
+@Index('IDX_cashout_user_idempotency', ['userId', 'idempotencyKey'], { unique: true })
 export class CashoutRequest extends BaseEntity {
   @Index()
   @Column()
@@ -3355,6 +3356,9 @@ export class CashoutRequest extends BaseEntity {
 
   @Column({ nullable: true, type: 'text' })
   failureReason?: string;
+
+  @Column({ nullable: true })
+  idempotencyKey?: string;
 }
 
 @Entity('feature_flags')
