@@ -2852,6 +2852,53 @@ export class CorporatePayWebhookEvent extends BaseEntity {
   error?: string;
 }
 
+@Entity('webhook_events')
+@Index(['provider', 'externalEventId'], { unique: true })
+export class WebhookEventRecord extends BaseEntity {
+  @Index()
+  @Column()
+  provider!: string;
+
+  @Column()
+  externalEventId!: string;
+
+  @Index()
+  @Column()
+  eventType!: string;
+
+  @Column({ type: 'simple-enum', enum: WebhookEventStatus, default: WebhookEventStatus.RECEIVED })
+  status!: WebhookEventStatus;
+
+  @Column({ default: false })
+  signatureValid!: boolean;
+
+  @Column({ nullable: true })
+  signatureVersion?: string;
+
+  @Column({ type: 'simple-json' })
+  payload!: Record<string, unknown>;
+
+  @Column()
+  receivedAt!: Date;
+
+  @Column({ nullable: true })
+  processedAt?: Date;
+
+  @Column({ nullable: true, type: 'text' })
+  error?: string;
+
+  @Index()
+  @Column({ nullable: true })
+  relatedPaymentId?: string;
+
+  @Index()
+  @Column({ nullable: true })
+  relatedTransactionId?: string;
+
+  @Column({ type: 'simple-json', nullable: true })
+  metadata?: Record<string, unknown>;
+}
+
 @Entity('corporate_pay_reconciliations')
 export class CorporatePayReconciliation extends BaseEntity {
   @Index()
@@ -5021,6 +5068,7 @@ export const ENTITIES = [
   CorporatePayAccount,
   CorporatePayTransaction,
   CorporatePayWebhookEvent,
+  WebhookEventRecord,
   CorporatePayReconciliation,
   CorporatePaySubjectLink,
   CorporatePayPartnerRequest,
