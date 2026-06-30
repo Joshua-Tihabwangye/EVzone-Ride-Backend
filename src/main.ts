@@ -1,5 +1,6 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { Logger } from 'nestjs-pino';
 import { SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
@@ -15,6 +16,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
   });
+  app.useLogger(app.get(Logger));
 
   app.use(requestContextMiddleware);
 
@@ -72,9 +74,7 @@ async function bootstrap(): Promise<void> {
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port, process.env.HOST ?? '0.0.0.0');
 
-  console.log(`EVzone Ride API: http://localhost:${port}/api/v1`);
-
-  console.log(`Swagger: http://localhost:${port}/docs`);
+  app.get(Logger).log(`EVzone Ride API listening on port ${port}`);
 }
 
 void bootstrap();
