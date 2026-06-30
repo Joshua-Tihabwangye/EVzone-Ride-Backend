@@ -84,11 +84,22 @@ export class PushNotificationsService implements OnModuleInit {
   }
 
   status() {
+    const provider = this.provider();
+    const configured =
+      provider === 'FCM'
+        ? this.firebaseReady
+        : provider === 'WEBHOOK'
+          ? Boolean(this.config.get<string>('PUSH_WEBHOOK_URL'))
+          : provider === 'EXPO' || provider === 'LOCAL';
     return {
-      provider: this.provider(),
+      provider,
+      configured,
+      connected: provider === 'LOCAL' ? false : configured,
       firebaseReady: this.firebaseReady,
       webhookConfigured: Boolean(this.config.get<string>('PUSH_WEBHOOK_URL')),
-      fallback: 'IN_APP_AND_WEBSOCKET',
+      fallback: provider === 'LOCAL' || !configured ? 'IN_APP_AND_WEBSOCKET' : null,
+      productionReady:
+        this.config.get<string>('NODE_ENV') !== 'production' || (provider !== 'LOCAL' && configured),
     };
   }
 

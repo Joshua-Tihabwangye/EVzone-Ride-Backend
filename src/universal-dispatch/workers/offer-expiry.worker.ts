@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
+import { ProcessRoleService } from '../../infrastructure/process-role.service';
 import { UniversalDispatchOffer, UniversalServiceRequest } from '../domain/universal-dispatch.entities';
 import { UniversalOfferStatus, UniversalRequestStatus } from '../domain/universal-dispatch.enums';
 
@@ -14,10 +15,12 @@ export class OfferExpiryWorker {
     private readonly offers: Repository<UniversalDispatchOffer>,
     @InjectRepository(UniversalServiceRequest)
     private readonly requests: Repository<UniversalServiceRequest>,
+    private readonly roles: ProcessRoleService,
   ) {}
 
   @Cron(CronExpression.EVERY_10_SECONDS)
   async run(): Promise<void> {
+    if (!this.roles.runsWorkers()) return;
     const expired = await this.offers.find({
       where: {
         status: UniversalOfferStatus.PENDING,

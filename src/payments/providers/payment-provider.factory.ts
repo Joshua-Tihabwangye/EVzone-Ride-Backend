@@ -28,9 +28,16 @@ export class PaymentProviderFactory {
   }
 
   status() {
+    const defaultProvider = this.defaultProviderName();
+    const providers = [...this.providers.values()].map((provider) => provider.status());
+    const selected = providers.find((provider) => provider.provider === defaultProvider);
     return {
-      defaultProvider: this.defaultProviderName(),
-      providers: [...this.providers.values()].map((provider) => provider.status()),
+      defaultProvider,
+      configured: Boolean(selected?.configured),
+      connected: Boolean(selected?.connected),
+      fallback: selected?.fallback ?? null,
+      productionReady: selected?.productionReady !== false,
+      providers,
     };
   }
 }

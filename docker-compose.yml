@@ -2,7 +2,7 @@ services:
   postgres:
     image: postgis/postgis:16-3.4-alpine
     ports:
-    - "5432:5432"
+      - '5432:5432'
     restart: unless-stopped
     environment:
       POSTGRES_USER: evzone
@@ -37,7 +37,9 @@ services:
       redis:
         condition: service_healthy
     environment:
-      NODE_ENV: production
+      # Local production-shaped demo stack. Real production must pass the fail-closed
+      # configuration validator instead of using mock providers and seeded data.
+      NODE_ENV: development
       HOST: 0.0.0.0
       PORT: 3001
       CORS_ORIGINS: '*'
@@ -126,11 +128,11 @@ services:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
     ports:
-      - "5050:80"
+      - '5050:80'
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@evzone.example.com
       PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
     depends_on:
       postgres:
         condition: service_healthy

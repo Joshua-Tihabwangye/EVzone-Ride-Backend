@@ -89,9 +89,13 @@ export class FlutterwavePaymentProvider implements PaymentProviderAdapter {
   }
 
   status() {
+    const configured = Boolean(this.config.get<string>('FLUTTERWAVE_SECRET_KEY')?.trim());
     return {
       provider: this.name,
-      configured: Boolean(this.config.get<string>('FLUTTERWAVE_SECRET_KEY')?.trim()),
+      configured,
+      connected: configured,
+      fallback: configured ? null : 'UNAVAILABLE',
+      productionReady: this.config.get<string>('NODE_ENV') !== 'production' || configured,
       baseUrl:
         this.config.get<string>('FLUTTERWAVE_BASE_URL') ?? 'https://developersandbox-api.flutterwave.com',
     };

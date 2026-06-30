@@ -136,7 +136,6 @@ export class PaymentsService {
       data: { paymentId: payment.id, serviceType: payment.serviceType, serviceId: payment.serviceId },
     });
     this.events.emit('domain.event', {
-      topic: 'payments',
       eventType: 'payment.paid',
       aggregateType: 'Payment',
       aggregateId: payment.id,
@@ -151,6 +150,21 @@ export class PaymentsService {
         currency: payment.currency,
       },
     });
+    if (payment.serviceType !== ServiceType.SCHOOL_SHUTTLE) {
+      this.events.emit('domain.event', {
+        eventType: 'earnings.accrued',
+        aggregateType: 'Payment',
+        aggregateId: payment.id,
+        eventKey: payment.reference,
+        payload: {
+          paymentId: payment.id,
+          serviceType: payment.serviceType,
+          serviceId: payment.serviceId,
+          amount: payment.amount,
+          currency: payment.currency,
+        },
+      });
+    }
     this.events.emit('service.updated', {
       serviceType: payment.serviceType,
       serviceId: payment.serviceId,
