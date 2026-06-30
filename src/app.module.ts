@@ -57,6 +57,7 @@ import { SafetyModule } from './safety/safety.module';
 import { TouristModule } from './tourist/tourist.module';
 import { UsersModule } from './users/users.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 import { WalletsModule } from './wallets/wallets.module';
 
 @Module({
@@ -95,6 +96,7 @@ import { WalletsModule } from './wallets/wallets.module';
     PricingModule,
     WalletsModule,
     PaymentsModule,
+    WebhooksModule,
     CorporatePayModule,
     CorporateIntegrationModule,
     CommutesModule,
