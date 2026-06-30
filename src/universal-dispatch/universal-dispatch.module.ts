@@ -3,9 +3,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { UNIVERSAL_DISPATCH_ENTITIES } from './domain/universal-dispatch.entities';
 import { DatabaseModule } from '../database/database.module';
+import { StateMachineModule } from '../state-machine/state-machine.module';
 import { DispatchPolicyService } from './application/dispatch-policy.service';
 import { DispatchUnitService } from './application/dispatch-unit.service';
 import { UniversalRequestService } from './application/universal-request.service';
+import { UniversalDispatchStateMachineService } from './application/universal-dispatch-state-machine.service';
 import { EligibilityEngineService } from './application/eligibility-engine.service';
 import { RankingEngineService } from './application/ranking-engine.service';
 import { UniversalMatchingService } from './application/universal-matching.service';
@@ -34,6 +36,7 @@ import { VehiclesModule } from '../vehicles/vehicles.module';
   imports: [
     TypeOrmModule.forFeature([...UNIVERSAL_DISPATCH_ENTITIES]),
     DatabaseModule,
+    StateMachineModule,
     EventEmitterModule,
     NotificationsModule,
     RealtimeModule,
@@ -44,6 +47,7 @@ import { VehiclesModule } from '../vehicles/vehicles.module';
     DispatchPolicyService,
     DispatchUnitService,
     UniversalRequestService,
+    UniversalDispatchStateMachineService,
     EligibilityEngineService,
     RankingEngineService,
     UniversalMatchingService,

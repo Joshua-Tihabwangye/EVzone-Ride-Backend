@@ -24,7 +24,7 @@ import {
   DispatchUnitSnapshot,
   DispatchVehicleSnapshot,
 } from '../domain/universal-dispatch.types';
-import { assertDispatchUnitTransition } from '../domain/universal-dispatch.utils';
+import { UniversalDispatchStateMachineService } from './universal-dispatch-state-machine.service';
 import { DispatchLiveStateService } from '../infrastructure/dispatch-live-state.service';
 import { DispatchGeoIndexService } from '../infrastructure/dispatch-geo-index.service';
 import {
@@ -56,6 +56,7 @@ export class DispatchUnitService implements OnModuleInit {
     private readonly liveState: DispatchLiveStateService,
     private readonly geoIndex: DispatchGeoIndexService,
     private readonly redis: RedisService,
+    private readonly stateMachine: UniversalDispatchStateMachineService,
   ) {}
 
   onModuleInit(): void {
@@ -114,8 +115,10 @@ export class DispatchUnitService implements OnModuleInit {
       if (input.vehicleId) unit.activeVehicleId = input.vehicleId;
       if (input.marketId) unit.marketId = input.marketId;
 
-      assertDispatchUnitTransition(unit.status, DispatchUnitStatus.AVAILABLE);
-      unit.status = DispatchUnitStatus.AVAILABLE;
+      await this.stateMachine.transitionUnit(manager, unit, DispatchUnitStatus.AVAILABLE, {
+        actorType: 'DRIVER',
+        actorId: driverId,
+      });
       unit.onlineAt = new Date();
       unit.offlineAt = undefined;
       unit.availableSince = new Date();
@@ -147,8 +150,10 @@ export class DispatchUnitService implements OnModuleInit {
     if (unit.activeRequestId && !input.force) {
       throw new BadRequestException('Cannot go offline with active trip');
     }
-    assertDispatchUnitTransition(unit.status, DispatchUnitStatus.OFFLINE);
-    unit.status = DispatchUnitStatus.OFFLINE;
+    await this.stateMachine.transitionUnit(this.dataSource.manager, unit, DispatchUnitStatus.OFFLINE, {
+      actorType: 'DRIVER',
+      actorId: driverId,
+    });
     unit.offlineAt = new Date();
     unit.availableSince = undefined;
     const saved = await this.units.save(unit);

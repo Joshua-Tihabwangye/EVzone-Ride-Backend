@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThan, Repository } from 'typeorm';
+import { DataSource, LessThan, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { UniversalDispatchUnit } from '../domain/universal-dispatch.entities';
 import { DispatchUnitStatus } from '../domain/universal-dispatch.enums';
 import { DispatchLiveStateService } from '../infrastructure/dispatch-live-state.service';
+import { UniversalDispatchStateMachineService } from '../application/universal-dispatch-state-machine.service';
 
 @Injectable()
 export class StaleCleanupWorker {
@@ -16,6 +17,8 @@ export class StaleCleanupWorker {
     private readonly units: Repository<UniversalDispatchUnit>,
     private readonly config: ConfigService,
     private readonly liveState: DispatchLiveStateService,
+    private readonly dataSource: DataSource,
+    private readonly stateMachine: UniversalDispatchStateMachineService,
   ) {}
 
   @Cron(CronExpression.EVERY_30_SECONDS)
@@ -30,9 +33,12 @@ export class StaleCleanupWorker {
       take: 200,
     });
     for (const unit of stale) {
-      unit.status = DispatchUnitStatus.OFFLINE;
       unit.offlineAt = new Date();
-      await this.units.save(unit);
+      await this.dataSource.transaction(async (manager) =>
+        this.stateMachine.transitionUnit(manager, unit, DispatchUnitStatus.OFFLINE, {
+          reasonCode: 'STALE_LOCATION',
+        }),
+      );
       await this.liveState.removeLiveSnapshot(unit.id, unit.marketId);
       this.logger.log(`Marked stale dispatch unit ${unit.id} offline`);
     }

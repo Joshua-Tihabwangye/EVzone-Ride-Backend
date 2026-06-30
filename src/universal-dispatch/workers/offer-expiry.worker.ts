@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThan, Repository } from 'typeorm';
+import { DataSource, LessThan, Repository } from 'typeorm';
 import { UniversalDispatchOffer, UniversalServiceRequest } from '../domain/universal-dispatch.entities';
 import { UniversalOfferStatus, UniversalRequestStatus } from '../domain/universal-dispatch.enums';
+import { UniversalDispatchStateMachineService } from '../application/universal-dispatch-state-machine.service';
 
 @Injectable()
 export class OfferExpiryWorker {
@@ -14,6 +15,8 @@ export class OfferExpiryWorker {
     private readonly offers: Repository<UniversalDispatchOffer>,
     @InjectRepository(UniversalServiceRequest)
     private readonly requests: Repository<UniversalServiceRequest>,
+    private readonly dataSource: DataSource,
+    private readonly stateMachine: UniversalDispatchStateMachineService,
   ) {}
 
   @Cron(CronExpression.EVERY_10_SECONDS)
@@ -27,9 +30,12 @@ export class OfferExpiryWorker {
     });
 
     for (const offer of expired) {
-      offer.status = UniversalOfferStatus.EXPIRED;
-      offer.respondedAt = new Date();
-      await this.offers.save(offer);
+      await this.dataSource.transaction(async (manager) => {
+        offer.respondedAt = new Date();
+        await this.stateMachine.transitionOffer(manager, offer, UniversalOfferStatus.EXPIRED, {
+          reasonCode: 'OFFER_EXPIRED',
+        });
+      });
 
       const request = await this.requests.findOne({ where: { id: offer.requestId } });
       if (
@@ -38,9 +44,12 @@ export class OfferExpiryWorker {
         request.nextMatchAt &&
         request.nextMatchAt <= new Date()
       ) {
-        request.status = UniversalRequestStatus.SEARCHING;
         request.nextMatchAt = new Date();
-        await this.requests.save(request);
+        await this.dataSource.transaction(async (manager) =>
+          this.stateMachine.transitionRequest(manager, request, UniversalRequestStatus.SEARCHING, {
+            reasonCode: 'OFFER_WAVE_EXPIRED',
+          }),
+        );
       }
     }
   }

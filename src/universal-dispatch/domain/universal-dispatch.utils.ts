@@ -63,6 +63,7 @@ export function assertDispatchUnitTransition(from: DispatchUnitStatus, to: Dispa
     ],
     [DispatchUnitStatus.AVAILABLE]: [
       DispatchUnitStatus.OFFERED,
+      DispatchUnitStatus.RESERVED,
       DispatchUnitStatus.OFFLINE,
       DispatchUnitStatus.CHARGING,
       DispatchUnitStatus.BREAK_REQUIRED,
@@ -268,4 +269,43 @@ export function assertTripTransition(from: UniversalTripStatus, to: UniversalTri
 
 export function gridCell(point: GeoPoint, precision = 3): string {
   return `${point.latitude.toFixed(precision)}:${point.longitude.toFixed(precision)}`;
+}
+
+export interface PolygonPoint {
+  latitude: number;
+  longitude: number;
+}
+
+function ringContainsPoint(ring: Array<[number, number]>, point: PolygonPoint): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersect =
+      yi > point.latitude !== yj > point.latitude &&
+      point.longitude < ((xj - xi) * (point.latitude - yi)) / (yj - yi) + xi;
+    if (intersect) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+export function isPointInPolygon(point: PolygonPoint, polygon?: Record<string, unknown>): boolean {
+  if (!polygon) return false;
+  const coordinates = polygon.coordinates;
+  if (!Array.isArray(coordinates)) return false;
+
+  // GeoJSON Polygon: [outerRing, ...holes]
+  if (Array.isArray(coordinates[0]) && Array.isArray(coordinates[0][0])) {
+    const rings = coordinates as Array<Array<[number, number]>>;
+    return rings.length > 0 && ringContainsPoint(rings[0], point);
+  }
+
+  // Flat array of [lon, lat] pairs.
+  if (Array.isArray(coordinates[0]) && coordinates[0].length === 2) {
+    return ringContainsPoint(coordinates as Array<[number, number]>, point);
+  }
+
+  return false;
 }

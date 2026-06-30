@@ -14,8 +14,8 @@ import {
   UniversalOfferStatus,
   UniversalRequestStatus,
 } from '../domain/universal-dispatch.enums';
-import { assertRequestTransition } from '../domain/universal-dispatch.utils';
 import { DispatchPolicyService } from './dispatch-policy.service';
+import { UniversalDispatchStateMachineService } from './universal-dispatch-state-machine.service';
 import { EligibilityEngineService } from './eligibility-engine.service';
 import { RankingEngineService } from './ranking-engine.service';
 import { DispatchGeoIndexService } from '../infrastructure/dispatch-geo-index.service';
@@ -48,6 +48,7 @@ export class UniversalMatchingService {
     private readonly routeMatrix: RouteMatrixService,
     private readonly outbox: UniversalOutboxService,
     private readonly realtime: DispatchRealtimeService,
+    private readonly stateMachine: UniversalDispatchStateMachineService,
   ) {}
 
   async matchRequest(requestId: string, shadowMode = false): Promise<MatchResult> {
@@ -115,7 +116,7 @@ export class UniversalMatchingService {
     for (const unit of allCandidates) {
       const snapshot = unit.eligibilitySnapshot as unknown as DispatchUnitSnapshot | undefined;
       if (!snapshot) continue;
-      const result = this.eligibility.evaluate(request, unit, policy, now, excludedDriverIds);
+      const result = await this.eligibility.evaluate(request, unit, policy, now, excludedDriverIds);
       for (const code of result.reasonCodes) {
         exclusionCounts[code] = (exclusionCounts[code] ?? 0) + 1;
       }
@@ -186,10 +187,12 @@ export class UniversalMatchingService {
 
     if (!ranked.length) {
       if (!shadowMode) {
-        assertRequestTransition(request.status, UniversalRequestStatus.NO_QUALIFIED_DRIVER);
-        request.status = UniversalRequestStatus.NO_QUALIFIED_DRIVER;
         request.completedAt = new Date();
-        await this.requests.save(request);
+        await this.dataSource.transaction(async (manager) =>
+          this.stateMachine.transitionRequest(manager, request, UniversalRequestStatus.NO_QUALIFIED_DRIVER, {
+            reasonCode: 'NO_QUALIFIED_DRIVER',
+          }),
+        );
       }
       return {
         request,
@@ -240,11 +243,13 @@ export class UniversalMatchingService {
       ),
     );
 
-    assertRequestTransition(request.status, UniversalRequestStatus.OFFERING);
-    request.status = UniversalRequestStatus.OFFERING;
     request.currentWave += 1;
     request.nextMatchAt = expiresAt;
-    await this.requests.save(request);
+    await this.dataSource.transaction(async (manager) =>
+      this.stateMachine.transitionRequest(manager, request, UniversalRequestStatus.OFFERING, {
+        reasonCode: 'OFFER_WAVE_CREATED',
+      }),
+    );
 
     for (const offer of offers) {
       await this.realtime.publishDispatchUnitUpdate(offer.dispatchUnitId, 'offer.created', {

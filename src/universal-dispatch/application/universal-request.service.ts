@@ -15,8 +15,8 @@ import {
   UniversalScheduleType,
   TERMINAL_REQUEST_STATUSES,
 } from '../domain/universal-dispatch.enums';
-import { assertRequestTransition } from '../domain/universal-dispatch.utils';
 import { DispatchPolicyService } from './dispatch-policy.service';
+import { UniversalDispatchStateMachineService } from './universal-dispatch-state-machine.service';
 import { UniversalOutboxService } from '../infrastructure/universal-outbox.service';
 import { DispatchRealtimeService } from '../infrastructure/dispatch-realtime.service';
 import {
@@ -45,6 +45,7 @@ export class UniversalRequestService {
     private readonly policyService: DispatchPolicyService,
     private readonly outbox: UniversalOutboxService,
     private readonly realtime: DispatchRealtimeService,
+    private readonly stateMachine: UniversalDispatchStateMachineService,
   ) {}
 
   async create(
@@ -207,11 +208,18 @@ export class UniversalRequestService {
       if (TERMINAL_REQUEST_STATUSES.has(request.status)) {
         throw new BadRequestException({ code: 'REQUEST_ALREADY_TERMINAL' });
       }
-      assertRequestTransition(request.status, UniversalRequestStatus.CANCELLED);
-      request.status = UniversalRequestStatus.CANCELLED;
       request.cancellationCode = input.reasonCode;
       request.completedAt = new Date();
-      const saved = await requestRepository.save(request);
+      const saved = await this.stateMachine.transitionRequest(
+        manager,
+        request,
+        UniversalRequestStatus.CANCELLED,
+        {
+          actorType: input.actorParty ?? DispatchCancellationParty.RIDER,
+          actorId: actorUserId,
+          reasonCode: input.reasonCode,
+        },
+      );
 
       await cancellationRepository.save(
         cancellationRepository.create({

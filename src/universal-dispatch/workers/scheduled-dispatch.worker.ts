@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThan, Repository } from 'typeorm';
+import { DataSource, LessThan, Repository } from 'typeorm';
 import { UniversalServiceRequest } from '../domain/universal-dispatch.entities';
 import { UniversalRequestStatus, UniversalScheduleType } from '../domain/universal-dispatch.enums';
 import { UniversalMatchingService } from '../application/universal-matching.service';
+import { UniversalDispatchStateMachineService } from '../application/universal-dispatch-state-machine.service';
 
 @Injectable()
 export class ScheduledDispatchWorker {
@@ -14,6 +15,8 @@ export class ScheduledDispatchWorker {
     @InjectRepository(UniversalServiceRequest)
     private readonly requests: Repository<UniversalServiceRequest>,
     private readonly matching: UniversalMatchingService,
+    private readonly dataSource: DataSource,
+    private readonly stateMachine: UniversalDispatchStateMachineService,
   ) {}
 
   @Cron(CronExpression.EVERY_MINUTE)
@@ -31,9 +34,12 @@ export class ScheduledDispatchWorker {
 
     for (const request of ready) {
       try {
-        request.status = UniversalRequestStatus.SEARCHING;
         request.searchStartedAt = now;
-        await this.requests.save(request);
+        await this.dataSource.transaction(async (manager) =>
+          this.stateMachine.transitionRequest(manager, request, UniversalRequestStatus.SEARCHING, {
+            reasonCode: 'SCHEDULED_ACTIVATED',
+          }),
+        );
         await this.matching.matchRequest(request.id);
       } catch (error) {
         this.logger.warn(
