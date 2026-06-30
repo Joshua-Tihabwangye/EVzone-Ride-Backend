@@ -10,6 +10,7 @@ import { AgentPortalModule } from './agent-portal/agent-portal.module';
 import { AccountingModule } from './accounting/accounting.module';
 import { AmbulanceModule } from './ambulance/ambulance.module';
 import { AuthModule } from './auth/auth.module';
+import { CommissioningModule } from './commissioning/commissioning.module';
 import { ChatModule } from './chat/chat.module';
 import { CorporatePayModule } from './corporate-pay/corporate-pay.module';
 import { CorporateIntegrationModule } from './corporate-integration/corporate-integration.module';
@@ -85,6 +86,7 @@ import { WalletsModule } from './wallets/wallets.module';
     GovernanceModule,
     IdempotencyModule,
     AuthModule,
+    CommissioningModule,
     UsersModule,
     NotificationsModule,
     MatchingModule,
