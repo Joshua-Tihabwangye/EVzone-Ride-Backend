@@ -92,7 +92,13 @@ export class PaymentsService {
   }
 
   @Transactional()
-  async confirm(userId: string, paymentId: string, providerToken?: string, idempotencyKey?: string) {
+  async confirm(
+    userId: string,
+    paymentId: string,
+    providerToken?: string,
+    idempotencyKey?: string,
+    skipProviderVerification = false,
+  ) {
     const payments = getRepository(Payment);
     const payment = await payments.findOne({
       where: { id: paymentId, userId },
@@ -122,27 +128,31 @@ export class PaymentsService {
       }
       payment.providerReference = providerToken ?? `CORPORATEPAY-LOCAL-${randomUUID()}`;
     } else if (![PaymentMethod.CASH, PaymentMethod.INSURANCE].includes(payment.method)) {
-      const verification = await this.providerFactory.get(payment.provider).verify({
-        providerToken,
-        expectedAmount: payment.amount,
-        expectedCurrency: payment.currency,
-        expectedReference: payment.reference,
-      });
-      payment.breakdown = {
-        ...(payment.breakdown ?? {}),
-        providerVerification: {
-          provider: payment.provider,
-          status: verification.status,
-          reason: verification.reason,
-          response: verification.response,
-        },
-      };
-      if (!verification.approved) {
-        payment.status = PaymentStatus.FAILED;
-        await payments.save(payment);
-        throw new BadRequestException(verification.reason ?? 'Payment provider rejected the transaction');
+      if (skipProviderVerification) {
+        payment.providerReference = providerToken ?? `WEBHOOK-${randomUUID()}`;
+      } else {
+        const verification = await this.providerFactory.get(payment.provider).verify({
+          providerToken,
+          expectedAmount: payment.amount,
+          expectedCurrency: payment.currency,
+          expectedReference: payment.reference,
+        });
+        payment.breakdown = {
+          ...(payment.breakdown ?? {}),
+          providerVerification: {
+            provider: payment.provider,
+            status: verification.status,
+            reason: verification.reason,
+            response: verification.response,
+          },
+        };
+        if (!verification.approved) {
+          payment.status = PaymentStatus.FAILED;
+          await payments.save(payment);
+          throw new BadRequestException(verification.reason ?? 'Payment provider rejected the transaction');
+        }
+        payment.providerReference = verification.providerReference ?? providerToken;
       }
-      payment.providerReference = verification.providerReference ?? providerToken;
     } else {
       payment.providerReference = providerToken ?? `LOCAL-${randomUUID()}`;
     }
