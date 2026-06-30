@@ -4,7 +4,6 @@ import { SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
 import helmet from 'helmet';
-import { resolve } from 'node:path';
 import { AppModule } from './app.module';
 import { requestContextMiddleware } from './common/request-context';
 import { buildSwaggerConfig, SWAGGER_SITE_TITLE, SWAGGER_UI_PATH } from './infrastructure/swagger-config';
@@ -44,7 +43,6 @@ async function bootstrap(): Promise<void> {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'Idempotency-Key'],
   });
-  app.useStaticAssets(resolve(process.env.STORAGE_PATH ?? './storage'), { prefix: '/uploads/' });
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(
     new ValidationPipe({
