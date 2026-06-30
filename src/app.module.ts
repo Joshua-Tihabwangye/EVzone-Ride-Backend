@@ -46,6 +46,8 @@ import { OperationsModule } from './operations/operations.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PayoutsModule } from './payouts/payouts.module';
 import { PayoutsWorkerModule } from './payouts/workers/payouts-worker.module';
+import { ReconciliationModule } from './reconciliation/reconciliation.module';
+import { ReconciliationWorkerModule } from './reconciliation/workers/reconciliation-worker.module';
 import { PlacesModule } from './places/places.module';
 import { PricingModule } from './pricing/pricing.module';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -93,6 +95,8 @@ import { WalletsModule } from './wallets/wallets.module';
     PaymentsModule,
     PayoutsModule,
     PayoutsWorkerModule.register(),
+    ReconciliationModule,
+    ReconciliationWorkerModule.register(),
     CorporatePayModule,
     CorporateIntegrationModule,
     CommutesModule,
