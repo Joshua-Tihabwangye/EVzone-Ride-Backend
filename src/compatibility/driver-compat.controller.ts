@@ -169,17 +169,16 @@ export class DriverCompatibilityController {
 
   @Get('bootstrap')
   async bootstrap(@CurrentUser() user: AuthUser) {
-    const [profile, vehicles, documents, emergencyContacts] = await Promise.all([
+    const [profile, vehicles, documents] = await Promise.all([
       this.drivers.me(user.id),
       this.vehicles.listMine(user.id),
       this.drivers.listDocuments(user.id),
-      this.emergencyContactRepo.find({ where: { userId: user.id } }),
     ]);
     const driver = profile.driver;
 
     // Eagerly load vehicle documents so the mobile app can rehydrate uploaded
     // insurance, inspection and ownership docs after a refresh.
-    const vehicleIds = vehicles.map((v) => v.id);
+    const vehicleIds = (vehicles as any[]).map((v: any) => v.id);
     const vehicleDocuments = vehicleIds.length
       ? await this.vehicleDocuments.find({ where: { vehicleId: In(vehicleIds) } })
       : [];
@@ -191,7 +190,6 @@ export class DriverCompatibilityController {
 
     const onboarding = await this.buildOnboardingStatus(user, driver, vehicles, documents);
 
-    const profilePrefs = (driver.preferences?.profile ?? {}) as Record<string, unknown>;
     return {
       profile: {
         id: driver.id,
@@ -219,8 +217,12 @@ export class DriverCompatibilityController {
         requirementIds: [],
       },
       onboardingStatus: onboarding,
-      vehicles: vehicles.map((v) => this.mapVehicle({ ...v, documents: documentsByVehicle[v.id] })),
-      documents: documents.map((d) => this.mapDriverDocument(user.id, d)),
+      vehicles: (vehicles as any[]).map((v: any) =>
+        this.mapVehicle({ ...v, documents: documentsByVehicle[v.id] }),
+      ),
+      documents: (documents as DriverDocument[]).map((d: DriverDocument) =>
+        this.mapDriverDocument(user.id, d),
+      ),
       presence: { status: driver.availabilityStatus.toLowerCase() },
     };
   }
@@ -529,67 +531,10 @@ export class DriverCompatibilityController {
   async activateVehicle(@CurrentUser() user: AuthUser, @Body() dto: CompatDriverPresenceDto) {
     if (!dto.vehicleId) {
       const vehicles = await this.vehicles.listMine(user.id);
-      return vehicles.map((v) => this.mapVehicle(v));
+      return (vehicles as any[]).map((v: any) => this.mapVehicle(v));
     }
     const vehicle = await this.vehicles.activate(user.id, dto.vehicleId);
     return this.mapVehicle(vehicle);
-  }
-
-  @Patch('documents/:documentId')
-  async updateDriverDocument(
-    @CurrentUser() user: AuthUser,
-    @Param('documentId') documentId: string,
-    @Body() dto: DriverDocumentDto,
-  ) {
-    const updated = await this.drivers.updateDocument(user.id, documentId, dto);
-    return {
-      id: updated.id,
-      userId: user.id,
-      userType: 'DRIVER',
-      documentType: updated.type,
-      fileUrl: updated.fileUrl,
-      status: updated.status,
-      expiryDate: updated.expiryDate ? updated.expiryDate.toISOString() : null,
-      uploadedAt: updated.createdAt.toISOString(),
-      createdAt: updated.createdAt.toISOString(),
-    };
-  }
-
-  @Post('vehicles/:vehicleId/documents')
-  async uploadVehicleDocument(
-    @CurrentUser() user: AuthUser,
-    @Param('vehicleId') vehicleId: string,
-    @Body() dto: VehicleDocumentDto,
-  ) {
-    const document = await this.vehicles.addDocument(user.id, vehicleId, dto);
-    return {
-      id: document.id,
-      vehicleId: document.vehicleId,
-      documentType: document.type,
-      fileUrl: document.fileUrl,
-      status: document.status,
-      expiryDate: document.expiryDate ? document.expiryDate.toISOString() : null,
-      createdAt: document.createdAt.toISOString(),
-    };
-  }
-
-  @Patch('vehicles/:vehicleId/documents/:documentId')
-  async patchVehicleDocument(
-    @CurrentUser() user: AuthUser,
-    @Param('vehicleId') vehicleId: string,
-    @Param('documentId') documentId: string,
-    @Body() dto: VehicleDocumentDto,
-  ) {
-    const document = await this.vehicles.updateDocument(user.id, vehicleId, documentId, dto);
-    return {
-      id: document.id,
-      vehicleId: document.vehicleId,
-      documentType: document.type,
-      fileUrl: document.fileUrl,
-      status: document.status,
-      expiryDate: document.expiryDate ? document.expiryDate.toISOString() : null,
-      createdAt: document.createdAt.toISOString(),
-    };
   }
 
   @Get('jobs')
@@ -828,7 +773,9 @@ export class DriverCompatibilityController {
       color: v.color || '',
       range: v.estimatedRangeKm != null ? String(v.estimatedRangeKm) : '',
       isActive: v.status === 'ACTIVE' || v.isActive === true,
-      documents: this.mapVehicleDocuments(v.documents),
+      documents: ((v.documents as VehicleDocument[] | undefined) ?? []).map((d: VehicleDocument) =>
+        this.mapVehicleDocument(d),
+      ),
     };
   }
 
