@@ -35,7 +35,7 @@ export class ProductionConfigService implements OnModuleInit {
   }
 
   report() {
-    const production = this.value('NODE_ENV') === 'production';
+    const production = this.value('NODE_ENV').toLowerCase() === 'production';
     const checks = production ? this.productionChecks() : this.developmentChecks();
     return {
       production,
@@ -85,7 +85,11 @@ export class ProductionConfigService implements OnModuleInit {
         this.value('SOCKET_CORS_ORIGINS', this.value('CORS_ORIGINS')) !== '*',
         'SOCKET_CORS_ORIGINS must be explicit',
       ),
-      this.check('db.postgres', this.value('DB_TYPE', 'postgres') === 'postgres', 'DB_TYPE must be postgres'),
+      this.check(
+        'db.postgres',
+        this.value('DB_TYPE', 'postgres').toLowerCase() === 'postgres',
+        'DB_TYPE must be postgres',
+      ),
       this.check('db.noSync', !this.truthy('DB_SYNCHRONIZE'), 'DB_SYNCHRONIZE must be false'),
       this.check('db.migrations', this.truthy('DB_MIGRATIONS_RUN', true), 'DB_MIGRATIONS_RUN must be true'),
       this.check('seed.disabled', !this.truthy('SEED_DEMO'), 'SEED_DEMO must be false'),
@@ -99,7 +103,7 @@ export class ProductionConfigService implements OnModuleInit {
       this.check('kafka.brokers', Boolean(this.value('KAFKA_BROKERS')), 'KAFKA_BROKERS is required'),
       this.check(
         'payments.realProvider',
-        this.value('PAYMENT_PROVIDER') !== 'MOCK',
+        this.value('PAYMENT_PROVIDER').toUpperCase() !== 'MOCK',
         'PAYMENT_PROVIDER cannot be MOCK',
       ),
       this.check(
@@ -109,7 +113,7 @@ export class ProductionConfigService implements OnModuleInit {
       ),
       this.check(
         'corporatePay.remote',
-        this.value('CORPORATEPAY_MODE') === 'remote',
+        this.value('CORPORATEPAY_MODE').toLowerCase() === 'remote',
         'CORPORATEPAY_MODE must be remote',
       ),
       this.check(
@@ -124,7 +128,7 @@ export class ProductionConfigService implements OnModuleInit {
       ),
       this.check(
         'push.realProvider',
-        this.value('PUSH_PROVIDER') !== 'LOCAL',
+        this.value('PUSH_PROVIDER').toUpperCase() !== 'LOCAL',
         'PUSH_PROVIDER cannot be LOCAL',
       ),
       this.check(
@@ -137,7 +141,7 @@ export class ProductionConfigService implements OnModuleInit {
       ),
       this.check(
         'files.scanning',
-        ['CLAMAV', 'WEBHOOK', 'VENDOR'].includes(this.value('FILE_SCAN_PROVIDER')),
+        ['CLAMAV', 'WEBHOOK', 'VENDOR'].includes(this.value('FILE_SCAN_PROVIDER').toUpperCase()),
         'FILE_SCAN_PROVIDER must be CLAMAV, WEBHOOK, or VENDOR',
       ),
       this.check(
@@ -152,7 +156,7 @@ export class ProductionConfigService implements OnModuleInit {
       ),
       this.check(
         'cashout.realPayoutProvider',
-        this.value('CASHOUT_PAYOUT_PROVIDER', 'LOCAL') !== 'LOCAL',
+        this.value('CASHOUT_PAYOUT_PROVIDER', 'LOCAL').toUpperCase() !== 'LOCAL',
         'CASHOUT_PAYOUT_PROVIDER cannot be LOCAL',
       ),
     ];
@@ -166,7 +170,7 @@ export class ProductionConfigService implements OnModuleInit {
   }
 
   private paymentStatus(production: boolean) {
-    const provider = this.value('PAYMENT_PROVIDER', 'MOCK');
+    const provider = this.value('PAYMENT_PROVIDER', 'MOCK').toUpperCase();
     const configured = provider !== 'MOCK' && Boolean(this.value(`${provider}_SECRET_KEY`));
     return {
       provider,
@@ -178,7 +182,7 @@ export class ProductionConfigService implements OnModuleInit {
   }
 
   private pushStatus(production: boolean) {
-    const provider = this.value('PUSH_PROVIDER', 'LOCAL');
+    const provider = this.value('PUSH_PROVIDER', 'LOCAL').toUpperCase();
     const configured =
       provider === 'FCM'
         ? Boolean(this.value('FIREBASE_SERVICE_ACCOUNT_JSON'))
@@ -200,7 +204,7 @@ export class ProductionConfigService implements OnModuleInit {
       Boolean(this.value('CLOUDINARY_CLOUD_NAME')) &&
       Boolean(this.value('CLOUDINARY_API_KEY')) &&
       Boolean(this.value('CLOUDINARY_API_SECRET'));
-    const scanProvider = this.value('FILE_SCAN_PROVIDER', 'NONE');
+    const scanProvider = this.value('FILE_SCAN_PROVIDER', 'NONE').toUpperCase();
     return {
       provider: cloudinaryConfigured ? 'CLOUDINARY' : 'LOCAL',
       configured: cloudinaryConfigured,
@@ -238,6 +242,6 @@ export class ProductionConfigService implements OnModuleInit {
   }
 
   private value(key: string, fallback = ''): string {
-    return (this.config.get<string>(key) ?? fallback).trim().toUpperCase();
+    return (this.config.get<string>(key) ?? fallback).trim();
   }
 }
