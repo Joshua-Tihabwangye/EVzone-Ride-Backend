@@ -12,7 +12,8 @@ export class SmtpMailService {
     const host = this.config.get<string>('SMTP_HOST') ?? 'smtp.gmail.com';
     const port = Number(this.config.get('SMTP_PORT') ?? 465);
     const account = this.config.get<string>('SMTP_USER') ?? this.config.get<string>('EMAIL_USER');
-    const secret = this.config.get<string>(['SMTP', 'APP', 'PASSWORD'].join('_')) ?? this.config.get<string>('SMTP_PASS');
+    const secret =
+      this.config.get<string>(['SMTP', 'APP', 'PASSWORD'].join('_')) ?? this.config.get<string>('SMTP_PASS');
     const sender = this.config.get<string>('SMTP_FROM') ?? account;
 
     if (!account || !secret || !sender) {
@@ -20,7 +21,10 @@ export class SmtpMailService {
       return { sent: false, reason: 'EMAIL_NOT_CONFIGURED' };
     }
 
-    const subject = input.purpose === 'PASSWORD_RESET' ? 'Reset your EVzone Ride password' : 'Verify your EVzone Ride account';
+    const subject =
+      input.purpose === 'PASSWORD_RESET'
+        ? 'Reset your EVzone Ride password'
+        : 'Verify your EVzone Ride account';
     const greeting = input.fullName?.trim() ? `Hello ${input.fullName.trim()},` : 'Hello,';
     const text = [
       greeting,
