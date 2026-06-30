@@ -3927,12 +3927,19 @@ export class LedgerAccount extends BaseEntity {
   @Column({ type: 'simple-enum', enum: LedgerAccountType })
   accountType!: LedgerAccountType;
 
+  @Column({ type: 'varchar', default: 'ASSET' })
+  accountCategory!: string;
+
   @Column({ default: 'SYSTEM' })
   ownerType!: string;
 
   @Index()
   @Column({ nullable: true })
   ownerId?: string;
+
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
 
   @Column({ default: 'UGX' })
   currency!: string;
@@ -3942,6 +3949,41 @@ export class LedgerAccount extends BaseEntity {
 
   @Column({ default: true })
   active!: boolean;
+}
+
+@Entity('ledger_account_period_balances')
+@Index(['accountId', 'year', 'month'], { unique: true })
+export class LedgerAccountPeriodBalance extends BaseEntity {
+  @Index()
+  @Column()
+  accountId!: string;
+
+  @Column({ type: 'smallint' })
+  year!: number;
+
+  @Column({ type: 'smallint' })
+  month!: number;
+
+  @Column({ type: 'varchar', default: 'OPEN' })
+  status!: 'OPEN' | 'CLOSED';
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  openingBalance!: number;
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  closingBalance!: number;
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  totalDebits!: number;
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  totalCredits!: number;
+
+  @Column({ nullable: true })
+  closedAt?: Date;
+
+  @Column({ nullable: true })
+  closedByUserId?: string;
 }
 
 @Entity('journal_transactions')
@@ -3965,6 +4007,13 @@ export class JournalTransaction extends BaseEntity {
   @Index()
   @Column({ nullable: true })
   serviceId?: string;
+
+  @Column({ default: 'UGX' })
+  currency!: string;
+
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
 
   @Column({ nullable: true })
   postedAt?: Date;
@@ -5042,6 +5091,7 @@ export const ENTITIES = [
   JobOffer,
   DeliveryRoute,
   LedgerAccount,
+  LedgerAccountPeriodBalance,
   JournalTransaction,
   LedgerEntry,
   EarningsLedger,
