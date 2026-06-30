@@ -53,7 +53,7 @@ services:
       DB_POOL_MIN: 2
       DB_CONNECTION_TIMEOUT_MS: 30000
       SEED_DEMO: 'true'
-      JWT_SECRET: evzone-docker-access-secret-2026
+      JWT_SECRET: '${JWT_SECRET:-}'
       JWT_ACCESS_TTL: 15m
       JWT_REFRESH_TTL_DAYS: 30
       OIDC_AUTHORITY: https://accounts.evzone.app
@@ -104,10 +104,10 @@ services:
       DOMAIN_EVENT_FLUSH_INTERVAL_MS: 10000
       CORPORATEPAY_MODE: sandbox
       CORPORATEPAY_MOCK_AUTO_APPROVE: 'true'
-      CORPORATEPAY_WEBHOOK_SECRET: evzone-corporatepay-docker-secret
-      CORPORATEPAY_SIGNING_SECRET: evzone-corporatepay-signing-docker-secret
-      SCHOOL_WEBHOOK_SECRET: evzone-school-docker-secret
-      INTEGRATION_ENCRYPTION_KEY: evzone-docker-integration-encryption-key
+      CORPORATEPAY_WEBHOOK_SECRET: '${CORPORATEPAY_WEBHOOK_SECRET:-}'
+      CORPORATEPAY_SIGNING_SECRET: '${CORPORATEPAY_SIGNING_SECRET:-}'
+      SCHOOL_WEBHOOK_SECRET: '${SCHOOL_WEBHOOK_SECRET:-}'
+      INTEGRATION_ENCRYPTION_KEY: '${INTEGRATION_ENCRYPTION_KEY:-}'
       API_PUBLIC_URL: http://localhost:3001
       IDEMPOTENCY_TTL_SECONDS: 86400
       GEO_LOOKUP_BASE_URL: https://nominatim.openstreetmap.org

@@ -84,7 +84,6 @@
     "docs/specifications/EVzoneRide_Backend_Implementation_Prompt.md",
     "docs/specifications/EVzoneRide_Universal_Driver_Dispatch_Backend_Implementation.md"
   ],
-  "demoPassword": "Password123!",
   "demoAccounts": [
     "admin@evzone.local",
     "fleet.partner@evzone.local",
