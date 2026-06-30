@@ -58,7 +58,13 @@ export class WalletsService {
   }
 
   @Transactional()
-  async transfer(senderUserId: string, recipientIdentifier: string, amount: number, note?: string) {
+  async transfer(
+    senderUserId: string,
+    recipientIdentifier: string,
+    amount: number,
+    note?: string,
+    idempotencyKey?: string,
+  ) {
     const users = getRepository(User);
     const recipient = await users
       .createQueryBuilder('user')
@@ -68,8 +74,22 @@ export class WalletsService {
     if (!recipient) throw new NotFoundException('Recipient not found');
     if (recipient.id === senderUserId) throw new BadRequestException('Cannot transfer to your own wallet');
 
+    const reference = idempotencyKey ? `TRF-${idempotencyKey.slice(0, 32)}` : `TRF-${randomUUID()}`;
+
+    if (idempotencyKey) {
+      const existing = await getRepository(WalletTransaction).findOne({
+        where: { reference },
+      });
+      if (existing) {
+        return {
+          reference,
+          amount,
+          recipient: { id: recipient.id, firstName: recipient.firstName, lastName: recipient.lastName },
+        };
+      }
+    }
+
     const [senderWallet, recipientWallet] = await this.ensureAndLockWallets([senderUserId, recipient.id]);
-    const reference = `TRF-${randomUUID()}`;
     await this.debitLocked(
       senderWallet,
       amount,
@@ -92,12 +112,18 @@ export class WalletsService {
   }
 
   @Transactional()
-  async withdraw(userId: string, amount: number, destination: string) {
+  async withdraw(userId: string, amount: number, destination: string, idempotencyKey?: string) {
     if (process.env.NODE_ENV === 'production') {
       throw new BadRequestException('Direct wallet withdrawal is disabled in production; use cashout review');
     }
+    const reference = idempotencyKey ? `PAYOUT-${idempotencyKey.slice(0, 32)}` : `PAYOUT-${randomUUID()}`;
+
+    if (idempotencyKey) {
+      const existing = await getRepository(Payout).findOne({ where: { reference } });
+      if (existing) return existing;
+    }
+
     const wallet = await this.ensureAndLockWallet(userId);
-    const reference = `PAYOUT-${randomUUID()}`;
     await this.debitLocked(wallet, amount, WalletTransactionType.PAYOUT, reference, 'Driver payout');
     const payouts = getRepository(Payout);
     const payout = await payouts.save(
@@ -108,7 +134,7 @@ export class WalletsService {
         status: PaymentStatus.PAID,
         destination,
         reference,
-        metadata: { provider: 'EVZONE_LOCAL', settledAt: new Date().toISOString() },
+        metadata: { provider: 'EVZONE_LOCAL', settledAt: new Date().toISOString(), idempotencyKey },
       }),
     );
     return payout;

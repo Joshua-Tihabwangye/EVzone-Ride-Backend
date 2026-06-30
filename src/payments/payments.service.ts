@@ -3,7 +3,13 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
 import { DataSource, Repository } from 'typeorm';
-import { PaymentMethod, PaymentStatus, ServiceType, WalletTransactionType } from '../common/enums';
+import {
+  PaymentMethod,
+  PaymentStatus,
+  ServiceType,
+  TransactionDirection,
+  WalletTransactionType,
+} from '../common/enums';
 import { getRepository, Transactional } from '../common/transaction';
 import {
   AmbulanceRequest,
@@ -13,6 +19,7 @@ import {
   RentalBooking,
   Ride,
   TouristBooking,
+  WalletTransaction,
 } from '../database/entities';
 import { NotificationsService } from '../notifications/notifications.service';
 import { WalletsService } from '../wallets/wallets.service';
@@ -85,7 +92,7 @@ export class PaymentsService {
   }
 
   @Transactional()
-  async confirm(userId: string, paymentId: string, providerToken?: string) {
+  async confirm(userId: string, paymentId: string, providerToken?: string, idempotencyKey?: string) {
     const payments = getRepository(Payment);
     const payment = await payments.findOne({
       where: { id: paymentId, userId },
@@ -193,7 +200,13 @@ export class PaymentsService {
   }
 
   @Transactional()
-  async refund(requesterId: string, paymentId: string, amount?: number, reason?: string) {
+  async refund(
+    requesterId: string,
+    paymentId: string,
+    amount?: number,
+    reason?: string,
+    idempotencyKey?: string,
+  ) {
     const payments = getRepository(Payment);
     const payment = await payments.findOne({
       where: { id: paymentId },
@@ -211,13 +224,24 @@ export class PaymentsService {
       throw new BadRequestException('Refund exceeds remaining payment amount');
     }
 
+    const refundReference = idempotencyKey
+      ? `REF-${payment.reference}-${idempotencyKey.slice(0, 16)}`
+      : `REF-${payment.reference}-${randomUUID().slice(0, 8)}`;
+
+    if (idempotencyKey) {
+      const existingRefund = await getRepository(WalletTransaction).findOne({
+        where: { reference: refundReference },
+      });
+      if (existingRefund) return payment;
+    }
+
     await this.wallets.credit(
       payment.userId,
       refundAmount,
       WalletTransactionType.REFUND,
-      `REF-${payment.reference}-${randomUUID().slice(0, 8)}`,
+      refundReference,
       reason ?? 'Payment refund',
-      { paymentId: payment.id, approvedBy: requesterId },
+      { paymentId: payment.id, approvedBy: requesterId, idempotencyKey },
     );
 
     payment.refundedAmount = rounded(alreadyRefunded + refundAmount);

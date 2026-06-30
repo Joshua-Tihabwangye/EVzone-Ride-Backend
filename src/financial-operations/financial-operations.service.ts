@@ -136,7 +136,7 @@ export class FinancialOperationsService {
     });
 
     if ((process.env.CASHOUT_AUTO_APPROVE ?? '').toLowerCase() === 'true') {
-      return this.reviewCashout(record.id, 'SYSTEM', { status: 'APPROVED' });
+      return this.reviewCashout(record.id, 'SYSTEM', { status: 'APPROVED' }, record.idempotencyKey);
     }
     return record;
   }
@@ -167,13 +167,21 @@ export class FinancialOperationsService {
   }
 
   @Transactional()
-  async reviewCashout(id: string, reviewerId: string, dto: ReviewCashoutRequestDto) {
+  async reviewCashout(id: string, reviewerId: string, dto: ReviewCashoutRequestDto, idempotencyKey?: string) {
     const cashouts = getRepository(CashoutRequest);
     const record = await cashouts.findOne({
       where: { id },
       lock: { mode: 'pessimistic_write' },
     });
     if (!record) throw new NotFoundException('Cashout request not found');
+
+    if (
+      record.status === 'PAID' &&
+      (record.metadata as Record<string, unknown> | undefined)?.payoutReference
+    ) {
+      return record;
+    }
+
     if (record.status !== 'PENDING') throw new ConflictException('Cashout request already reviewed');
 
     record.reviewedByUserId = reviewerId;
@@ -198,7 +206,12 @@ export class FinancialOperationsService {
     }
 
     try {
-      const payout = await this.wallets.withdraw(record.userId, Number(record.amount), destination);
+      const payout = await this.wallets.withdraw(
+        record.userId,
+        Number(record.amount),
+        destination,
+        idempotencyKey,
+      );
       record.status = 'PAID';
       record.processedAt = new Date();
       record.metadata = {

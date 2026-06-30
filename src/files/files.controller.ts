@@ -14,6 +14,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthUser } from '../common/interfaces';
+import { RequireIdempotency } from '../idempotency/require-idempotency.decorator';
 import { FilesService } from './files.service';
 
 @ApiTags('Files')
@@ -29,6 +30,7 @@ export class FilesController {
 
   @Post('upload')
   @ApiConsumes('multipart/form-data')
+  @RequireIdempotency()
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 15 * 1024 * 1024 } }))
   upload(
     @CurrentUser() user: AuthUser,
