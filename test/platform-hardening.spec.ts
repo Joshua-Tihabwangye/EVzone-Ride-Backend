@@ -160,6 +160,9 @@ describe('environment validation schema', () => {
         CORPORATEPAY_WEBHOOK_SECRET: 'strong-webhook-secret-with-40-characters',
         CORPORATEPAY_SIGNING_SECRET: 'strong-signing-secret-with-40-characters',
         SCHOOL_WEBHOOK_SECRET: 'strong-school-secret-with-40-characters',
+        PAYTOTA_SECRET_KEY: 'strong-paytota-secret-with-40-characters',
+        PAYTOTA_WEBHOOK_PUBLIC_KEY: 'strong-paytota-public-key-with-40-characters',
+        FLUTTERWAVE_WEBHOOK_SECRET: 'strong-flutterwave-secret-with-40-characters',
       },
       validationOptions,
     );
@@ -177,6 +180,9 @@ describe('environment validation schema', () => {
         CORPORATEPAY_WEBHOOK_SECRET: 'evzone-corporatepay-local-secret',
         CORPORATEPAY_SIGNING_SECRET: 'evzone-local-signing-secret',
         SCHOOL_WEBHOOK_SECRET: 'evzone-school-local-secret',
+        PAYTOTA_SECRET_KEY: 'evzone-paytota-local-secret-longer',
+        PAYTOTA_WEBHOOK_PUBLIC_KEY: 'evzone-paytota-public-key-local-long',
+        FLUTTERWAVE_WEBHOOK_SECRET: 'evzone-flutterwave-local-secret-long',
       },
       validationOptions,
     );
@@ -196,6 +202,9 @@ describe('environment validation schema', () => {
         CORPORATEPAY_WEBHOOK_SECRET: 'strong-webhook-secret-with-40-characters',
         CORPORATEPAY_SIGNING_SECRET: 'strong-signing-secret-with-40-characters',
         SCHOOL_WEBHOOK_SECRET: 'strong-school-secret-with-40-characters',
+        PAYTOTA_SECRET_KEY: 'strong-paytota-secret-with-40-characters',
+        PAYTOTA_WEBHOOK_PUBLIC_KEY: 'strong-paytota-public-key-with-40-characters',
+        FLUTTERWAVE_WEBHOOK_SECRET: 'strong-flutterwave-secret-with-40-characters',
       },
       validationOptions,
     );
