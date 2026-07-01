@@ -12,6 +12,7 @@ import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { randomUUID } from 'node:crypto';
 import { Brackets, In, Repository } from 'typeorm';
+import { WithSpan } from '../observability/tracing/trace.decorator';
 import { AmbulanceEstimateDto } from '../ambulance/ambulance.dto';
 import { AmbulanceService } from '../ambulance/ambulance.service';
 import {
@@ -282,6 +283,7 @@ export class CorporateIntegrationService {
     };
   }
 
+  @WithSpan()
   async createRequest(dto: CreateCorporatePayPartnerRequestDto) {
     const organization = await this.resolveOrganization(dto);
     const idempotencyKey = dto.idempotencyKey ?? `corporatepay:${organization.id}:${dto.externalRequestId}`;
@@ -958,6 +960,7 @@ export class CorporateIntegrationService {
   }
 
   @Cron('15 * * * * *')
+  @WithSpan()
   async syncActiveRequests() {
     const items = await this.requests.find({
       where: {

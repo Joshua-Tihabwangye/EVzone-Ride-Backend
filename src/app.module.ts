@@ -40,7 +40,9 @@ import { GovernanceModule } from './governance/governance.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
 import { IdempotencyInterceptor } from './idempotency/idempotency.interceptor';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
+import { TraceInterceptor } from './observability/tracing/trace.interceptor';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ObservabilityModule } from './observability/observability.module';
 import { MatchingModule } from './matching/matching.module';
 import { MobileModule } from './mobile/mobile.module';
 import { OrganizationsModule } from './organizations/organizations.module';
@@ -74,6 +76,7 @@ import { WalletsModule } from './wallets/wallets.module';
     WorkersModule.register(),
     TypeOrmModule.forRootAsync({ useFactory: createTypeOrmOptions }),
     LoggingModule,
+    ObservabilityModule,
     DatabaseModule,
     InfrastructureModule,
     OrganizationsModule,
@@ -142,6 +145,7 @@ import { WalletsModule } from './wallets/wallets.module';
     { provide: APP_GUARD, useClass: PermissionGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: TraceInterceptor },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
     { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
   ],

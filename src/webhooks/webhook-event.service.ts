@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, Repository } from 'typeorm';
+import { WithSpan } from '../observability/tracing/trace.decorator';
 import { WebhookEventStatus } from '../common/enums';
 import { WebhookEventRecord } from '../database/entities';
 import { WebhookEventProcessor } from './webhook-event.processor';
@@ -22,6 +23,7 @@ export class WebhookEventService {
     private readonly processor: WebhookEventProcessor,
   ) {}
 
+  @WithSpan()
   async ingest(
     provider: string,
     rawBody: string,

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { WithSpan } from '../observability/tracing/trace.decorator';
 import { PaymentMethod, PaymentStatus, WebhookEventStatus } from '../common/enums';
 import { Payment, WebhookEventRecord } from '../database/entities';
 import { PaymentsService } from '../payments/payments.service';
@@ -13,6 +14,7 @@ export class WebhookEventProcessor {
     private readonly paymentService: PaymentsService,
   ) {}
 
+  @WithSpan()
   async process(
     record: WebhookEventRecord,
   ): Promise<{ accepted: boolean; eventId: string; paymentId?: string }> {

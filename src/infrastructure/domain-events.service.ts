@@ -7,6 +7,7 @@ import { Kafka, Producer } from 'kafkajs';
 import { In, LessThanOrEqual, Repository } from 'typeorm';
 import { DomainEventStatus } from '../common/enums';
 import { DomainEventRecord } from '../database/entities';
+import { injectTraceparentIntoHeaders } from '../observability/tracing/trace-context';
 import { ProcessRoleService } from './process-role.service';
 
 export interface DomainEventInput {
@@ -166,7 +167,14 @@ export class DomainEventsService implements OnModuleInit, OnModuleDestroy {
               occurredAt: record.occurredAt.toISOString(),
               payload: record.payload,
             }),
-            headers: { source: 'evzone-ride-backend', schemaVersion: '1' },
+            headers: (() => {
+              const headers: Record<string, string | string[] | undefined> = {
+                source: 'evzone-ride-backend',
+                schemaVersion: '1',
+              };
+              injectTraceparentIntoHeaders(headers);
+              return headers;
+            })(),
           },
         ],
       });

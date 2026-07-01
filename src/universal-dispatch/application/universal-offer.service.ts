@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { WithSpan } from '../../observability/tracing/trace.decorator';
 import { AuditService } from '../../audit/audit.service';
 import {
   UniversalDispatchAssignment,
@@ -43,6 +44,7 @@ export class UniversalOfferService {
 
   private readonly logger = new Logger(UniversalOfferService.name);
 
+  @WithSpan()
   async accept(
     driverId: string,
     offerId: string,

@@ -26,6 +26,7 @@ import { WalletsService } from '../wallets/wallets.service';
 import { CommissioningService } from '../commissioning/commissioning.service';
 import { CreatePaymentDto } from './payments.dto';
 import { PaymentProviderFactory } from './providers/payment-provider.factory';
+import { WithSpan } from '../observability/tracing/trace.decorator';
 
 export interface ServicePaymentData {
   ownerUserId: string;
@@ -57,6 +58,7 @@ export class PaymentsService {
     private readonly auditService: AuditService,
   ) {}
 
+  @WithSpan()
   async createIntent(userId: string, dto: CreatePaymentDto, serviceOverride?: ServicePaymentData) {
     if (dto.idempotencyKey) {
       const existing = await this.payments.findOne({ where: { userId, idempotencyKey: dto.idempotencyKey } });
@@ -101,6 +103,7 @@ export class PaymentsService {
     return saved;
   }
 
+  @WithSpan()
   async confirm(
     userId: string,
     paymentId: string,
@@ -211,6 +214,7 @@ export class PaymentsService {
     return payment;
   }
 
+  @WithSpan()
   async refund(
     requesterId: string,
     paymentId: string,
