@@ -41,6 +41,7 @@ import { IdempotencyModule } from './idempotency/idempotency.module';
 import { IdempotencyInterceptor } from './idempotency/idempotency.interceptor';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
 import { TraceInterceptor } from './observability/tracing/trace.interceptor';
+import { MetricsInterceptor } from './observability/metrics/metrics.interceptor';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ObservabilityModule } from './observability/observability.module';
 import { MatchingModule } from './matching/matching.module';
@@ -146,6 +147,7 @@ import { WalletsModule } from './wallets/wallets.module';
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     { provide: APP_INTERCEPTOR, useClass: TraceInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
     { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
   ],

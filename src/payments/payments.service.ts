@@ -27,6 +27,7 @@ import { CommissioningService } from '../commissioning/commissioning.service';
 import { CreatePaymentDto } from './payments.dto';
 import { PaymentProviderFactory } from './providers/payment-provider.factory';
 import { WithSpan } from '../observability/tracing/trace.decorator';
+import { BusinessMetricsService } from '../observability/metrics/business-metrics.service';
 
 export interface ServicePaymentData {
   ownerUserId: string;
@@ -56,6 +57,7 @@ export class PaymentsService {
     private readonly providerFactory: PaymentProviderFactory,
     private readonly commissioning: CommissioningService,
     private readonly auditService: AuditService,
+    private readonly businessMetrics: BusinessMetricsService,
   ) {}
 
   @WithSpan()
@@ -169,6 +171,7 @@ export class PaymentsService {
     payment.providerReference ??= `LOCAL-${randomUUID()}`;
     payment.paidAt = new Date();
     await this.payments.save(payment);
+    this.businessMetrics.recordPaymentConfirmed();
     await this.updateServicePaymentStatus(payment.serviceType, payment.serviceId, PaymentStatus.PAID);
     await this.creditProvider(payment);
     await this.notifications.create({
@@ -251,6 +254,7 @@ export class PaymentsService {
       refundAmount === payment.amount ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED;
     payment.refundedAt = new Date();
     const saved = await this.payments.save(payment);
+    this.businessMetrics.recordPaymentRefunded();
     void this.auditService
       .record({
         actorUserId: requesterId,

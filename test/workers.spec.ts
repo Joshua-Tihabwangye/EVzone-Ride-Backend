@@ -1,5 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import { BusinessMetricsService } from '../src/observability/metrics/business-metrics.service';
+import { createBusinessMetricsMock } from './helpers/metrics.mock';
 import { DataSource } from 'typeorm';
 import { Queue, Job } from 'bullmq';
 import {
@@ -123,6 +125,7 @@ describe('Workers infrastructure', () => {
             provide: BullmqConfigService,
             useValue: new BullmqConfigService(new ConfigService({ REDIS_URL: '' })),
           },
+          { provide: BusinessMetricsService, useValue: createBusinessMetricsMock() },
         ],
       }).compile();
 
@@ -139,6 +142,7 @@ describe('Workers infrastructure', () => {
         { matchRequest } as unknown as UniversalMatchingService,
         new WorkerHealthService(),
         { record: jest.fn() } as unknown as DeadLetterService,
+        createBusinessMetricsMock(),
         queue,
       );
 

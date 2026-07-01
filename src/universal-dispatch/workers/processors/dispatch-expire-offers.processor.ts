@@ -4,6 +4,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, LessThan, Repository } from 'typeorm';
 import { Queue, Job } from 'bullmq';
 import { DISPATCH_EXPIRE_OFFERS_QUEUE, WorkerHealthService, DeadLetterService } from '../../../workers';
+import { BusinessMetricsService } from '../../../observability/metrics/business-metrics.service';
+import { WithSpan } from '../../../observability/tracing/trace.decorator';
 import { UniversalDispatchOffer, UniversalServiceRequest } from '../../domain/universal-dispatch.entities';
 import { UniversalOfferStatus, UniversalRequestStatus } from '../../domain/universal-dispatch.enums';
 import { UniversalDispatchStateMachineService } from '../../application/universal-dispatch-state-machine.service';
@@ -26,10 +28,13 @@ export class DispatchExpireOffersProcessor {
     private readonly stateMachine: UniversalDispatchStateMachineService,
     private readonly health: WorkerHealthService,
     private readonly deadLetter: DeadLetterService,
+    private readonly businessMetrics: BusinessMetricsService,
     @Optional() @InjectQueue(DISPATCH_EXPIRE_OFFERS_QUEUE) private readonly queue?: Queue,
   ) {}
 
+  @WithSpan()
   async process(job: Job<ExpireOffersJob>): Promise<void> {
+    this.businessMetrics.recordQueueJob(DISPATCH_EXPIRE_OFFERS_QUEUE, 'processed');
     const batchSize = job.data.batchSize ?? 200;
     const expired = await this.offers.find({
       where: {
@@ -85,6 +90,7 @@ export class DispatchExpireOffersProcessor {
 
   @OnQueueEvent('failed')
   onFailed(job: Job<ExpireOffersJob>, error: Error): void {
+    this.businessMetrics.recordQueueJob(DISPATCH_EXPIRE_OFFERS_QUEUE, 'failed');
     this.health.beat(DispatchExpireOffersProcessor.name, 'failure');
     void this.deadLetter.record(job, error);
   }

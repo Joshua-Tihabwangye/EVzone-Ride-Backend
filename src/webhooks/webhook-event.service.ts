@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/co
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, Repository } from 'typeorm';
 import { WithSpan } from '../observability/tracing/trace.decorator';
+import { BusinessMetricsService } from '../observability/metrics/business-metrics.service';
 import { WebhookEventStatus } from '../common/enums';
 import { WebhookEventRecord } from '../database/entities';
 import { WebhookEventProcessor } from './webhook-event.processor';
@@ -21,6 +22,7 @@ export class WebhookEventService {
     private readonly signatures: WebhookSignatureService,
     private readonly replayGuard: WebhookReplayGuardService,
     private readonly processor: WebhookEventProcessor,
+    private readonly businessMetrics: BusinessMetricsService,
   ) {}
 
   @WithSpan()
@@ -68,6 +70,7 @@ export class WebhookEventService {
     }
 
     const result = await this.processor.process(record);
+    this.businessMetrics.recordWebhookEvent(normalized, record.status);
     return { ...result, status: record.status };
   }
 

@@ -8,6 +8,7 @@ import { In, LessThanOrEqual, Repository } from 'typeorm';
 import { DomainEventStatus } from '../common/enums';
 import { DomainEventRecord } from '../database/entities';
 import { injectTraceparentIntoHeaders } from '../observability/tracing/trace-context';
+import { BusinessMetricsService } from '../observability/metrics/business-metrics.service';
 import { ProcessRoleService } from './process-role.service';
 
 export interface DomainEventInput {
@@ -34,6 +35,7 @@ export class DomainEventsService implements OnModuleInit, OnModuleDestroy {
     @InjectRepository(DomainEventRecord) private readonly records: Repository<DomainEventRecord>,
     private readonly config: ConfigService,
     private readonly roles: ProcessRoleService,
+    private readonly businessMetrics: BusinessMetricsService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -151,6 +153,7 @@ export class DomainEventsService implements OnModuleInit, OnModuleDestroy {
         record.lastError = undefined;
       }
       await this.records.save(record);
+      this.businessMetrics.recordDomainEvent(record.topic, record.status);
       return;
     }
     try {
@@ -182,6 +185,7 @@ export class DomainEventsService implements OnModuleInit, OnModuleDestroy {
       record.publishedAt = new Date();
       record.lastError = undefined;
     } catch (error) {
+      this.businessMetrics.recordDomainEvent(record.topic, DomainEventStatus.FAILED);
       record.status = DomainEventStatus.FAILED;
       record.lastError = error instanceof Error ? error.message : String(error);
       this.kafkaConnected = false;
@@ -192,6 +196,9 @@ export class DomainEventsService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`Kafka publish failed; event retained in outbox: ${record.lastError}`);
     }
     await this.records.save(record);
+    if (record.status !== DomainEventStatus.FAILED) {
+      this.businessMetrics.recordDomainEvent(record.topic, record.status);
+    }
   }
 
   private async connectKafka(): Promise<void> {

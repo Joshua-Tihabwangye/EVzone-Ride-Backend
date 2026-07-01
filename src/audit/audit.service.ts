@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { signPayload } from '../common/utils/crypto-vault';
+import { BusinessMetricsService } from '../observability/metrics/business-metrics.service';
 import { AuditLog } from './audit-log.entity';
 
 export interface AuditRecordInput {
@@ -42,7 +43,10 @@ function computeChangedFields(
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
 
-  constructor(@InjectRepository(AuditLog) private readonly audits: Repository<AuditLog>) {}
+  constructor(
+    @InjectRepository(AuditLog) private readonly audits: Repository<AuditLog>,
+    private readonly businessMetrics: BusinessMetricsService,
+  ) {}
 
   private hmacSecret(): string {
     const secret = process.env.AUDIT_HMAC_SECRET ?? process.env.JWT_SECRET;
@@ -83,7 +87,9 @@ export class AuditService {
       changedFields,
       checksum,
     });
-    return repo.save(audit);
+    const saved = await repo.save(audit);
+    this.businessMetrics.recordAuditLog();
+    return saved;
   }
 
   async verify(id: string): Promise<{ valid: boolean; audit: AuditLog | null }> {

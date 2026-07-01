@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WithSpan } from '../observability/tracing/trace.decorator';
+import { BusinessMetricsService } from '../observability/metrics/business-metrics.service';
 import { randomUUID } from 'node:crypto';
 import { AuditService } from '../audit/audit.service';
 import { encryptSecret } from '../common/utils/crypto-vault';
@@ -36,6 +37,7 @@ export class FinancialOperationsService {
     private readonly wallets: WalletsService,
     private readonly payoutOrchestrator: PayoutOrchestratorService,
     private readonly auditService: AuditService,
+    private readonly businessMetrics: BusinessMetricsService,
   ) {}
 
   listMethods(userId: string) {
@@ -145,6 +147,7 @@ export class FinancialOperationsService {
         metadata: dto.metadata,
       }),
     );
+    this.businessMetrics.recordCashoutRequested();
     void this.auditService
       .record({
         actorUserId: userId,
@@ -235,6 +238,7 @@ export class FinancialOperationsService {
       record.status = CashoutRequestStatus.REJECTED;
       record.failureReason = dto.reason;
       const saved = await this.cashouts.save(record);
+      this.businessMetrics.recordCashoutRejected();
       await this.releaseReserve(saved);
       void this.auditService
         .record({
@@ -256,6 +260,7 @@ export class FinancialOperationsService {
       providerName: dto.provider,
       idempotencyKey: idempotencyKey ?? record.reference,
     });
+    this.businessMetrics.recordCashoutApproved();
     void this.auditService
       .record({
         actorUserId: reviewerId,

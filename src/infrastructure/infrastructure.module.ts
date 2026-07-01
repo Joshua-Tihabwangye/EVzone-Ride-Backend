@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { ObservabilityModule } from '../observability/observability.module';
 import { DomainEventsService } from './domain-events.service';
 import { InfrastructureController } from './infrastructure.controller';
 import { ProcessRoleService } from './process-role.service';
@@ -8,6 +9,7 @@ import { WorkerHeartbeatService } from './worker-heartbeat.service';
 
 @Global()
 @Module({
+  imports: [ObservabilityModule],
   controllers: [InfrastructureController],
   providers: [
     RedisService,

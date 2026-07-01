@@ -28,6 +28,7 @@ import {
 import { AuthUser } from '../common/interfaces';
 import { DEFAULT_MATCH_RADIUS_KM, DEFAULT_OFFER_TTL_SECONDS, MAX_RIDE_STOPS } from '../common/constants';
 import { estimatedMinutes, haversineKm } from '../common/utils/geo';
+import { BusinessMetricsService } from '../observability/metrics/business-metrics.service';
 import { randomOtp, safeEqualHash, sha256 } from '../common/utils/security';
 import { assertTransition } from '../common/utils/state-machine';
 import {
@@ -107,6 +108,7 @@ export class RidesService {
     private readonly wallets: WalletsService,
     private readonly eventBus: EventEmitter2,
     @Optional() private readonly heartbeat?: WorkerHeartbeatService,
+    @Optional() private readonly businessMetrics?: BusinessMetricsService,
   ) {}
 
   async estimate(userId: string | undefined, dto: EstimateRideDto) {
@@ -168,6 +170,7 @@ export class RidesService {
       }),
     );
     await this.log(ride.id, 'RIDE_CREATED', riderId, { quote, scheduledAt });
+    this.businessMetrics?.recordRideCreated();
     await this.pricing.recordRedemption({
       code: dto.promoCode,
       userId: riderId,
@@ -526,6 +529,7 @@ export class RidesService {
     ride.status = BookingStatus.COMPLETED;
     ride.completedAt = new Date();
     await this.rides.save(ride);
+    this.businessMetrics?.recordRideCompleted();
     await this.matching.cancel(ServiceType.RIDE, rideId, 'RIDE_COMPLETED');
     await this.stops.update(
       { rideId, type: StopType.DROPOFF },
