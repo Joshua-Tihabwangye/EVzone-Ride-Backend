@@ -39,6 +39,8 @@
     "smoke:admin": "node scripts/admin-portal-smoke-test.mjs",
     "smoke:admin-finance": "node scripts/smoke-admin-finance.mjs",
     "smoke:corporatepay": "node scripts/corporatepay-partner-smoke-test.mjs",
+    "smoke:partners": "node scripts/smoke-partners.mjs",
+    "smoke:dashboards": "node scripts/smoke-dashboards.mjs",
     "smoke:corporatepay:school": "node scripts/corporatepay-school-shuttle-smoke-test.mjs",
     "smoke:dispatch": "node scripts/universal-dispatch-smoke-test.mjs",
     "smoke:cors": "node scripts/smoke-cors.mjs",

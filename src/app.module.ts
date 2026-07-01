@@ -54,6 +54,8 @@ import { PaymentsModule } from './payments/payments.module';
 import { PermissionGuard } from './permissions/permission.guard';
 import { PermissionsModule } from './permissions/permissions.module';
 import { PayoutsModule } from './payouts/payouts.module';
+import { PartnersModule } from './partners/partners.module';
+import { PartnersWorkerModule } from './partners/workers/partners-worker.module';
 import { PayoutsWorkerModule } from './payouts/workers/payouts-worker.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
 import { ReconciliationWorkerModule } from './reconciliation/workers/reconciliation-worker.module';
@@ -109,6 +111,8 @@ import { WalletsModule } from './wallets/wallets.module';
     PricingModule,
     WalletsModule,
     PaymentsModule,
+    PartnersModule,
+    PartnersWorkerModule.register(),
     PayoutsModule,
     PayoutsWorkerModule.register(),
     ReconciliationModule,

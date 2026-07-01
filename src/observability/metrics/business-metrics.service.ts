@@ -41,6 +41,10 @@ export class BusinessMetricsService {
   private readonly fleetPayoutsRequested: Counter<string>;
   private readonly fleetComplianceScored: Counter<string>;
 
+  private readonly partnerRequests: Counter<'type' | 'action' | 'status'>;
+  private readonly partnerWebhookDelivered: Counter<'status'>;
+  private readonly partnerWebhookBacklog: Gauge<string>;
+
   private readonly providerDuration: Histogram<'provider' | 'operation'>;
   private readonly providerTotal: Counter<'provider' | 'operation' | 'status'>;
 
@@ -159,6 +163,21 @@ export class BusinessMetricsService {
     this.fleetComplianceScored = this.metrics.getCounter(
       'evzone_fleet_compliance_scored_total',
       'Total fleet compliance score computations',
+    );
+
+    this.partnerRequests = this.metrics.getCounter(
+      'evzone_partner_requests_total',
+      'Total partner adapter requests',
+      ['type', 'action', 'status'],
+    );
+    this.partnerWebhookDelivered = this.metrics.getCounter(
+      'evzone_partner_webhook_delivered_total',
+      'Partner webhooks delivered',
+      ['status'],
+    );
+    this.partnerWebhookBacklog = this.metrics.getGauge(
+      'evzone_partner_webhook_backlog',
+      'Pending partner webhooks',
     );
 
     this.providerDuration = this.metrics.getHistogram(
@@ -302,6 +321,18 @@ export class BusinessMetricsService {
 
   recordFleetComplianceScored(): void {
     this.fleetComplianceScored.inc();
+  }
+
+  recordPartnerRequest(type: string, action: string, status: string): void {
+    this.partnerRequests.inc({ type, action, status });
+  }
+
+  recordPartnerWebhookDelivered(status: string): void {
+    this.partnerWebhookDelivered.inc({ status });
+  }
+
+  setPartnerWebhookBacklog(value: number): void {
+    this.partnerWebhookBacklog.set(value);
   }
 
   recordProviderRequest(provider: string, operation: string, status: string, durationSeconds: number): void {

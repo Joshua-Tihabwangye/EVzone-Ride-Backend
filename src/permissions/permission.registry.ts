@@ -38,6 +38,9 @@ export const Permission = {
   FINANCE_REVENUE_READ: 'finance:revenue:read',
   FINANCE_SETTLEMENT_WRITE: 'finance:settlement:write',
 
+  PARTNER_ADMIN_READ: 'partner:admin:read',
+  PARTNER_ADMIN_WRITE: 'partner:admin:write',
+
   // Governance
   GOVERNANCE_FLAG_WRITE: 'governance:flag:write',
   GOVERNANCE_CONFIG_WRITE: 'governance:config:write',
@@ -84,6 +87,8 @@ export const ORGANIZATION_ROLE_PERMISSIONS: Record<OrganizationMemberRole, Permi
     Permission.FINANCE_REFUND_CREATE,
     Permission.FINANCE_REVENUE_READ,
     Permission.FINANCE_SETTLEMENT_WRITE,
+    Permission.PARTNER_ADMIN_READ,
+    Permission.PARTNER_ADMIN_WRITE,
     Permission.GOVERNANCE_ALERT_ACKNOWLEDGE,
   ],
   [OrganizationMemberRole.FLEET_MANAGER]: [
