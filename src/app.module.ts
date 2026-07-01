@@ -5,6 +5,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AdminFinanceModule } from './admin-finance/admin-finance.module';
 import { AdminModule } from './admin/admin.module';
 import { AgentPortalModule } from './agent-portal/agent-portal.module';
 import { AccountingModule } from './accounting/accounting.module';
@@ -137,6 +138,7 @@ import { WalletsModule } from './wallets/wallets.module';
     UniversalDispatchModule,
     AgentPortalModule,
     AdminModule,
+    AdminFinanceModule,
     RealtimeModule,
   ],
   providers: [

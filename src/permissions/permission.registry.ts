@@ -32,6 +32,8 @@ export const Permission = {
   FINANCE_PAYOUT_READ: 'finance:payout:read',
   FINANCE_PAYOUT_RETRY: 'finance:payout:retry',
   FINANCE_REFUND_CREATE: 'finance:refund:create',
+  FINANCE_REVENUE_READ: 'finance:revenue:read',
+  FINANCE_SETTLEMENT_WRITE: 'finance:settlement:write',
 
   // Governance
   GOVERNANCE_FLAG_WRITE: 'governance:flag:write',
@@ -74,6 +76,8 @@ export const ORGANIZATION_ROLE_PERMISSIONS: Record<OrganizationMemberRole, Permi
     Permission.FINANCE_CASHOUT_REVIEW,
     Permission.FINANCE_PAYOUT_READ,
     Permission.FINANCE_REFUND_CREATE,
+    Permission.FINANCE_REVENUE_READ,
+    Permission.FINANCE_SETTLEMENT_WRITE,
     Permission.GOVERNANCE_ALERT_ACKNOWLEDGE,
   ],
   [OrganizationMemberRole.FLEET_MANAGER]: [
@@ -120,6 +124,8 @@ export const ORGANIZATION_ROLE_PERMISSIONS: Record<OrganizationMemberRole, Permi
     Permission.FINANCE_PAYOUT_READ,
     Permission.FINANCE_PAYOUT_RETRY,
     Permission.FINANCE_REFUND_CREATE,
+    Permission.FINANCE_REVENUE_READ,
+    Permission.FINANCE_SETTLEMENT_WRITE,
   ],
   [OrganizationMemberRole.COMPLIANCE]: [
     Permission.ORGANIZATION_READ,

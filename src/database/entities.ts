@@ -4271,6 +4271,96 @@ export class EarningsLedger extends BaseEntity {
   status!: string;
 }
 
+@Entity('wallet_reconciliation_reports')
+export class WalletReconciliationReport extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  runId?: string;
+
+  @Index()
+  @Column()
+  periodStart!: Date;
+
+  @Index()
+  @Column()
+  periodEnd!: Date;
+
+  @Index()
+  @Column()
+  type!: string;
+
+  @Index()
+  @Column()
+  status!: string;
+
+  @Column({ default: 'UGX' })
+  currency!: string;
+
+  @Column({ type: 'int', default: 0 })
+  totalWalletTransactions!: number;
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  totalWalletAmount!: number;
+
+  @Column({ type: 'int', default: 0 })
+  matchedCount!: number;
+
+  @Column({ type: 'int', default: 0 })
+  varianceCount!: number;
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  varianceAmount!: number;
+
+  @Column({ type: 'simple-json', nullable: true })
+  details?: Record<string, unknown>;
+
+  @Column({ nullable: true })
+  createdByUserId?: string;
+}
+
+@Entity('finance_settlement_batches')
+export class FinanceSettlementBatch extends BaseEntity {
+  @Index({ unique: true })
+  @Column()
+  reference!: string;
+
+  @Index()
+  @Column()
+  status!: string;
+
+  @Index()
+  @Column()
+  periodStart!: Date;
+
+  @Index()
+  @Column()
+  periodEnd!: Date;
+
+  @Column({ default: 'UGX' })
+  currency!: string;
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  totalAmount!: number;
+
+  @Column({ type: 'int', default: 0 })
+  totalCount!: number;
+
+  @Column({ nullable: true })
+  provider?: string;
+
+  @Column({ nullable: true })
+  settlementDate?: Date;
+
+  @Column({ nullable: true })
+  postedAt?: Date;
+
+  @Column({ nullable: true })
+  postedByUserId?: string;
+
+  @Column({ type: 'simple-json', nullable: true })
+  details?: Record<string, unknown>;
+}
+
 @Entity('trip_pause_requests')
 export class TripPauseRequest extends BaseEntity {
   @Index()
@@ -5273,6 +5363,8 @@ export const ENTITIES = [
   JournalTransaction,
   LedgerEntry,
   EarningsLedger,
+  WalletReconciliationReport,
+  FinanceSettlementBatch,
   CommissionRule,
   ReconciliationRun,
   ReconciliationRecord,
