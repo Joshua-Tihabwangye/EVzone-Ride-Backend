@@ -349,7 +349,7 @@ export class RidesService {
     const vehicleId = driver.currentVehicleId;
     if (!vehicleId) throw new BadRequestException('No active vehicle selected');
 
-    return this.rides.manager.transaction(async (manager) => {
+    await this.rides.manager.transaction(async (manager) => {
       const ride = await manager.findOne(Ride, {
         where: { id: rideId },
         lock: { mode: 'pessimistic_write' },
@@ -413,8 +413,8 @@ export class RidesService {
         data: { rideId: ride.id, driverId: driver.id },
       });
       this.emitRide(ride);
-      return this.detailForUser(userId, rideId, UserRole.DRIVER);
     });
+    return this.detailForUser(userId, rideId, UserRole.DRIVER);
   }
 
   async reject(userId: string, rideId: string, reason?: string) {
