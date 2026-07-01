@@ -5,6 +5,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums';
 import { AuthUser } from '../common/interfaces';
+import { RequireIdempotency } from '../idempotency/require-idempotency.decorator';
 import {
   CreateDeliveryDto,
   CreateTrackingInvitationDto,
@@ -28,6 +29,7 @@ export class DeliveriesController {
   }
 
   @Post()
+  @RequireIdempotency()
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateDeliveryDto) {
     return this.service.create(user.id, dto, user.activeOrganizationId);
   }

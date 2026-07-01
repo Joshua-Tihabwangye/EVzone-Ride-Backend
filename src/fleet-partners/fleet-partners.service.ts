@@ -29,6 +29,7 @@ import {
 } from '../common/enums';
 import { AuthUser } from '../common/interfaces';
 import { decryptSecret, encryptSecret, verifyPayloadSignature } from '../common/utils/crypto-vault';
+import { getRequiredSecret } from '../common/utils/required-secret.util';
 import { stringValue } from '../common/utils/values';
 import {
   AmbulanceRequest,
@@ -709,8 +710,11 @@ export class FleetPartnersService {
     if (!connection) throw new NotFoundException('School fleet connection not found');
     const secrets = decryptSecret(connection.credentialsEncrypted);
     const secret = stringValue(
-      secrets.webhookSecret ?? process.env.SCHOOL_WEBHOOK_SECRET,
-      'evzone-school-local-secret',
+      secrets.webhookSecret,
+      getRequiredSecret('SCHOOL_WEBHOOK_SECRET', process.env.SCHOOL_WEBHOOK_SECRET, process.env.NODE_ENV, {
+        allowLocalFallback: true,
+        localFallback: 'evzone-school-local-secret',
+      }),
     );
     if (!verifyPayloadSignature(rawBody, signature, secret))
       throw new ForbiddenException('Invalid school webhook signature');

@@ -43,6 +43,7 @@ export class UniversalOfferService {
     driverId: string,
     offerId: string,
     input: AcceptUniversalOfferDto,
+    _idempotencyKey?: string,
   ): Promise<UniversalDispatchAssignment> {
     return this.dataSource.transaction(async (manager) => {
       const offerRepository = manager.getRepository(UniversalDispatchOffer);

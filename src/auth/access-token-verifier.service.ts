@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { getRequiredSecret } from '../common/utils/required-secret.util';
 import { ConfigService } from '@nestjs/config';
 import {
   JsonWebKey as CryptoJsonWebKey,
@@ -33,7 +34,16 @@ export class AccessTokenVerifierService {
   private readonly keyCache = new Map<string, { key: KeyObject; expiresAt: number }>();
   private jwksUriCache?: { uri: string; expiresAt: number };
 
-  constructor(private readonly config: ConfigService) {}
+  private readonly jwtSecret: string;
+
+  constructor(private readonly config: ConfigService) {
+    this.jwtSecret = getRequiredSecret(
+      'JWT_SECRET',
+      this.config.get<string>('JWT_SECRET'),
+      this.config.get<string>('NODE_ENV'),
+      { allowLocalFallback: true, localFallback: 'evzone-local-access-secret-change-in-production' },
+    );
+  }
 
   async verify(token: string): Promise<AccessTokenClaims> {
     const parts = token.split('.');
@@ -63,8 +73,7 @@ export class AccessTokenVerifierService {
   }
 
   private verifyHs256(signingInput: string, signature: Buffer): void {
-    const secret = this.config.get<string>('JWT_SECRET') ?? 'evzone-local-access-secret-change-in-production';
-    const expected = createHmac('sha256', secret).update(signingInput).digest();
+    const expected = createHmac('sha256', this.jwtSecret).update(signingInput).digest();
     if (expected.length !== signature.length || !timingSafeEqual(expected, signature)) {
       throw new UnauthorizedException('Invalid access token signature');
     }

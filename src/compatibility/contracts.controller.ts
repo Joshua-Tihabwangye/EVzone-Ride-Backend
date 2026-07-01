@@ -66,6 +66,12 @@ export class CompatibilityContractsController {
   @Public()
   @Get('health')
   health() {
-    return { version: '9.0.0', requestId: currentRequestId(), compatible: true };
+    return {
+      version: process.env.npm_package_version ?? '10.0.0',
+      requestId: currentRequestId(),
+      compatible: true,
+      compatibilityStatus: 'legacy-alias',
+      sunset: process.env.LEGACY_API_SUNSET ?? '2027-06-30',
+    };
   }
 }

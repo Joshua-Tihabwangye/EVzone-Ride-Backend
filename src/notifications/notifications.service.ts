@@ -27,7 +27,21 @@ export class NotificationsService {
       this.repository.create({ type: NotificationType.SYSTEM, ...input }),
     );
     this.events.emit('notification.created', notification);
-    void this.push.sendToUser(notification.userId, notification);
+    const pushDelivery = this.push.sendToUser(notification.userId, notification);
+    if (process.env.NODE_ENV === 'production') await pushDelivery;
+    else void pushDelivery;
+    this.events.emit('domain.event', {
+      eventType: 'notification.queued',
+      aggregateType: 'Notification',
+      aggregateId: notification.id,
+      eventKey: notification.userId,
+      payload: {
+        notificationId: notification.id,
+        userId: notification.userId,
+        type: notification.type,
+        title: notification.title,
+      },
+    });
     return notification;
   }
 

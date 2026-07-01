@@ -11,6 +11,7 @@ import {
   Organization,
   OrganizationMember,
 } from '../database/entities';
+import { ROUTE_OWNERSHIP_REGISTRY } from '../infrastructure/route-ownership.registry';
 
 export type CompatibilityAppId = 'rider' | 'driver' | 'fleet' | 'agent' | 'dispatcher' | 'admin';
 
@@ -184,16 +185,29 @@ export class CompatibilityService {
 
   contracts() {
     return {
-      version: '9.0.0',
+      version: process.env.npm_package_version ?? '10.0.0',
       generatedAt: new Date().toISOString(),
       apps: CONTRACTS,
-      deprecationPolicy: { header: 'Deprecation', sunsetHeader: 'Sunset', legacySunset: '2027-06-30' },
+      routeOwnership: ROUTE_OWNERSHIP_REGISTRY,
+      deprecationPolicy: {
+        status: 'legacy-aliases',
+        header: 'Deprecation',
+        sunsetHeader: 'Sunset',
+        legacySunset: process.env.LEGACY_API_SUNSET ?? '2027-06-30',
+        successor: '/api/v1/infrastructure/route-ownership',
+      },
     };
   }
 
   contract(appId: string) {
     const id = this.appId(appId);
-    return { appId: id, ...CONTRACTS[id] };
+    return {
+      appId: id,
+      ...CONTRACTS[id],
+      compatibilityStatus: 'legacy-alias',
+      canonicalOwners: ROUTE_OWNERSHIP_REGISTRY.filter((owner) => owner.audience === id),
+      sunset: process.env.LEGACY_API_SUNSET ?? '2027-06-30',
+    };
   }
 
   realtimeEvents() {

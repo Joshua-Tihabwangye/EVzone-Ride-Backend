@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthUser } from '../common/interfaces';
+import { RequireIdempotency } from '../idempotency/require-idempotency.decorator';
 import { TopUpDto, TransferDto, WithdrawDto } from './wallets.dto';
 import { WalletsService } from './wallets.service';
 
@@ -27,12 +28,27 @@ export class WalletsController {
   }
 
   @Post('transfer')
-  transfer(@CurrentUser() user: AuthUser, @Body() dto: TransferDto) {
-    return this.service.transfer(user.id, dto.recipient, dto.amount, dto.note);
+  @RequireIdempotency()
+  transfer(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: TransferDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.service.transfer(user.id, dto.recipient, dto.amount, dto.note, idempotencyKey);
   }
 
   @Post('withdraw')
+<<<<<<< HEAD
   withdraw(@CurrentUser() user: AuthUser, @Body() dto: WithdrawDto) {
     return this.service.withdraw(user.id, dto.amount, dto.destination, user.activeOrganizationId);
+=======
+  @RequireIdempotency()
+  withdraw(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: WithdrawDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.service.withdraw(user.id, dto.amount, dto.destination, idempotencyKey);
+>>>>>>> origin/main
   }
 }

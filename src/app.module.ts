@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { validationSchema, validationOptions } from './config/env.validation';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -18,6 +19,7 @@ import { CommutesModule } from './commutes/commutes.module';
 import { CompatibilityModule } from './compatibility/compatibility.module';
 import { DispatchModule } from './dispatch/dispatch.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { AuditModule } from './audit/audit.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -64,12 +66,22 @@ import { SafetyModule } from './safety/safety.module';
 import { TouristModule } from './tourist/tourist.module';
 import { UsersModule } from './users/users.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 import { WalletsModule } from './wallets/wallets.module';
 
 @Module({
   imports: [
+<<<<<<< HEAD
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env.local', '.env'] }),
     WorkersModule.register(),
+=======
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
+      validationSchema,
+      validationOptions,
+    }),
+>>>>>>> origin/main
     TypeOrmModule.forRootAsync({ useFactory: createTypeOrmOptions }),
     DatabaseModule,
     InfrastructureModule,
@@ -91,6 +103,7 @@ import { WalletsModule } from './wallets/wallets.module';
     GovernanceModule,
     IdempotencyModule,
     AuthModule,
+    AuditModule,
     CommissioningModule,
     UsersModule,
     NotificationsModule,
@@ -100,10 +113,14 @@ import { WalletsModule } from './wallets/wallets.module';
     PricingModule,
     WalletsModule,
     PaymentsModule,
+<<<<<<< HEAD
     PayoutsModule,
     PayoutsWorkerModule.register(),
     ReconciliationModule,
     ReconciliationWorkerModule.register(),
+=======
+    WebhooksModule,
+>>>>>>> origin/main
     CorporatePayModule,
     CorporateIntegrationModule,
     CommutesModule,

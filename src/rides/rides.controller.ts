@@ -5,6 +5,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums';
 import { AuthUser } from '../common/interfaces';
+import { RequireIdempotency } from '../idempotency/require-idempotency.decorator';
 import {
   AddSharedPassengerDto,
   CancelRideDto,
@@ -29,6 +30,7 @@ export class RidesController {
   }
 
   @Post()
+  @RequireIdempotency()
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateRideDto) {
     return this.service.create(user.id, dto, user.activeOrganizationId);
   }

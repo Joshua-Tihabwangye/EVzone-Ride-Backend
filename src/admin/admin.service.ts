@@ -9,6 +9,7 @@ import {
   PaymentStatus,
   OrganizationStatus,
   VehicleStatus,
+  WebhookEventStatus,
 } from '../common/enums';
 import { pageMeta } from '../common/dto/page-query.dto';
 import {
@@ -36,6 +37,7 @@ import {
   Vehicle,
   VehicleDocument,
 } from '../database/entities';
+import { WebhookEventService } from '../webhooks/webhook-event.service';
 import {
   ReviewDocumentDto,
   ReviewDriverDto,
@@ -74,6 +76,7 @@ export class AdminService {
     @InjectRepository(IntegrationOutbox) private readonly outbox: Repository<IntegrationOutbox>,
     @InjectRepository(PlatformSetting) private readonly settings: Repository<PlatformSetting>,
     @InjectRepository(AuditLog) private readonly audits: Repository<AuditLog>,
+    private readonly webhookEvents: WebhookEventService,
   ) {}
 
   async dashboard() {
@@ -372,5 +375,13 @@ export class AdminService {
       take: limit,
     });
     return { items, meta: pageMeta(page, limit, total) };
+  }
+
+  async listWebhookEvents(page = 1, limit = 20, status?: WebhookEventStatus, provider?: string) {
+    return this.webhookEvents.list(page, limit, status, provider);
+  }
+
+  async retryWebhookEvent(eventId: string) {
+    return this.webhookEvents.retry(eventId);
   }
 }

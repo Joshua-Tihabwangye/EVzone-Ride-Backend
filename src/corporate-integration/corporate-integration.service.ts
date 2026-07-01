@@ -70,6 +70,7 @@ import {
   CreateCorporatePayPartnerRequestDto,
   UpdateCorporatePayDisputeDto,
 } from './corporate-integration.dto';
+import { getRequiredSecret } from '../common/utils/required-secret.util';
 import { signCorporatePayRequest } from './corporate-partner-signature';
 
 export interface NormalizedQuote {
@@ -984,7 +985,12 @@ export class CorporateIntegrationService {
         const body = item.payload;
         const signature = signCorporatePayRequest(
           { timestamp, nonce, method: 'POST', path: `${url.pathname}${url.search}`, body },
-          process.env.CORPORATEPAY_PARTNER_SHARED_SECRET ?? 'evzone-corporatepay-local-shared-secret',
+          getRequiredSecret(
+            'CORPORATEPAY_PARTNER_SHARED_SECRET',
+            process.env.CORPORATEPAY_PARTNER_SHARED_SECRET,
+            process.env.NODE_ENV,
+            { allowLocalFallback: true, localFallback: 'evzone-corporatepay-local-shared-secret' },
+          ),
         );
         const response = await fetch(endpoint, {
           method: 'POST',

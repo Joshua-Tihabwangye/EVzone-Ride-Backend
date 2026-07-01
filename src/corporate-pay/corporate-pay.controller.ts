@@ -27,9 +27,10 @@ export class CorporatePayController {
   @Post('webhooks')
   webhook(
     @Headers('x-corporatepay-signature') signature: string | undefined,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() dto: CorporatePayWebhookDto,
   ) {
-    return this.service.webhook(JSON.stringify(dto), signature, dto);
+    return this.service.webhook(JSON.stringify(dto), signature, dto, headers);
   }
 
   @Post('accounts')

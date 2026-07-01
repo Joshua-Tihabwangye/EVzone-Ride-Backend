@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums';
 import { Permission, RequirePermission } from '../permissions';
 import { AuthUser } from '../common/interfaces';
+import { RequireIdempotency } from '../idempotency/require-idempotency.decorator';
 import { ConfirmPaymentDto, CreatePaymentDto, RefundPaymentDto } from './payments.dto';
 import { PaymentProviderFactory } from './providers/payment-provider.factory';
 import { PaymentsService } from './payments.service';
@@ -25,20 +26,45 @@ export class PaymentsController {
   }
 
   @Post('intents')
-  create(@CurrentUser() user: AuthUser, @Body() dto: CreatePaymentDto) {
-    return this.service.createIntent(user.id, dto);
+  @RequireIdempotency()
+  create(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: CreatePaymentDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.service.createIntent(user.id, {
+      ...dto,
+      idempotencyKey: dto.idempotencyKey ?? idempotencyKey,
+    });
   }
 
   @Post(':id/confirm')
-  confirm(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: ConfirmPaymentDto) {
-    return this.service.confirm(user.id, id, dto.providerToken);
+  @RequireIdempotency()
+  confirm(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: ConfirmPaymentDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.service.confirm(user.id, id, dto.providerToken, idempotencyKey);
   }
 
   @Post(':id/refund')
   @Roles(UserRole.ADMIN, UserRole.SUPPORT)
+<<<<<<< HEAD
   @RequirePermission(Permission.FINANCE_REFUND_CREATE)
   refund(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: RefundPaymentDto) {
     return this.service.refund(user.id, id, dto.amount, dto.reason);
+=======
+  @RequireIdempotency()
+  refund(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: RefundPaymentDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.service.refund(user.id, id, dto.amount, dto.reason, idempotencyKey);
+>>>>>>> origin/main
   }
 
   @Get()

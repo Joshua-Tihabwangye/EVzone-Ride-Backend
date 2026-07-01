@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
   VersionColumn,
 } from 'typeorm';
+export { AuditLog } from '../audit/audit-log.entity';
 import {
   AccountStatus,
   BookingStatus,
@@ -21,6 +22,7 @@ import {
   EmergencyStatus,
   EmergencyType,
   EnergyType,
+  FileAssetStatus,
   InspectionType,
   InvitationStatus,
   NotificationType,
@@ -332,8 +334,8 @@ export class FileAsset extends BaseEntity {
   @Column()
   sizeBytes!: number;
 
-  @Column()
-  url!: string;
+  @Column({ nullable: true })
+  url?: string;
 
   @Column({ default: 'LOCAL' })
   storageProvider!: string;
@@ -347,34 +349,23 @@ export class FileAsset extends BaseEntity {
   @Column({ type: 'varchar', default: 'PRIVATE' })
   visibility!: 'PUBLIC' | 'PRIVATE';
 
+  @Column({ type: 'simple-enum', enum: FileAssetStatus, default: FileAssetStatus.PENDING_SCAN })
+  status!: FileAssetStatus;
+
+  @Column({ nullable: true })
+  scanResult?: string;
+
+  @Column({ type: 'simple-json', nullable: true })
+  scanDetails?: Record<string, unknown>;
+
+  @Column({ nullable: true })
+  scannedAt?: Date;
+
+  @Column({ nullable: true })
+  rejectionReason?: string;
+
   @Column({ type: 'simple-json', nullable: true })
   metadata?: Record<string, unknown>;
-}
-
-@Entity('audit_logs')
-export class AuditLog extends BaseEntity {
-  @Index()
-  @Column({ nullable: true })
-  actorUserId?: string;
-
-  @Column()
-  action!: string;
-
-  @Column()
-  entityType!: string;
-
-  @Index()
-  @Column({ nullable: true })
-  entityId?: string;
-
-  @Column({ nullable: true })
-  route?: string;
-
-  @Column({ nullable: true })
-  ipAddress?: string;
-
-  @Column({ type: 'simple-json', nullable: true })
-  data?: Record<string, unknown>;
 }
 
 @Entity('driver_profiles')
@@ -945,6 +936,7 @@ export class WalletTransaction extends BaseEntity {
 }
 
 @Entity('payments')
+@Index('IDX_payment_user_idempotency', ['userId', 'idempotencyKey'], { unique: true })
 export class Payment extends BaseEntity {
   @Index()
   @Column({ nullable: true })
@@ -995,6 +987,9 @@ export class Payment extends BaseEntity {
 
   @Column({ nullable: true })
   refundedAt?: Date;
+
+  @Column({ type: 'decimal', precision: 16, scale: 2, default: 0, transformer: numberTransformer })
+  refundedAmount!: number;
 }
 
 @Index('IDX_payouts_cashout_idempotency', ['cashoutRequestId', 'idempotencyKey'], { unique: true })
@@ -2948,6 +2943,59 @@ export class CorporatePayWebhookEvent extends BaseEntity {
   error?: string;
 }
 
+@Entity('webhook_events')
+@Index(['provider', 'externalEventId'], { unique: true })
+export class WebhookEventRecord extends BaseEntity {
+  @Index()
+  @Column()
+  provider!: string;
+
+  @Column()
+  externalEventId!: string;
+
+  @Index()
+  @Column()
+  eventType!: string;
+
+  @Column({ type: 'simple-enum', enum: WebhookEventStatus, default: WebhookEventStatus.RECEIVED })
+  status!: WebhookEventStatus;
+
+  @Column({ default: false })
+  signatureValid!: boolean;
+
+  @Column({ nullable: true })
+  signatureVersion?: string;
+
+  @Column({ type: 'simple-json' })
+  payload!: Record<string, unknown>;
+
+  @Column()
+  receivedAt!: Date;
+
+  @Column({ nullable: true })
+  processedAt?: Date;
+
+  @Column({ nullable: true, type: 'text' })
+  error?: string;
+
+  @Column({ default: 0 })
+  attempts!: number;
+
+  @Column({ nullable: true })
+  nextAttemptAt?: Date;
+
+  @Index()
+  @Column({ nullable: true })
+  relatedPaymentId?: string;
+
+  @Index()
+  @Column({ nullable: true })
+  relatedTransactionId?: string;
+
+  @Column({ type: 'simple-json', nullable: true })
+  metadata?: Record<string, unknown>;
+}
+
 @Entity('corporate_pay_reconciliations')
 export class CorporatePayReconciliation extends BaseEntity {
   @Index()
@@ -3419,6 +3467,7 @@ export class StoredPaymentMethod extends BaseEntity {
 }
 
 @Entity('cashout_requests')
+@Index('IDX_cashout_user_idempotency', ['userId', 'idempotencyKey'], { unique: true })
 export class CashoutRequest extends BaseEntity {
   @Index()
   @Column({ nullable: true })
@@ -3475,6 +3524,9 @@ export class CashoutRequest extends BaseEntity {
 
   @Column({ nullable: true, type: 'text' })
   failureReason?: string;
+
+  @Column({ nullable: true })
+  idempotencyKey?: string;
 }
 
 @Entity('feature_flags')
@@ -5186,6 +5238,7 @@ export const ENTITIES = [
   CorporatePayAccount,
   CorporatePayTransaction,
   CorporatePayWebhookEvent,
+  WebhookEventRecord,
   CorporatePayReconciliation,
   CorporatePaySubjectLink,
   CorporatePayPartnerRequest,
