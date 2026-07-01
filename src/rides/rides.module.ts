@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DriversModule } from '../drivers/drivers.module';
+import { HealthModule } from '../health/health.module';
 import { MatchingModule } from '../matching/matching.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentsModule } from '../payments/payments.module';

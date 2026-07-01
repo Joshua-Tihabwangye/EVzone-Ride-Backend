@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -8,6 +8,7 @@ import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity
 import { DriverAvailabilityStatus, MatchingJobStatus, OfferStatus, ServiceType } from '../common/enums';
 import { DriverProfile, JobOffer, MatchingJob } from '../database/entities';
 import { DriversService } from '../drivers/drivers.service';
+import { WorkerHeartbeatService } from '../infrastructure/worker-heartbeat.service';
 import { RedisService } from '../infrastructure/redis.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateMatchingJobDto } from './matching.dto';
@@ -22,6 +23,7 @@ export class MatchingService {
     private readonly notifications: NotificationsService,
     private readonly redis: RedisService,
     private readonly events: EventEmitter2,
+    @Optional() private readonly heartbeat?: WorkerHeartbeatService,
   ) {}
 
   async enqueue(input: CreateMatchingJobDto) {
@@ -340,6 +342,7 @@ export class MatchingService {
       take: 50,
     });
     for (const job of due) void this.dispatch(job.id);
+    await this.heartbeat?.record('MatchingService.processQueue', 5);
   }
 
   private async transition(

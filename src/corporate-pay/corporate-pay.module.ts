@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { HealthModule } from '../health/health.module';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { CorporatePayController } from './corporate-pay.controller';

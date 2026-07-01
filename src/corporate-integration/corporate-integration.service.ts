@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -71,6 +77,7 @@ import {
   UpdateCorporatePayDisputeDto,
 } from './corporate-integration.dto';
 import { getRequiredSecret } from '../common/utils/required-secret.util';
+import { WorkerHeartbeatService } from '../infrastructure/worker-heartbeat.service';
 import { signCorporatePayRequest } from './corporate-partner-signature';
 
 export interface NormalizedQuote {
@@ -129,6 +136,7 @@ export class CorporateIntegrationService {
     private readonly tourist: TouristService,
     private readonly ambulances: AmbulanceService,
     private readonly rentals: RentalsService,
+    @Optional() private readonly heartbeat?: WorkerHeartbeatService,
   ) {}
 
   capabilities() {
@@ -963,6 +971,7 @@ export class CorporateIntegrationService {
       order: { updatedAt: 'ASC' },
     });
     for (const item of items) await this.syncEntity(item).catch(() => undefined);
+    await this.heartbeat?.record('CorporateIntegrationService.syncActiveRequests', 60);
   }
 
   @Cron('*/30 * * * * *')
@@ -1020,6 +1029,7 @@ export class CorporateIntegrationService {
       }
       await this.outbox.save(item);
     }
+    await this.heartbeat?.record('CorporateIntegrationService.deliverEvents', 30);
   }
 
   private async provisionEntity(

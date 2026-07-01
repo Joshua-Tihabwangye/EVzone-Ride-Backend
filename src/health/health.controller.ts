@@ -1,17 +1,42 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+<<<<<<< HEAD
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { Public } from '../common/decorators/public.decorator';
 import { BRAND } from '../common/constants';
 import { WorkerHealthService } from '../workers';
+=======
+import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
+import { BRAND } from '../common/constants';
+import { Public } from '../common/decorators/public.decorator';
+import { DatabaseHealthIndicator } from './indicators/database.health';
+import { KafkaHealthIndicator } from './indicators/kafka.health';
+import { MigrationsHealthIndicator } from './indicators/migrations.health';
+import { RedisHealthIndicator } from './indicators/redis.health';
+import { StorageHealthIndicator } from './indicators/storage.health';
+import { WorkersHealthIndicator } from './indicators/workers.health';
+import { WorkerHealthService } from '../workers';
+import { ProductionConfigService } from '../infrastructure/production-config.service';
+>>>>>>> origin/main
 
 @ApiTags('Health')
 @Controller()
 export class HealthController {
   constructor(
+    private readonly health: HealthCheckService,
+    private readonly db: DatabaseHealthIndicator,
+    private readonly migrations: MigrationsHealthIndicator,
+    private readonly redis: RedisHealthIndicator,
+    private readonly kafka: KafkaHealthIndicator,
+    private readonly storage: StorageHealthIndicator,
+    private readonly workersIndicator: WorkersHealthIndicator,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly workerHealth: WorkerHealthService,
+<<<<<<< HEAD
+=======
+    private readonly production: ProductionConfigService,
+>>>>>>> origin/main
   ) {}
 
   @Public()
@@ -26,22 +51,88 @@ export class HealthController {
     };
   }
 
+  /**
+   * Backward-compatible health check. Returns 200 when the database is reachable.
+   */
   @Public()
   @Get('health')
-  async health() {
-    await this.dataSource.query('SELECT 1');
-    return {
-      status: 'ok',
-      database: 'up',
-      uptimeSeconds: Math.round(process.uptime()),
-      timestamp: new Date().toISOString(),
-    };
+  @HealthCheck()
+  legacyHealth() {
+    return this.health.check([() => this.db.isHealthy('database')]);
   }
 
+  /**
+   * Liveness probe. Minimal check that the process is responsive.
+   */
+  @Public()
+  @Get('health/live')
+  @HealthCheck()
+  live() {
+    return this.health.check([]);
+  }
+
+  /**
+   * Readiness probe. Verifies database, migrations, Redis, Kafka, and storage.
+   */
+  @Public()
+  @Get('health/ready')
+  @HealthCheck()
+  ready() {
+    return this.health.check([
+      () => this.db.isHealthy('database'),
+      () => this.migrations.isHealthy('migrations'),
+      () => this.redis.isHealthy('redis'),
+      () => this.kafka.isHealthy('kafka'),
+      () => this.storage.isHealthy('storage'),
+    ]);
+  }
+
+  /**
+   * Detailed dependency matrix. Returns the status of every external dependency.
+   */
+  @Public()
+  @Get('health/dependencies')
+  @HealthCheck()
+  dependencies() {
+    return this.health.check([
+      () => this.db.isHealthy('database'),
+      () => this.migrations.isHealthy('migrations'),
+      () => this.redis.isHealthy('redis'),
+      () => this.kafka.isHealthy('kafka'),
+      () => this.storage.isHealthy('storage'),
+    ]);
+  }
+
+  /**
+   * Worker heartbeat status. Returns 503 if any critical cron worker is stale.
+   */
+  @Public()
+  @Get('health/workers')
+  @HealthCheck()
+  workersHealth() {
+    return this.health.check([() => this.workersIndicator.isHealthy('workers')]);
+  }
+
+  /**
+   * Backward-compatible readiness endpoint.
+   */
   @Public()
   @Get('ready')
+<<<<<<< HEAD
   ready() {
     return { status: this.dataSource.isInitialized ? 'ready' : 'starting' };
+=======
+  @HealthCheck()
+  legacyReady() {
+    return this.health.check([
+      () => this.db.isHealthy('database'),
+      () => this.migrations.isHealthy('migrations'),
+      () => this.redis.isHealthy('redis'),
+      () => this.kafka.isHealthy('kafka'),
+      () => this.storage.isHealthy('storage'),
+      () => this.workersIndicator.isHealthy('workers'),
+    ]);
+>>>>>>> origin/main
   }
 
   @Public()
