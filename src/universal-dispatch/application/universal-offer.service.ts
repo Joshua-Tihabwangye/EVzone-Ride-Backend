@@ -15,11 +15,7 @@ import {
   UniversalRequestStatus,
   UniversalTripStatus,
 } from '../domain/universal-dispatch.enums';
-import {
-  assertDispatchUnitTransition,
-  assertOfferTransition,
-  assertRequestTransition,
-} from '../domain/universal-dispatch.utils';
+import { UniversalDispatchStateMachineService } from './universal-dispatch-state-machine.service';
 import { UniversalOutboxService } from '../infrastructure/universal-outbox.service';
 import { DispatchRealtimeService } from '../infrastructure/dispatch-realtime.service';
 import { AcceptUniversalOfferDto, DeclineUniversalOfferDto } from '../universal-dispatch.dto';
@@ -40,6 +36,7 @@ export class UniversalOfferService {
     private readonly dataSource: DataSource,
     private readonly outbox: UniversalOutboxService,
     private readonly realtime: DispatchRealtimeService,
+    private readonly stateMachine: UniversalDispatchStateMachineService,
   ) {}
 
   async accept(
@@ -93,9 +90,9 @@ export class UniversalOfferService {
         throw new ConflictException({ code: 'DISPATCH_UNIT_VERSION_CONFLICT' });
       }
       if (offer.expiresAt < new Date()) {
-        assertOfferTransition(offer.status, UniversalOfferStatus.EXPIRED);
-        offer.status = UniversalOfferStatus.EXPIRED;
-        await offerRepository.save(offer);
+        await this.stateMachine.transitionOffer(manager, offer, UniversalOfferStatus.EXPIRED, {
+          reasonCode: 'OFFER_EXPIRED',
+        });
         throw new ConflictException({ code: 'OFFER_EXPIRED' });
       }
 
@@ -103,20 +100,21 @@ export class UniversalOfferService {
         throw new ConflictException({ code: 'ACTIVE_ASSIGNMENT_CONFLICT' });
       }
 
-      assertRequestTransition(request.status, UniversalRequestStatus.ASSIGNED);
-      assertOfferTransition(offer.status, UniversalOfferStatus.ACCEPTED);
-
-      request.status = UniversalRequestStatus.ASSIGNED;
       request.assignedDispatchUnitId = unit.id;
       request.assignedAt = new Date();
       request.version += 1;
-      await requestRepository.save(request);
+      await this.stateMachine.transitionRequest(manager, request, UniversalRequestStatus.ASSIGNED, {
+        actorType: 'DRIVER',
+        actorId: driverId,
+      });
 
-      assertDispatchUnitTransition(unit.status, DispatchUnitStatus.RESERVED);
-      unit.status = DispatchUnitStatus.RESERVED;
       unit.activeRequestId = request.id;
       unit.activeOfferId = offer.id;
-      await unitRepository.save(unit);
+      unit.lastAssignedAt = new Date();
+      await this.stateMachine.transitionUnit(manager, unit, DispatchUnitStatus.RESERVED, {
+        actorType: 'DRIVER',
+        actorId: driverId,
+      });
 
       const assignment = await assignmentRepository.save(
         assignmentRepository.create({
@@ -128,14 +126,20 @@ export class UniversalOfferService {
         }),
       );
 
-      offer.status = UniversalOfferStatus.ACCEPTED;
       offer.respondedAt = new Date();
-      await offerRepository.save(offer);
+      await this.stateMachine.transitionOffer(manager, offer, UniversalOfferStatus.ACCEPTED, {
+        actorType: 'DRIVER',
+        actorId: driverId,
+      });
 
-      await offerRepository.update(
-        { requestId: request.id, status: UniversalOfferStatus.PENDING },
-        { status: UniversalOfferStatus.CANCELLED, respondedAt: new Date() },
-      );
+      const otherOffers = await offerRepository.find({
+        where: { requestId: request.id, status: UniversalOfferStatus.PENDING },
+      });
+      for (const otherOffer of otherOffers) {
+        await this.stateMachine.transitionOffer(manager, otherOffer, UniversalOfferStatus.CANCELLED, {
+          reasonCode: 'LOST_RACE',
+        });
+      }
 
       await tripRepository.save(
         tripRepository.create({
@@ -191,18 +195,24 @@ export class UniversalOfferService {
     if (offer.status !== UniversalOfferStatus.PENDING) {
       throw new ConflictException({ code: 'OFFER_NOT_PENDING' });
     }
-    assertOfferTransition(offer.status, UniversalOfferStatus.DECLINED);
-    offer.status = UniversalOfferStatus.DECLINED;
     offer.respondedAt = new Date();
     offer.responseReason = input.reasonCode;
-    const saved = await this.offers.save(offer);
+    const saved = await this.stateMachine.transitionOffer(
+      this.dataSource.manager,
+      offer,
+      UniversalOfferStatus.DECLINED,
+      { actorType: 'DRIVER', actorId: driverId, reasonCode: input.reasonCode },
+    );
 
     const request = await this.requests.findOne({ where: { id: offer.requestId } });
     if (request && request.status === UniversalRequestStatus.OFFERING) {
-      assertRequestTransition(request.status, UniversalRequestStatus.SEARCHING);
-      request.status = UniversalRequestStatus.SEARCHING;
       request.nextMatchAt = new Date();
-      await this.requests.save(request);
+      await this.stateMachine.transitionRequest(
+        this.dataSource.manager,
+        request,
+        UniversalRequestStatus.SEARCHING,
+        { reasonCode: input.reasonCode },
+      );
     }
 
     return saved;

@@ -300,6 +300,9 @@ export class UniversalDispatchUnit extends UniversalDispatchBaseEntity {
   @Column({ type: 'simple-enum', enum: DispatchUnitStatus, default: DispatchUnitStatus.OFFLINE })
   status!: DispatchUnitStatus;
 
+  @Column({ type: 'simple-enum', enum: DispatchUnitStatus, nullable: true })
+  previousStatus?: DispatchUnitStatus;
+
   /** Nullable unique key populated only while the unit is active. */
   @Index({ unique: true })
   @Column({ nullable: true })
@@ -419,6 +422,10 @@ export class UniversalDispatchUnit extends UniversalDispatchBaseEntity {
   @Column({ nullable: true })
   availableSince?: Date;
 
+  @Index()
+  @Column({ nullable: true })
+  lastAssignedAt?: Date;
+
   @Column({ nullable: true })
   snapshotRefreshedAt?: Date;
 
@@ -529,6 +536,9 @@ export class UniversalServiceRequest extends UniversalDispatchBaseEntity {
     default: UniversalRequestStatus.CREATED,
   })
   status!: UniversalRequestStatus;
+
+  @Column({ type: 'simple-enum', enum: UniversalRequestStatus, nullable: true })
+  previousStatus?: UniversalRequestStatus;
 
   @Column({ type: 'decimal', precision: 10, scale: 7, transformer: numberTransformer })
   pickupLatitude!: number;
@@ -725,6 +735,9 @@ export class UniversalDispatchOffer extends UniversalDispatchBaseEntity {
   @Column({ type: 'simple-enum', enum: UniversalOfferStatus, default: UniversalOfferStatus.PENDING })
   status!: UniversalOfferStatus;
 
+  @Column({ type: 'simple-enum', enum: UniversalOfferStatus, nullable: true })
+  previousStatus?: UniversalOfferStatus;
+
   @Column({
     type: 'decimal',
     precision: 10,
@@ -788,6 +801,9 @@ export class UniversalDispatchAssignment extends UniversalDispatchBaseEntity {
   })
   status!: UniversalAssignmentStatus;
 
+  @Column({ type: 'simple-enum', enum: UniversalAssignmentStatus, nullable: true })
+  previousStatus?: UniversalAssignmentStatus;
+
   /** Nullable unique key populated while assignment status is ACTIVE. */
   @Index({ unique: true })
   @Column({ nullable: true })
@@ -827,6 +843,9 @@ export class UniversalTripSession extends UniversalDispatchBaseEntity {
 
   @Column({ type: 'simple-enum', enum: UniversalTripStatus, default: UniversalTripStatus.ASSIGNED })
   status!: UniversalTripStatus;
+
+  @Column({ type: 'simple-enum', enum: UniversalTripStatus, nullable: true })
+  previousStatus?: UniversalTripStatus;
 
   @Column({ default: 1 })
   routeVersion!: number;
@@ -1218,6 +1237,36 @@ export class UniversalDispatchExclusion extends UniversalDispatchBaseEntity {
   active!: boolean;
 }
 
+@Index('IDX_state_transition_log_entity', ['entityType', 'entityId', 'createdAt'])
+@Entity('state_transition_logs')
+export class StateTransitionLog extends UniversalDispatchBaseEntity {
+  @Index()
+  @Column()
+  entityType!: string;
+
+  @Index()
+  @Column()
+  entityId!: string;
+
+  @Column({ nullable: true })
+  fromStatus?: string;
+
+  @Column()
+  toStatus!: string;
+
+  @Column({ nullable: true })
+  actorType?: string;
+
+  @Column({ nullable: true })
+  actorId?: string;
+
+  @Column({ nullable: true })
+  reasonCode?: string;
+
+  @Column({ type: 'simple-json', nullable: true })
+  metadata?: Record<string, unknown>;
+}
+
 export const UNIVERSAL_DISPATCH_ENTITIES = [
   DispatchDriverCertification,
   DispatchDriverEntitlement,
@@ -1242,4 +1291,5 @@ export const UNIVERSAL_DISPATCH_ENTITIES = [
   UniversalDispatchOutboxEvent,
   UniversalDispatchCancellation,
   UniversalDispatchExclusion,
+  StateTransitionLog,
 ] as const;

@@ -1,16 +1,37 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+<<<<<<< HEAD
+import { DispatchScheduledRequestsProcessor } from './processors/dispatch-scheduled-requests.processor';
+=======
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 import { ProcessRoleService } from '../../infrastructure/process-role.service';
 import { UniversalServiceRequest } from '../domain/universal-dispatch.entities';
 import { UniversalRequestStatus, UniversalScheduleType } from '../domain/universal-dispatch.enums';
 import { UniversalMatchingService } from '../application/universal-matching.service';
+>>>>>>> origin/main
 
 @Injectable()
 export class ScheduledDispatchWorker {
   private readonly logger = new Logger(ScheduledDispatchWorker.name);
+  private processing = false;
 
+<<<<<<< HEAD
+  constructor(private readonly processor: DispatchScheduledRequestsProcessor) {}
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async run(): Promise<void> {
+    if (this.processing) return;
+    this.processing = true;
+    try {
+      await this.processor.schedule();
+    } catch (error) {
+      this.logger.warn(
+        `Failed to schedule dispatch activation: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      this.processing = false;
+=======
   constructor(
     @InjectRepository(UniversalServiceRequest)
     private readonly requests: Repository<UniversalServiceRequest>,
@@ -45,6 +66,7 @@ export class ScheduledDispatchWorker {
           }`,
         );
       }
+>>>>>>> origin/main
     }
   }
 }

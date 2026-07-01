@@ -32,7 +32,7 @@ export class RidesController {
   @Post()
   @RequireIdempotency()
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateRideDto) {
-    return this.service.create(user.id, dto);
+    return this.service.create(user.id, dto, user.activeOrganizationId);
   }
 
   @Get()

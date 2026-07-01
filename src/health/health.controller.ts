@@ -5,14 +5,22 @@ import type { Response } from 'express';
 import { DataSource } from 'typeorm';
 import { Public } from '../common/decorators/public.decorator';
 import { BRAND } from '../common/constants';
+<<<<<<< HEAD
+import { WorkerHealthService } from '../workers';
+=======
 import { ProductionConfigService } from '../infrastructure/production-config.service';
+>>>>>>> origin/main
 
 @ApiTags('Health')
 @Controller()
 export class HealthController {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
+<<<<<<< HEAD
+    private readonly workerHealth: WorkerHealthService,
+=======
     private readonly production: ProductionConfigService,
+>>>>>>> origin/main
   ) {}
 
   @Public()
@@ -57,6 +65,18 @@ export class HealthController {
           productionReady: this.dataSource.isInitialized,
         },
       },
+    };
+  }
+
+  @Public()
+  @Get('health/workers')
+  workers() {
+    const statuses = this.workerHealth.status();
+    const healthy = Object.values(statuses).every((s) => s.healthy);
+    return {
+      status: healthy ? 'ok' : 'degraded',
+      workers: statuses,
+      timestamp: new Date().toISOString(),
     };
   }
 }

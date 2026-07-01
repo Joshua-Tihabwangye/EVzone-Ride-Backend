@@ -102,6 +102,7 @@ export class DispatchLiveStateService {
       heading: unit.heading,
       lastSeenAt: unit.locationRecordedAt?.toISOString(),
       availableSince: unit.availableSince?.toISOString(),
+      lastAssignedAt: unit.lastAssignedAt?.toISOString(),
       batterySoc: unit.batterySoc,
       usableRangeKm: unit.usableRangeKm,
       chargingState: unit.chargingState,

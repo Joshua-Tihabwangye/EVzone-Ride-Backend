@@ -35,7 +35,7 @@ export class RentalsController {
 
   @Post('bookings')
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateRentalBookingDto) {
-    return this.service.create(user.id, dto);
+    return this.service.create(user.id, dto, user.activeOrganizationId);
   }
 
   @Get('bookings')

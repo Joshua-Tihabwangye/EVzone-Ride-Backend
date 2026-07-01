@@ -58,6 +58,7 @@ describe('School Shuttle CorporatePay payment bridge', () => {
       notifications as never,
       events,
       {} as never,
+      {} as never,
     );
 
     const created = await service.createIntent(

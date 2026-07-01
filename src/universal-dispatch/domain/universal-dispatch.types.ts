@@ -48,6 +48,7 @@ export interface DispatchPolicyConfig {
   allowedFallbacks: string[];
   substitutions: Record<string, string[]>;
   serviceSpecific: Record<string, unknown>;
+  operatingZoneIds?: string[];
 }
 
 export interface DispatchComplianceSnapshot {
@@ -114,6 +115,7 @@ export interface DispatchUnitLiveState {
   heading?: number;
   lastSeenAt?: string;
   availableSince?: string;
+  lastAssignedAt?: string;
   batterySoc?: number;
   usableRangeKm?: number;
   chargingState?: string;

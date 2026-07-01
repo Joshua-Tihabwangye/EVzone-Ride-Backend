@@ -90,12 +90,13 @@ export class RentalsService {
     };
   }
 
-  async create(renterId: string, dto: CreateRentalBookingDto) {
+  async create(renterId: string, dto: CreateRentalBookingDto, organizationId?: string) {
     if (!dto.agreementAccepted) throw new BadRequestException('Rental agreement must be accepted');
     const quote = await this.quote(dto);
     const booking = await this.bookings.save(
       this.bookings.create({
         renterId,
+        organizationId,
         vehicleId: dto.vehicleId,
         ownerUserId: quote.vehicle.ownerUserId,
         status: RentalStatus.REQUESTED,

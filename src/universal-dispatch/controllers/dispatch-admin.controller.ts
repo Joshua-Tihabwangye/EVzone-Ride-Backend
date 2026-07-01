@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums';
+import { Permission, RequirePermission } from '../../permissions';
 import { AuthUser } from '../../common/interfaces';
 import { DispatchPolicyService } from '../application/dispatch-policy.service';
 import { UniversalMatchingService } from '../application/universal-matching.service';
@@ -11,6 +12,9 @@ import { UniversalRequestService } from '../application/universal-request.servic
 import { UniversalOfferService } from '../application/universal-offer.service';
 import { UniversalTripService } from '../application/universal-trip.service';
 import { RouteOptimizerService } from '../infrastructure/route-optimizer.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { UniversalDispatchDecisionTrace } from '../domain/universal-dispatch.entities';
 import {
   ChangeDriverDto,
   CreateDispatchPolicyDto,
@@ -35,6 +39,8 @@ export class DispatchAdminController {
     private readonly offerService: UniversalOfferService,
     private readonly tripService: UniversalTripService,
     private readonly optimizer: RouteOptimizerService,
+    @InjectRepository(UniversalDispatchDecisionTrace)
+    private readonly traces: Repository<UniversalDispatchDecisionTrace>,
   ) {}
 
   @Post('dispatch-policies/validate')
@@ -43,6 +49,7 @@ export class DispatchAdminController {
   }
 
   @Post('dispatch-policies')
+  @RequirePermission(Permission.DISPATCH_POLICY_WRITE)
   async createPolicy(@CurrentUser() user: AuthUser, @Body() dto: CreateDispatchPolicyDto) {
     return this.policyService.create(dto, user.id);
   }
@@ -65,16 +72,19 @@ export class DispatchAdminController {
   }
 
   @Post('dispatch-policies/:id/activate')
+  @RequirePermission(Permission.DISPATCH_POLICY_WRITE)
   async activatePolicy(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.policyService.activate(id, user.id);
   }
 
   @Post('dispatch-policies/:id/retire')
+  @RequirePermission(Permission.DISPATCH_POLICY_WRITE)
   async retirePolicy(@Param('id') id: string) {
     return this.policyService.retire(id);
   }
 
   @Post('service-requests/:requestId/match')
+  @RequirePermission(Permission.DISPATCH_MATCH_RUN)
   async matchRequest(@Param('requestId') requestId: string, @Body() dto: MatchUniversalRequestDto) {
     return this.matchingService.matchRequest(requestId, dto.shadowMode);
   }
@@ -85,6 +95,7 @@ export class DispatchAdminController {
   }
 
   @Post('service-requests/:requestId/change-driver')
+  @RequirePermission(Permission.DISPATCH_DRIVER_ASSIGN)
   async changeDriver(@Param('requestId') requestId: string, @Body() dto: ChangeDriverDto) {
     return { requestId, dto };
   }
@@ -114,9 +125,22 @@ export class DispatchAdminController {
     );
   }
 
-  @Get('dispatch-decisions/:requestId')
-  async getDecisionTrace(@Param('requestId') requestId: string) {
-    return { requestId };
+  @Get('decision-traces/:traceId')
+  async getDecisionTrace(@Param('traceId') traceId: string) {
+    const trace = await this.traces.findOne({ where: { traceId } });
+    if (!trace) throw new NotFoundException('Decision trace not found');
+    return {
+      traceId: trace.traceId,
+      requestId: trace.requestId,
+      policyVersion: trace.policyVersion,
+      outcome: trace.outcome,
+      candidateCount: trace.candidateCount,
+      eligibleCount: trace.eligibleCount,
+      selectedDispatchUnitId: trace.selectedDispatchUnitId,
+      decisionSummary: trace.decisionSummary,
+      candidateDetails: trace.candidateDetails,
+      createdAt: trace.createdAt,
+    };
   }
 
   @Put('dispatch-units/:unitId/state')

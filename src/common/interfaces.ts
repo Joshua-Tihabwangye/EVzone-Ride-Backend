@@ -1,3 +1,4 @@
+import { Permission } from '../permissions';
 import { UserRole } from './enums';
 
 export interface AuthUser {
@@ -8,6 +9,9 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
   organizationId?: string;
+  activeOrganizationId?: string;
+  permissions?: Permission[];
+  isPlatformAdmin?: boolean;
   roles?: string[];
 }
 
@@ -18,5 +22,6 @@ export interface JwtPayload {
   phone?: string;
   firstName: string;
   lastName: string;
+  organizationId?: string;
   roles?: string[];
 }
