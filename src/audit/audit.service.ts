@@ -19,10 +19,14 @@ export interface AuditRecordInput {
 }
 
 function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
   return JSON.stringify(value, Object.keys(value as object).sort());
 }
 
-function computeChangedFields(before?: Record<string, unknown>, after?: Record<string, unknown>): string[] | undefined {
+function computeChangedFields(
+  before?: Record<string, unknown>,
+  after?: Record<string, unknown>,
+): string[] | undefined {
   if (!before || !after) return undefined;
   const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
   const changed: string[] = [];
@@ -43,25 +47,29 @@ export class AuditService {
   private hmacSecret(): string {
     const secret = process.env.AUDIT_HMAC_SECRET ?? process.env.JWT_SECRET;
     if (!secret) {
-      this.logger.warn('AUDIT_HMAC_SECRET and JWT_SECRET are both unset; audit checksums will use a deterministic fallback');
+      this.logger.warn(
+        'AUDIT_HMAC_SECRET and JWT_SECRET are both unset; audit checksums will use a deterministic fallback',
+      );
       return 'evzone-audit-local-fallback';
     }
     return secret;
   }
 
   private computeChecksum(input: AuditRecordInput): string {
+    const before = input.before ?? undefined;
+    const after = input.after ?? undefined;
     const payload = canonicalJson({
-      actorUserId: input.actorUserId,
+      actorUserId: input.actorUserId ?? undefined,
       action: input.action,
       entityType: input.entityType,
-      entityId: input.entityId,
-      before: input.before,
-      after: input.after,
-      changedFields: input.before && input.after ? computeChangedFields(input.before, input.after) : undefined,
-      reason: input.reason,
-      requestId: input.requestId,
-      route: input.route,
-      metadata: input.metadata,
+      entityId: input.entityId ?? undefined,
+      before,
+      after,
+      changedFields: before && after ? computeChangedFields(before, after) : undefined,
+      reason: input.reason ?? undefined,
+      requestId: input.requestId ?? undefined,
+      route: input.route ?? undefined,
+      metadata: input.metadata ?? undefined,
     });
     return signPayload(payload, this.hmacSecret());
   }

@@ -8,7 +8,8 @@ import {
   UpdateDateColumn,
   VersionColumn,
 } from 'typeorm';
-export { AuditLog } from '../audit/audit-log.entity';
+import { AuditLog } from '../audit/audit-log.entity';
+export { AuditLog };
 import {
   AccountStatus,
   BookingStatus,

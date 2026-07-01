@@ -1,26 +1,17 @@
-import { Controller, Get, Res } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { InjectDataSource } from '@nestjs/typeorm';
-import type { Response } from 'express';
 import { DataSource } from 'typeorm';
 import { Public } from '../common/decorators/public.decorator';
 import { BRAND } from '../common/constants';
-<<<<<<< HEAD
 import { WorkerHealthService } from '../workers';
-=======
-import { ProductionConfigService } from '../infrastructure/production-config.service';
->>>>>>> origin/main
 
 @ApiTags('Health')
 @Controller()
 export class HealthController {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
-<<<<<<< HEAD
     private readonly workerHealth: WorkerHealthService,
-=======
-    private readonly production: ProductionConfigService,
->>>>>>> origin/main
   ) {}
 
   @Public()
@@ -49,23 +40,8 @@ export class HealthController {
 
   @Public()
   @Get('ready')
-  ready(@Res({ passthrough: true }) response: Response) {
-    const readiness = this.production.readiness();
-    const status = this.dataSource.isInitialized && readiness.status === 'ready' ? 'ready' : 'degraded';
-    if (status !== 'ready') response.status(503);
-    return {
-      ...readiness,
-      status,
-      dependencies: {
-        ...readiness.dependencies,
-        database: {
-          configured: true,
-          connected: this.dataSource.isInitialized,
-          fallback: null,
-          productionReady: this.dataSource.isInitialized,
-        },
-      },
-    };
+  ready() {
+    return { status: this.dataSource.isInitialized ? 'ready' : 'starting' };
   }
 
   @Public()

@@ -37,6 +37,10 @@
     "smoke:corporatepay:school": "node scripts/corporatepay-school-shuttle-smoke-test.mjs",
     "smoke:dispatch": "node scripts/universal-dispatch-smoke-test.mjs",
     "smoke:cors": "node scripts/smoke-cors.mjs",
+    "smoke:month2:audit": "node scripts/month2-audit-smoke-test.mjs",
+    "smoke:month2:financial": "node scripts/month2-financial-smoke-test.mjs",
+    "smoke:month2:dispatch": "node scripts/month2-dispatch-smoke-test.mjs",
+    "smoke:month2:tenant": "node scripts/month2-tenant-smoke-test.mjs",
     "test:dispatch": "jest --runInBand src/universal-dispatch"
   },
   "dependencies": {
@@ -75,13 +79,9 @@
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "socket.io": "4.8.3",
-<<<<<<< HEAD
     "sql.js": "1.14.1",
     "typeorm": "0.3.30",
     "xlsx": "^0.18.5"
-=======
-    "typeorm": "0.3.30"
->>>>>>> origin/main
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",

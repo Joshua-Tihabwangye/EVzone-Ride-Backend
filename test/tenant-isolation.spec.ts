@@ -48,6 +48,7 @@ describe('Tenant isolation', () => {
       db.getRepository(DriverProfile),
       {} as any,
       {} as any,
+      { record: jest.fn(async () => ({ id: 'audit-1' })) } as any,
     );
   });
 

@@ -8,24 +8,12 @@ export class HardenedAuditTrail1784000007000 implements MigrationInterface {
       return;
     }
 
-    await queryRunner.query(
-      `ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "before" JSONB;`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "after" JSONB;`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "changedFields" JSONB;`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "reason" VARCHAR;`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "requestId" VARCHAR;`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "checksum" VARCHAR;`,
-    );
+    await queryRunner.query(`ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "before" JSONB;`);
+    await queryRunner.query(`ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "after" JSONB;`);
+    await queryRunner.query(`ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "changedFields" JSONB;`);
+    await queryRunner.query(`ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "reason" VARCHAR;`);
+    await queryRunner.query(`ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "requestId" VARCHAR;`);
+    await queryRunner.query(`ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "checksum" VARCHAR;`);
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "IDX_audit_logs_request_id" ON "audit_logs" ("requestId");`,
     );
@@ -46,9 +34,7 @@ export class HardenedAuditTrail1784000007000 implements MigrationInterface {
        END;
        $$ LANGUAGE plpgsql;`,
     );
-    await queryRunner.query(
-      `DROP TRIGGER IF EXISTS trg_audit_log_append_only ON "audit_logs";`,
-    );
+    await queryRunner.query(`DROP TRIGGER IF EXISTS trg_audit_log_append_only ON "audit_logs";`);
     await queryRunner.query(
       `CREATE TRIGGER trg_audit_log_append_only
        BEFORE UPDATE OR DELETE ON "audit_logs"
