@@ -1,0 +1,167 @@
+groups:
+  - name: evzone-api-reliability
+    interval: 15s
+    rules:
+      - alert: EvzoneHighHttp5xxRate
+        expr: |
+          (
+            sum(rate(evzone_http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(evzone_http_requests_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: evzone-ride
+        annotations:
+          summary: "High 5xx rate on EVzone Ride API"
+          description: "The proportion of HTTP 5xx responses over the last 5 minutes is above 5%."
+          runbook_url: "https://wiki.evzone.local/runbooks/evzone-high-http-5xx-rate"
+
+      - alert: EvzoneHighP99Latency
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(evzone_http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 3m
+        labels:
+          severity: warning
+          service: evzone-ride
+        annotations:
+          summary: "High p99 HTTP latency on EVzone Ride API"
+          description: "The 99th percentile request latency has exceeded 2 seconds for more than 3 minutes."
+          runbook_url: "https://wiki.evzone.local/runbooks/evzone-high-p99-latency"
+
+      - alert: EvzoneEndpointErrorBudgetBurn
+        expr: |
+          (
+            sum(rate(evzone_http_requests_total{status=~"5.."}[1h]))
+            /
+            sum(rate(evzone_http_requests_total[1h]))
+          ) > 0.001
+        for: 5m
+        labels:
+          severity: warning
+          service: evzone-ride
+        annotations:
+          summary: "HTTP error budget burn rate is elevated"
+          description: "The 1-hour error rate is above the 99.9% SLO budget."
+          runbook_url: "https://wiki.evzone.local/runbooks/evzone-error-budget-burn"
+
+  - name: evzone-business-flows
+    interval: 15s
+    rules:
+      - alert: EvzonePaymentFailures
+        expr: |
+          increase(evzone_payments_failed_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: payments
+        annotations:
+          summary: "Payment failures detected"
+          description: "One or more payment confirmations failed in the last 5 minutes."
+          runbook_url: "https://wiki.evzone.local/runbooks/evzone-payment-failures"
+
+      - alert: EvzonePayoutFailures
+        expr: |
+          increase(evzone_payouts_failed_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: payouts
+        annotations:
+          summary: "Payout failures detected"
+          description: "One or more payouts failed in the last 5 minutes."
+          runbook_url: "https://wiki.evzone.local/runbooks/evzone-payout-failures"
+
+      - alert: EvzonePendingCashoutsHigh
+        expr: |
+          evzone_pending_cashouts > 50
+        for: 5m
+        labels:
+          severity: warning
+          service: payouts
+        annotations:
+          summary: "High pending cashout backlog"
+          description: "There are more than 50 pending cashout requests."
+          runbook_url: "https://wiki.evzone.local/runbooks/evzone-pending-cashouts-high"
+
+      - alert: EvzoneFailedWebhooksBacklog
+        expr: |
+          evzone_failed_webhooks > 20
+        for: 5m
+        labels:
+          severity: warning
+          service: webhooks
+        annotations:
+          summary: "Failed webhook backlog is growing"
+          description: "More than 20 webhooks are awaiting retry."
+          runbook_url: "https://wiki.evzone.local/runbooks/evzone-failed-webhooks-backlog"
+
+      - alert: EvzoneStuckRidesOrDeliveries
+        expr: |
+          increase(evzone_operations_alerts_total{severity="HIGH",status="OPEN"}[10m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          service: dispatch
+        annotations:
+          summary: "New stuck ride or delivery alerts"
+          description: "The watchdog has flagged services stuck beyond the configured threshold."
+          runbook_url: "https://wiki.evzone.local/runbooks/evzone-stuck-services"
+
+  - name: evzone-workers-and-queues
+    interval: 15s
+    rules:
+      - alert: EvzoneQueueJobFailures
+        expr: |
+          sum(increase(evzone_queue_jobs_total{event="failed"}[5m])) by (queue) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: workers
+        annotations:
+          summary: "BullMQ job failures are elevated"
+          description: "Queue {{ $labels.queue }} has had more than 5 failed jobs in the last 5 minutes."
+          runbook_url: "https://wiki.evzone.local/runbooks/evzone-queue-job-failures"
+
+      - alert: EvzoneStaleWorkerHeartbeat
+        expr: |
+          evzone_worker_stale_heartbeat == 1
+        for: 2m
+        labels:
+          severity: warning
+          service: workers
+        annotations:
+          summary: "Critical worker heartbeat is stale"
+          description: "Worker {{ $labels.worker }} has not reported a heartbeat within its expected interval."
+          runbook_url: "https://wiki.evzone.local/runbooks/evzone-stale-worker-heartbeat"
+
+      - alert: EvzoneDomainEventOutboxBacklog
+        expr: |
+          evzone_outbox_backlog{outbox_type="domain_events"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "Domain event outbox backlog is high"
+          description: "More than 1000 domain events are queued in the outbox."
+          runbook_url: "https://wiki.evzone.local/runbooks/evzone-domain-event-outbox-backlog"
+
+  - name: evzone-dependencies
+    interval: 15s
+    rules:
+      - alert: EvzoneDependencyDown
+        expr: |
+          evzone_dependency_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: dependencies
+        annotations:
+          summary: "Critical dependency is unhealthy"
+          description: "Dependency {{ $labels.name }} is reporting unhealthy."
+          runbook_url: "https://wiki.evzone.local/runbooks/evzone-dependency-down"

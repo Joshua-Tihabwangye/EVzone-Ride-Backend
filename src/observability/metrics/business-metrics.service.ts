@@ -50,6 +50,8 @@ export class BusinessMetricsService {
   private readonly pendingCashouts: Gauge<string>;
   private readonly failedWebhooks: Gauge<string>;
   private readonly outboxBacklog: Gauge<'outbox_type'>;
+  private readonly dependencyHealth: Gauge<'name'>;
+  private readonly workerStaleHeartbeat: Gauge<'worker'>;
 
   constructor(private readonly metrics: MetricsService) {
     this.httpDuration = this.metrics.getHistogram(
@@ -184,6 +186,16 @@ export class BusinessMetricsService {
       'Number of items in the outbox backlog',
       ['outbox_type'],
     );
+    this.dependencyHealth = this.metrics.getGauge(
+      'evzone_dependency_up',
+      'Whether a critical dependency is healthy (1 = up, 0 = down)',
+      ['name'],
+    );
+    this.workerStaleHeartbeat = this.metrics.getGauge(
+      'evzone_worker_stale_heartbeat',
+      'Whether a critical worker heartbeat is stale (1 = stale, 0 = healthy)',
+      ['worker'],
+    );
   }
 
   recordHttpRequest(method: string, route: string, status: number, durationSeconds: number): void {
@@ -303,5 +315,13 @@ export class BusinessMetricsService {
 
   setOutboxBacklog(outboxType: string, value: number): void {
     this.outboxBacklog.set({ outbox_type: outboxType }, value);
+  }
+
+  setDependencyHealth(name: string, up: boolean): void {
+    this.dependencyHealth.set({ name }, up ? 1 : 0);
+  }
+
+  setWorkerStaleHeartbeat(worker: string, stale: boolean): void {
+    this.workerStaleHeartbeat.set({ worker }, stale ? 1 : 0);
   }
 }

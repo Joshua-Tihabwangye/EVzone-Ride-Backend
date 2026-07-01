@@ -1,0 +1,50 @@
+slos:
+  - id: api-availability
+    name: API Availability
+    description: The EVzone Ride REST API is available and responding to health checks.
+    target: 0.999
+    window: 30d
+    metric: evzone_http_requests_total
+    expression: |
+      1 - (
+        sum(rate(evzone_http_requests_total{status=~"5.."}[30d]))
+        /
+        sum(rate(evzone_http_requests_total[30d]))
+      )
+
+  - id: payout-completion-success
+    name: Payout Completion Success Rate
+    description: Cashout payouts complete successfully without provider errors.
+    target: 0.995
+    window: 7d
+    metric: evzone_payouts_completed_total
+    expression: |
+      sum(rate(evzone_payouts_completed_total[7d]))
+      /
+      (
+        sum(rate(evzone_payouts_completed_total[7d]))
+        +
+        sum(rate(evzone_payouts_failed_total[7d]))
+      )
+
+  - id: dispatch-offer-acceptance
+    name: Dispatch Offer Acceptance Within TTL
+    description: A meaningful share of dispatch offers are accepted before they expire.
+    target: 0.85
+    window: 1d
+    metric: evzone_dispatch_offers_accepted_total
+    expression: |
+      sum(rate(evzone_dispatch_offers_accepted_total[1d]))
+      /
+      sum(rate(evzone_dispatch_offers_created_total[1d]))
+
+  - id: webhook-delivery-success
+    name: Webhook Delivery Success Rate
+    description: Incoming provider webhooks are successfully processed on the first attempt.
+    target: 0.99
+    window: 7d
+    metric: evzone_webhook_events_total
+    expression: |
+      sum(rate(evzone_webhook_events_total{status="PROCESSED"}[7d]))
+      /
+      sum(rate(evzone_webhook_events_total[7d]))

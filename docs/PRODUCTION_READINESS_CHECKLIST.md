@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # Production Readiness Checklist — Month 2
 
 Use this checklist before promoting the Month 2 release to staging or production.
@@ -84,7 +84,7 @@ BASE_URL=https://api-staging.evzone.local/api/v1 \
 | Engineering Lead | | | |
 | Security / Compliance | | | |
 | SRE / Platform | | | |
-=======
+
 # Production Readiness Checklist
 
 Use this checklist before deploying EVzone Ride Backend to production or staging.
@@ -140,6 +140,10 @@ The script exits with a non-zero code if any hard requirement is not met.
 - [ ] `LOG_PRETTY` is `false` in production so logs are emitted as JSON.
 - [ ] Health endpoints (`/health/live`, `/health/ready`, `/health/dependencies`) are reachable.
 - [ ] Worker heartbeat monitoring is configured (see `/health/workers`).
+- [ ] Prometheus `/metrics` endpoint is scraped and returns default + custom metrics.
+- [ ] Alert rules (`monitoring/prometheus/alerts.yml`) have been reviewed and validated with `npm run monitoring:alerts:validate`.
+- [ ] Alertmanager config (`monitoring/alertmanager/alertmanager.yml`) has been validated with `npm run monitoring:alertmanager:validate`.
+- [ ] `docs/MONTH3_RUNBOOK.md` has been reviewed by on-call and every alert has a runbook section.
 
 ## 6. Payments & Ledger
 
@@ -175,4 +179,4 @@ DATABASE_URL=postgresql://... npm run smoke:payment-webhook-to-ledger
 - [ ] `/health/dependencies` reports `database`, `migrations`, `redis`, and `storage` healthy.
 - [ ] A test ride can be created, matched, accepted, and paid end-to-end.
 - [ ] Trial balance (`GET /accounting/trial-balance`) is balanced.
->>>>>>> origin/main
+
