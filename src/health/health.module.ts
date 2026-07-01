@@ -22,5 +22,14 @@ import { WorkersHealthIndicator } from './indicators/workers.health';
     WorkersHealthIndicator,
     DependencyHealthMetricsService,
   ],
+  exports: [
+    TerminusModule,
+    DatabaseHealthIndicator,
+    MigrationsHealthIndicator,
+    RedisHealthIndicator,
+    KafkaHealthIndicator,
+    StorageHealthIndicator,
+    WorkersHealthIndicator,
+  ],
 })
 export class HealthModule {}

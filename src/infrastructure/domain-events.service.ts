@@ -137,6 +137,15 @@ export class DomainEventsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  async backlogCounts(): Promise<{ pending: number; failed: number; total: number }> {
+    const [pending, failed, total] = await Promise.all([
+      this.records.count({ where: { status: DomainEventStatus.PENDING } }),
+      this.records.count({ where: { status: DomainEventStatus.FAILED } }),
+      this.records.count(),
+    ]);
+    return { pending, failed, total };
+  }
+
   private async tryPublish(record: DomainEventRecord): Promise<void> {
     record.attempts += 1;
     if (!this.kafkaConnected || !this.producer) {

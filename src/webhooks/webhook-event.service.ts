@@ -135,6 +135,10 @@ export class WebhookEventService {
     });
   }
 
+  async failedCount(): Promise<number> {
+    return this.records.count({ where: { status: WebhookEventStatus.FAILED } });
+  }
+
   private extractExternalEventId(provider: string, payload: Record<string, unknown>): string {
     if (provider === 'PAYTOTA') {
       return String(payload.id ?? payload.event_id ?? payload.reference ?? 'unknown');
