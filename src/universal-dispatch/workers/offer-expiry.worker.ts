@@ -1,7 +1,8 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-<<<<<<< HEAD
 import { DispatchExpireOffersProcessor } from './processors/dispatch-expire-offers.processor';
+<<<<<<< HEAD
+=======
 =======
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
@@ -10,13 +11,13 @@ import { ProcessRoleService } from '../../infrastructure/process-role.service';
 import { UniversalDispatchOffer, UniversalServiceRequest } from '../domain/universal-dispatch.entities';
 import { UniversalOfferStatus, UniversalRequestStatus } from '../domain/universal-dispatch.enums';
 >>>>>>> origin/main
+>>>>>>> origin/main
 
 @Injectable()
 export class OfferExpiryWorker {
   private readonly logger = new Logger(OfferExpiryWorker.name);
   private processing = false;
 
-<<<<<<< HEAD
   constructor(private readonly processor: DispatchExpireOffersProcessor) {}
 
   @Cron(CronExpression.EVERY_10_SECONDS)
@@ -31,6 +32,8 @@ export class OfferExpiryWorker {
       );
     } finally {
       this.processing = false;
+<<<<<<< HEAD
+=======
 =======
   constructor(
     @InjectRepository(UniversalDispatchOffer)
@@ -68,6 +71,7 @@ export class OfferExpiryWorker {
         request.nextMatchAt = new Date();
         await this.requests.save(request);
       }
+>>>>>>> origin/main
 >>>>>>> origin/main
     }
     await this.heartbeat?.record('OfferExpiryWorker.run', 10);

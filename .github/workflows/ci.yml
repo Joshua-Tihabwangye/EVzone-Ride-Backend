@@ -2,6 +2,30 @@ name: CI
 
 on:
   push:
+<<<<<<< HEAD
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+=======
     branches: [main]
   pull_request:
     branches: [main]
@@ -41,17 +65,48 @@ jobs:
     services:
       postgres:
         image: postgis/postgis:15-3.4
+>>>>>>> origin/main
         env:
           POSTGRES_USER: evzone
           POSTGRES_PASSWORD: evzone
           POSTGRES_DB: evzone
+<<<<<<< HEAD
+=======
         ports:
           - 5432:5432
+>>>>>>> origin/main
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+<<<<<<< HEAD
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://evzone:evzone@localhost:5432/evzone
+      JWT_SECRET: ci-jwt-secret-must-be-at-least-32-characters-long
+      AUDIT_HMAC_SECRET: ci-audit-secret-must-be-at-least-32-characters-long
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run db:migration:run
+      - run: npm test
+=======
 
     steps:
       - name: Checkout
@@ -70,3 +125,4 @@ jobs:
         env:
           DATABASE_URL: postgres://evzone:evzone@localhost:5432/evzone
         run: npm run smoke:suite
+>>>>>>> origin/main

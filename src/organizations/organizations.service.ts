@@ -1,7 +1,14 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
 import { Brackets, Repository } from 'typeorm';
+import { AuditService } from '../audit/audit.service';
 import { MembershipStatus, OrganizationMemberRole, OrganizationStatus, UserRole } from '../common/enums';
 import { AuthUser } from '../common/interfaces';
 import { Organization, OrganizationMember, User } from '../database/entities';
@@ -16,10 +23,13 @@ import {
 
 @Injectable()
 export class OrganizationsService {
+  private readonly logger = new Logger(OrganizationsService.name);
+
   constructor(
     @InjectRepository(Organization) private readonly organizations: Repository<Organization>,
     @InjectRepository(OrganizationMember) private readonly members: Repository<OrganizationMember>,
     @InjectRepository(User) private readonly users: Repository<User>,
+    private readonly auditService: AuditService,
   ) {}
 
   async create(owner: AuthUser, dto: CreateOrganizationDto) {
@@ -51,6 +61,20 @@ export class OrganizationsService {
         permissions: ['*'],
       }),
     );
+    void this.auditService
+      .record({
+        actorUserId: owner.id,
+        action: 'ORGANIZATION_CREATED',
+        entityType: 'Organization',
+        entityId: organization.id,
+        after: {
+          organization,
+          membership: { role: OrganizationMemberRole.OWNER, status: MembershipStatus.ACTIVE },
+        },
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
     return this.detail(owner, organization.id);
   }
 
@@ -91,8 +115,22 @@ export class OrganizationsService {
     await this.assertAccess(user, id, [OrganizationMemberRole.OWNER, OrganizationMemberRole.ADMIN]);
     const organization = await this.organizations.findOne({ where: { id } });
     if (!organization) throw new NotFoundException('Organization not found');
+    const before = { ...organization };
     Object.assign(organization, dto);
-    return this.organizations.save(organization);
+    const saved = await this.organizations.save(organization);
+    void this.auditService
+      .record({
+        actorUserId: user.id,
+        action: 'ORGANIZATION_UPDATED',
+        entityType: 'Organization',
+        entityId: saved.id,
+        before,
+        after: { ...saved },
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 
   async invite(user: AuthUser, id: string, dto: InviteOrganizationMemberDto) {
@@ -103,6 +141,7 @@ export class OrganizationsService {
     if (membership?.status === MembershipStatus.ACTIVE) {
       throw new BadRequestException('User is already an active organization member');
     }
+    const before = membership ? { ...membership } : null;
     membership = this.members.create({
       ...(membership ?? {}),
       organizationId: id,
@@ -113,7 +152,20 @@ export class OrganizationsService {
       invitedAt: new Date(),
       permissions: dto.permissions,
     });
-    return this.members.save(membership);
+    const saved = await this.members.save(membership);
+    void this.auditService
+      .record({
+        actorUserId: user.id,
+        action: 'ORGANIZATION_MEMBER_INVITED',
+        entityType: 'OrganizationMember',
+        entityId: saved.id,
+        before: before ?? undefined,
+        after: { ...saved },
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 
   async acceptInvitation(user: AuthUser, organizationId: string) {
@@ -121,9 +173,23 @@ export class OrganizationsService {
       where: { organizationId, userId: user.id, status: MembershipStatus.INVITED },
     });
     if (!membership) throw new NotFoundException('Invitation not found');
+    const before = { ...membership };
     membership.status = MembershipStatus.ACTIVE;
     membership.joinedAt = new Date();
-    return this.members.save(membership);
+    const saved = await this.members.save(membership);
+    void this.auditService
+      .record({
+        actorUserId: user.id,
+        action: 'ORGANIZATION_MEMBER_ACCEPTED',
+        entityType: 'OrganizationMember',
+        entityId: saved.id,
+        before,
+        after: { ...saved },
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 
   async listMembers(user: AuthUser, organizationId: string) {
@@ -158,8 +224,22 @@ export class OrganizationsService {
     if (dto.role === OrganizationMemberRole.OWNER && membership.role !== OrganizationMemberRole.OWNER) {
       throw new BadRequestException('Ownership transfer requires the dedicated ownership workflow');
     }
+    const before = { ...membership };
     Object.assign(membership, dto);
-    return this.members.save(membership);
+    const saved = await this.members.save(membership);
+    void this.auditService
+      .record({
+        actorUserId: user.id,
+        action: 'ORGANIZATION_MEMBER_UPDATED',
+        entityType: 'OrganizationMember',
+        entityId: saved.id,
+        before,
+        after: { ...saved },
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 
   async removeMember(user: AuthUser, organizationId: string, memberId: string) {
@@ -172,8 +252,22 @@ export class OrganizationsService {
     if (membership.role === OrganizationMemberRole.OWNER) {
       throw new BadRequestException('The primary owner cannot be removed');
     }
+    const before = { ...membership };
     membership.status = MembershipStatus.REVOKED;
-    return this.members.save(membership);
+    const saved = await this.members.save(membership);
+    void this.auditService
+      .record({
+        actorUserId: user.id,
+        action: 'ORGANIZATION_MEMBER_REMOVED',
+        entityType: 'OrganizationMember',
+        entityId: saved.id,
+        before,
+        after: { ...saved },
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 
   async adminList(query: OrganizationQueryDto) {
@@ -207,8 +301,23 @@ export class OrganizationsService {
       organization.approvedAt = new Date();
       organization.approvedByUserId = adminUserId;
     }
+    const before = { ...organization };
     organization.settings = { ...(organization.settings ?? {}), reviewReason: dto.reason };
-    return this.organizations.save(organization);
+    const saved = await this.organizations.save(organization);
+    void this.auditService
+      .record({
+        actorUserId: adminUserId,
+        action: 'ORGANIZATION_REVIEWED',
+        entityType: 'Organization',
+        entityId: saved.id,
+        before,
+        after: { ...saved },
+        reason: dto.reason,
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 
   async assertAccess(

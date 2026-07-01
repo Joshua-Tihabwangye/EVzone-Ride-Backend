@@ -1,9 +1,13 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+<<<<<<< HEAD
+import { DispatchFlushOutboxProcessor } from './processors/dispatch-flush-outbox.processor';
+=======
 import { WorkerHeartbeatService } from '../../infrastructure/worker-heartbeat.service';
 import { DispatchFlushOutboxProcessor } from './processors/dispatch-flush-outbox.processor';
 import { ProcessRoleService } from '../../infrastructure/process-role.service';
 import { UniversalOutboxService } from '../infrastructure/universal-outbox.service';
+>>>>>>> origin/main
 
 @Injectable()
 export class OutboxWorker {
@@ -16,6 +20,8 @@ export class OutboxWorker {
   async run(): Promise<void> {
     if (this.processing) return;
     this.processing = true;
+<<<<<<< HEAD
+=======
   constructor(
     private readonly outbox: UniversalOutboxService,
     private readonly roles: ProcessRoleService,
@@ -25,6 +31,7 @@ export class OutboxWorker {
   @Cron(CronExpression.EVERY_10_SECONDS)
   async run(): Promise<void> {
     if (!this.roles.runsWorkers()) return;
+>>>>>>> origin/main
     try {
       await this.processor.schedule();
     } catch (error) {

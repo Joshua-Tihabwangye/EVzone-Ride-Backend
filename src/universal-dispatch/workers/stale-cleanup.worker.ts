@@ -1,7 +1,8 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-<<<<<<< HEAD
 import { DispatchStaleCleanupProcessor } from './processors/dispatch-stale-cleanup.processor';
+<<<<<<< HEAD
+=======
 =======
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
@@ -12,13 +13,13 @@ import { UniversalDispatchUnit } from '../domain/universal-dispatch.entities';
 import { DispatchUnitStatus } from '../domain/universal-dispatch.enums';
 import { DispatchLiveStateService } from '../infrastructure/dispatch-live-state.service';
 >>>>>>> origin/main
+>>>>>>> origin/main
 
 @Injectable()
 export class StaleCleanupWorker {
   private readonly logger = new Logger(StaleCleanupWorker.name);
   private processing = false;
 
-<<<<<<< HEAD
   constructor(private readonly processor: DispatchStaleCleanupProcessor) {}
 
   @Cron(CronExpression.EVERY_30_SECONDS)
@@ -33,6 +34,8 @@ export class StaleCleanupWorker {
       );
     } finally {
       this.processing = false;
+<<<<<<< HEAD
+=======
 =======
   constructor(
     @InjectRepository(UniversalDispatchUnit)
@@ -61,6 +64,7 @@ export class StaleCleanupWorker {
       await this.units.save(unit);
       await this.liveState.removeLiveSnapshot(unit.id, unit.marketId);
       this.logger.log(`Marked stale dispatch unit ${unit.id} offline`);
+>>>>>>> origin/main
 >>>>>>> origin/main
     }
     await this.heartbeat?.record('StaleCleanupWorker.run', 30);

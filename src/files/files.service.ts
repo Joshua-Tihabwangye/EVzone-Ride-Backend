@@ -451,7 +451,7 @@ export class FilesService {
           entityType: 'FileAsset',
           entityId,
           actorUserId,
-          data,
+          metadata: data,
         }),
       );
     } catch (error) {

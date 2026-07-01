@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -15,6 +21,7 @@ import {
   UniversalScheduleType,
   TERMINAL_REQUEST_STATUSES,
 } from '../domain/universal-dispatch.enums';
+import { AuditService } from '../../audit/audit.service';
 import { DispatchPolicyService } from './dispatch-policy.service';
 import { UniversalDispatchStateMachineService } from './universal-dispatch-state-machine.service';
 import { UniversalOutboxService } from '../infrastructure/universal-outbox.service';
@@ -46,7 +53,10 @@ export class UniversalRequestService {
     private readonly outbox: UniversalOutboxService,
     private readonly realtime: DispatchRealtimeService,
     private readonly stateMachine: UniversalDispatchStateMachineService,
+    private readonly auditService: AuditService,
   ) {}
+
+  private readonly logger = new Logger(UniversalRequestService.name);
 
   async create(
     requesterUserId: string,
@@ -128,6 +138,18 @@ export class UniversalRequestService {
       });
       request = await requestRepository.save(request);
 
+      await this.auditService.record(
+        {
+          actorUserId: requesterUserId,
+          action: 'SERVICE_REQUEST_CREATED',
+          entityType: 'UniversalServiceRequest',
+          entityId: request.id,
+          after: { ...request },
+          metadata: { clientRequestId: input.clientRequestId, serviceType: input.serviceType },
+        },
+        manager,
+      );
+
       if (input.stops?.length) {
         await stopRepository.save(
           input.stops.map((stop) =>
@@ -208,6 +230,7 @@ export class UniversalRequestService {
       if (TERMINAL_REQUEST_STATUSES.has(request.status)) {
         throw new BadRequestException({ code: 'REQUEST_ALREADY_TERMINAL' });
       }
+      const before = { ...request };
       request.cancellationCode = input.reasonCode;
       request.completedAt = new Date();
       const saved = await this.stateMachine.transitionRequest(
@@ -250,6 +273,20 @@ export class UniversalRequestService {
         status: saved.status,
       });
 
+      await this.auditService.record(
+        {
+          actorUserId: actorUserId,
+          action: 'SERVICE_REQUEST_CANCELLED',
+          entityType: 'UniversalServiceRequest',
+          entityId: saved.id,
+          before,
+          after: { ...saved },
+          reason: input.reasonCode,
+          metadata: { actorParty: input.actorParty },
+        },
+        manager,
+      );
+
       return saved;
     });
   }
@@ -263,8 +300,22 @@ export class UniversalRequestService {
     if (request.status !== UniversalRequestStatus.SCHEDULED) {
       throw new BadRequestException({ code: 'REQUEST_NOT_SCHEDULED' });
     }
+    const before = { ...request };
     request.scheduledAt = new Date(input.scheduledAt);
     request.recurrenceRule = input.recurrenceRule ?? request.recurrenceRule;
-    return this.requests.save(request);
+    const saved = await this.requests.save(request);
+    void this.auditService
+      .record({
+        actorUserId: undefined,
+        action: 'SERVICE_REQUEST_RESCHEDULED',
+        entityType: 'UniversalServiceRequest',
+        entityId: saved.id,
+        before,
+        after: { ...saved },
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 }

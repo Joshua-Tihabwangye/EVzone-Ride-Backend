@@ -136,7 +136,6 @@ export class DriversService {
     if (patch.phone !== undefined) user.phone = patch.phone;
     await this.users.save(user);
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     const profilePrefs = (driver.preferences ?? {}) as Record<string, unknown>;
     const profile: Record<string, unknown> = { ...((profilePrefs.profile as Record<string, unknown>) ?? {}) };
     if (patch.city !== undefined) profile.city = patch.city;

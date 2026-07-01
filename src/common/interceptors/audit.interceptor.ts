@@ -19,7 +19,9 @@ export class AuditInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap((result: unknown) => {
         const entityId =
-          (result && typeof result === 'object' && 'id' in result ? (result as { id: string }).id : undefined) ??
+          (result && typeof result === 'object' && 'id' in result
+            ? (result as { id: string }).id
+            : undefined) ??
           (result && typeof result === 'object' && 'data' in result
             ? ((result as { data?: { id?: string } }).data?.id ?? undefined)
             : undefined);
