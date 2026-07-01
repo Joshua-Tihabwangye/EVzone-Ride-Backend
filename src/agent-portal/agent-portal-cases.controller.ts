@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums';
+import { Permission, RequirePermission } from '../permissions';
 import { AuthUser } from '../common/interfaces';
 import {
   AgentIncidentActionDto,
@@ -52,6 +53,7 @@ export class AgentPortalCasesController {
   }
 
   @Post('onboarding/cases/:caseId/actions')
+  @RequirePermission(Permission.AGENT_CASE_WRITE)
   onboardingAction(
     @CurrentUser() user: AuthUser,
     @Param('caseId') caseId: string,
@@ -62,6 +64,7 @@ export class AgentPortalCasesController {
   }
 
   @Post('onboarding/cases/:caseId/approve')
+  @RequirePermission(Permission.AGENT_CASE_WRITE)
   approveOnboarding(
     @CurrentUser() user: AuthUser,
     @Param('caseId') caseId: string,
@@ -75,6 +78,7 @@ export class AgentPortalCasesController {
   }
 
   @Post('onboarding/cases/:caseId/reject')
+  @RequirePermission(Permission.AGENT_CASE_WRITE)
   rejectOnboarding(
     @CurrentUser() user: AuthUser,
     @Param('caseId') caseId: string,
@@ -98,6 +102,7 @@ export class AgentPortalCasesController {
 
   @Post('support/tickets')
   @ApiOperation({ summary: 'Create a support case on behalf of a rider, driver, fleet or company' })
+  @RequirePermission(Permission.AGENT_CASE_WRITE)
   createTicket(
     @CurrentUser() user: AuthUser,
     @Body() dto: AgentSupportTicketDto,
@@ -116,6 +121,7 @@ export class AgentPortalCasesController {
   }
 
   @Post('support/tickets/:ticketId/messages')
+  @RequirePermission(Permission.AGENT_CASE_WRITE)
   addTicketMessage(
     @CurrentUser() user: AuthUser,
     @Param('ticketId') ticketId: string,
@@ -126,6 +132,7 @@ export class AgentPortalCasesController {
   }
 
   @Patch('support/tickets/:ticketId')
+  @RequirePermission(Permission.AGENT_CASE_WRITE)
   updateTicket(
     @CurrentUser() user: AuthUser,
     @Param('ticketId') ticketId: string,
@@ -136,6 +143,7 @@ export class AgentPortalCasesController {
   }
 
   @Post('support/tickets/:ticketId/actions')
+  @RequirePermission(Permission.AGENT_CASE_WRITE)
   ticketAction(
     @CurrentUser() user: AuthUser,
     @Param('ticketId') ticketId: string,
@@ -165,6 +173,7 @@ export class AgentPortalCasesController {
   }
 
   @Post('safety/incidents')
+  @RequirePermission(Permission.AGENT_CASE_WRITE)
   createIncident(
     @CurrentUser() user: AuthUser,
     @Body() dto: AgentIncidentDto,
@@ -183,6 +192,7 @@ export class AgentPortalCasesController {
   }
 
   @Post('safety/incidents/:incidentId/actions')
+  @RequirePermission(Permission.AGENT_CASE_WRITE)
   incidentAction(
     @CurrentUser() user: AuthUser,
     @Param('incidentId') incidentId: string,

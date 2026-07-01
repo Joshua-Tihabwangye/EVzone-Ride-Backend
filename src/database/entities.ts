@@ -911,6 +911,10 @@ export class Wallet extends BaseEntity {
 @Entity('wallet_transactions')
 export class WalletTransaction extends BaseEntity {
   @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
+  @Index()
   @Column()
   walletId!: string;
 
@@ -942,6 +946,10 @@ export class WalletTransaction extends BaseEntity {
 
 @Entity('payments')
 export class Payment extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
   @Index()
   @Column()
   userId!: string;
@@ -992,6 +1000,10 @@ export class Payment extends BaseEntity {
 @Index('IDX_payouts_cashout_idempotency', ['cashoutRequestId', 'idempotencyKey'], { unique: true })
 @Entity('payouts')
 export class Payout extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
   @Index()
   @Column()
   driverId!: string;
@@ -1073,6 +1085,10 @@ export class Payout extends BaseEntity {
 
 @Entity('rides')
 export class Ride extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
   @Index()
   @Column()
   riderId!: string;
@@ -1309,6 +1325,10 @@ export class RideFeedback extends BaseEntity {
 
 @Entity('delivery_orders')
 export class DeliveryOrder extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
   @Index()
   @Column()
   customerId!: string;
@@ -1601,6 +1621,10 @@ export class TourPackage extends BaseEntity {
 @Entity('tourist_bookings')
 export class TouristBooking extends BaseEntity {
   @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
+  @Index()
   @Column()
   customerId!: string;
 
@@ -1694,6 +1718,10 @@ export class MedicalFacility extends BaseEntity {
 
 @Entity('ambulance_requests')
 export class AmbulanceRequest extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
   @Index()
   @Column()
   requesterId!: string;
@@ -1795,6 +1823,10 @@ export class AmbulanceEvent extends BaseEntity {
 
 @Entity('rental_bookings')
 export class RentalBooking extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
   @Index()
   @Column()
   renterId!: string;
@@ -3388,6 +3420,10 @@ export class StoredPaymentMethod extends BaseEntity {
 
 @Entity('cashout_requests')
 export class CashoutRequest extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
   @Index()
   @Column()
   userId!: string;

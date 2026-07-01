@@ -88,7 +88,7 @@ export class FinancialOperationsService {
     return this.updateMethod(userId, id, { enabled: false });
   }
 
-  async requestCashout(userId: string, dto: CreateCashoutRequestDto) {
+  async requestCashout(userId: string, dto: CreateCashoutRequestDto, organizationId?: string) {
     const reference = dto.idempotencyKey?.trim() ?? `CO-${randomUUID()}`;
     const existing = await this.cashouts.findOne({ where: { userId, reference } });
     if (existing) return existing;
@@ -106,6 +106,7 @@ export class FinancialOperationsService {
     const record = await this.cashouts.save(
       this.cashouts.create({
         userId,
+        organizationId,
         driverId: driver?.id,
         reference,
         amount: dto.amount,
@@ -117,9 +118,16 @@ export class FinancialOperationsService {
     );
 
     try {
-      await this.wallets.reserveCashout(userId, dto.amount, reference, 'Cashout request reserve', {
-        cashoutRequestId: record.id,
-      });
+      await this.wallets.reserveCashout(
+        userId,
+        dto.amount,
+        reference,
+        'Cashout request reserve',
+        {
+          cashoutRequestId: record.id,
+        },
+        organizationId,
+      );
     } catch (error) {
       this.logger.warn(`Cashout reserve failed: ${error instanceof Error ? error.message : String(error)}`);
       record.status = CashoutRequestStatus.FAILED;
@@ -138,9 +146,12 @@ export class FinancialOperationsService {
     return this.cashouts.find({ where: { userId }, order: { createdAt: 'DESC' } });
   }
 
-  listCashouts(status?: CashoutRequestStatus) {
+  listCashouts(status?: CashoutRequestStatus, organizationId?: string) {
+    const where: Record<string, unknown> = {};
+    if (status) where.status = status;
+    if (organizationId) where.organizationId = organizationId;
     return this.cashouts.find({
-      where: status ? { status } : undefined,
+      where,
       order: { createdAt: 'DESC' },
       take: 500,
     });
@@ -190,6 +201,7 @@ export class FinancialOperationsService {
         {
           cashoutRequestId: record.id,
         },
+        record.organizationId,
       );
     } catch (error) {
       this.logger.warn(

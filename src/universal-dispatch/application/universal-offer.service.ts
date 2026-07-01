@@ -109,6 +109,7 @@ export class UniversalOfferService {
 
       unit.activeRequestId = request.id;
       unit.activeOfferId = offer.id;
+      unit.lastAssignedAt = new Date();
       await this.stateMachine.transitionUnit(manager, unit, DispatchUnitStatus.RESERVED, {
         actorType: 'DRIVER',
         actorId: driverId,

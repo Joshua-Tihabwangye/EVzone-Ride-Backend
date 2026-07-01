@@ -1,5 +1,5 @@
-import { BullModule } from '@nestjs/bullmq';
 import { DynamicModule, Module } from '@nestjs/common';
+import { PayoutsModule } from '../payouts.module';
 import { PayoutVerificationProcessor } from './payout-verification.processor';
 
 @Module({})
@@ -13,12 +13,7 @@ export class PayoutsWorkerModule {
     }
     return {
       module: PayoutsWorkerModule,
-      imports: [
-        BullModule.forRoot({
-          connection: { url: redisUrl },
-        }),
-        BullModule.registerQueue({ name: 'payout-verification' }),
-      ],
+      imports: [PayoutsModule],
       providers: [PayoutVerificationProcessor],
     };
   }

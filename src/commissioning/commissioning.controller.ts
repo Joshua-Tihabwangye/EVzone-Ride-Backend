@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums';
+import { Permission, RequirePermission } from '../permissions';
 import {
   CommissionPreviewDto,
   CommissionRulesQueryDto,
@@ -18,6 +19,7 @@ export class CommissioningController {
 
   @Post()
   @Roles(UserRole.ADMIN)
+  @RequirePermission(Permission.ADMIN_COMMISSION_RULE_WRITE)
   create(@Body() dto: CreateCommissionRuleDto) {
     return this.service.createRule({
       ...dto,
@@ -40,6 +42,7 @@ export class CommissioningController {
 
   @Patch(':id')
   @Roles(UserRole.ADMIN)
+  @RequirePermission(Permission.ADMIN_COMMISSION_RULE_WRITE)
   update(@Param('id') id: string, @Body() dto: UpdateCommissionRuleDto) {
     return this.service.updateRule(id, {
       ...dto,
@@ -50,12 +53,14 @@ export class CommissioningController {
 
   @Post(':id/activate')
   @Roles(UserRole.ADMIN)
+  @RequirePermission(Permission.ADMIN_COMMISSION_RULE_WRITE)
   activate(@Param('id') id: string) {
     return this.service.setActive(id, true);
   }
 
   @Post(':id/deactivate')
   @Roles(UserRole.ADMIN)
+  @RequirePermission(Permission.ADMIN_COMMISSION_RULE_WRITE)
   deactivate(@Param('id') id: string) {
     return this.service.setActive(id, false);
   }

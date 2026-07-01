@@ -1,5 +1,5 @@
-import { BullModule } from '@nestjs/bullmq';
 import { DynamicModule, Module } from '@nestjs/common';
+import { ReconciliationModule } from '../reconciliation.module';
 import { ReconciliationProcessor } from './reconciliation.processor';
 
 @Module({})
@@ -11,10 +11,7 @@ export class ReconciliationWorkerModule {
     }
     return {
       module: ReconciliationWorkerModule,
-      imports: [
-        BullModule.forRoot({ connection: { url: redisUrl } }),
-        BullModule.registerQueue({ name: 'reconciliation' }),
-      ],
+      imports: [ReconciliationModule],
       providers: [ReconciliationProcessor],
     };
   }

@@ -2,6 +2,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Queue } from 'bullmq';
+import { RECONCILIATION_DAILY_QUEUE } from '../../workers';
 import { ReconciliationService } from '../reconciliation.service';
 import { ReconcileJob } from './reconciliation.processor';
 
@@ -11,7 +12,7 @@ export class ReconciliationScheduler {
 
   constructor(
     private readonly service: ReconciliationService,
-    @Optional() @InjectQueue('reconciliation') private readonly queue?: Queue,
+    @Optional() @InjectQueue(RECONCILIATION_DAILY_QUEUE) private readonly queue?: Queue,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
@@ -38,7 +39,9 @@ export class ReconciliationScheduler {
         }
       } catch (error) {
         this.logger.warn(
-          `Daily reconciliation failed for ${type}: ${error instanceof Error ? error.message : String(error)}`,
+          `Daily reconciliation failed for ${type}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
         );
       }
     }

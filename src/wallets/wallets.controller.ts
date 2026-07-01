@@ -33,6 +33,6 @@ export class WalletsController {
 
   @Post('withdraw')
   withdraw(@CurrentUser() user: AuthUser, @Body() dto: WithdrawDto) {
-    return this.service.withdraw(user.id, dto.amount, dto.destination);
+    return this.service.withdraw(user.id, dto.amount, dto.destination, user.activeOrganizationId);
   }
 }

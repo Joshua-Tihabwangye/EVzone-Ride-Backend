@@ -130,6 +130,7 @@ export class PayoutOrchestratorService {
         await txRepo.save(
           txRepo.create({
             walletId: wallet.id,
+            organizationId: lockedCashout.organizationId,
             type: WalletTransactionType.PAYOUT,
             direction: TransactionDirection.DEBIT,
             amount,
@@ -145,6 +146,7 @@ export class PayoutOrchestratorService {
       const newPayout = await payoutRepo.save(
         payoutRepo.create({
           driverId: lockedCashout.userId,
+          organizationId: lockedCashout.organizationId,
           cashoutRequestId: lockedCashout.id,
           reference,
           idempotencyKey,

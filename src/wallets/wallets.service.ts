@@ -91,6 +91,7 @@ export class WalletsService {
     reference: string,
     description = 'Cashout reserve',
     metadata?: Record<string, unknown>,
+    organizationId?: string,
   ) {
     if (amount <= 0) throw new BadRequestException('Amount must be greater than zero');
     const wallet = await this.ensureWallet(userId);
@@ -109,6 +110,7 @@ export class WalletsService {
     const transaction = await this.transactions.save(
       this.transactions.create({
         walletId: wallet.id,
+        organizationId,
         type: WalletTransactionType.CASHOUT_RESERVE,
         direction: TransactionDirection.DEBIT,
         amount,
@@ -128,6 +130,7 @@ export class WalletsService {
     reference: string,
     description = 'Cashout release',
     metadata?: Record<string, unknown>,
+    organizationId?: string,
   ) {
     if (amount <= 0) throw new BadRequestException('Amount must be greater than zero');
     const wallet = await this.ensureWallet(userId);
@@ -146,6 +149,7 @@ export class WalletsService {
     const transaction = await this.transactions.save(
       this.transactions.create({
         walletId: wallet.id,
+        organizationId,
         type: WalletTransactionType.CASHOUT_RELEASE,
         direction: TransactionDirection.CREDIT,
         amount,
@@ -165,6 +169,7 @@ export class WalletsService {
     reference: string,
     description = 'Driver payout',
     metadata?: Record<string, unknown>,
+    organizationId?: string,
   ) {
     if (amount <= 0) throw new BadRequestException('Amount must be greater than zero');
     const wallet = await this.ensureWallet(userId);
@@ -182,6 +187,7 @@ export class WalletsService {
     const transaction = await this.transactions.save(
       this.transactions.create({
         walletId: wallet.id,
+        organizationId,
         type: WalletTransactionType.PAYOUT,
         direction: TransactionDirection.DEBIT,
         amount,
@@ -213,6 +219,7 @@ export class WalletsService {
     reference: string,
     description?: string,
     metadata?: Record<string, unknown>,
+    organizationId?: string,
   ) {
     if (amount <= 0) throw new BadRequestException('Amount must be greater than zero');
     const wallet = await this.ensureWallet(userId);
@@ -225,6 +232,7 @@ export class WalletsService {
     const transaction = await this.transactions.save(
       this.transactions.create({
         walletId: wallet.id,
+        organizationId,
         type,
         direction: TransactionDirection.CREDIT,
         amount,
@@ -255,6 +263,7 @@ export class WalletsService {
     reference: string,
     description?: string,
     metadata?: Record<string, unknown>,
+    organizationId?: string,
   ) {
     if (amount <= 0) throw new BadRequestException('Amount must be greater than zero');
     const wallet = await this.ensureWallet(userId);
@@ -269,6 +278,7 @@ export class WalletsService {
     const transaction = await this.transactions.save(
       this.transactions.create({
         walletId: wallet.id,
+        organizationId,
         type,
         direction: TransactionDirection.DEBIT,
         amount,
@@ -292,16 +302,25 @@ export class WalletsService {
     return { wallet, transaction };
   }
 
-  async withdraw(userId: string, amount: number, destination: string) {
+  async withdraw(userId: string, amount: number, destination: string, organizationId?: string) {
     const reference = `PAYOUT-${randomUUID()}`;
     const wallet = await this.ensureWallet(userId);
     if (Number(wallet.availableBalance) - Number(wallet.reservedForCashout) < amount) {
       throw new BadRequestException('Insufficient available balance');
     }
-    await this.debit(userId, amount, WalletTransactionType.PAYOUT, reference, 'Manual wallet withdrawal');
+    await this.debit(
+      userId,
+      amount,
+      WalletTransactionType.PAYOUT,
+      reference,
+      'Manual wallet withdrawal',
+      undefined,
+      organizationId,
+    );
     const payout = await this.payouts.save(
       this.payouts.create({
         driverId: userId,
+        organizationId,
         amount,
         currency: 'UGX',
         status: PayoutStatus.PENDING,

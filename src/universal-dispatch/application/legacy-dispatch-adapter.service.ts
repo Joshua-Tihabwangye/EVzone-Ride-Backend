@@ -13,6 +13,7 @@ import {
 } from '../../common/enums';
 import {
   UniversalDispatchAssignment,
+  UniversalDispatchUnit,
   UniversalServiceRequest,
   UniversalTripSession,
 } from '../domain/universal-dispatch.entities';
@@ -222,9 +223,9 @@ export class LegacyDispatchAdapterService {
     }
 
     await this.dataSource.transaction(async (manager) => {
-      const unitRepository = manager.getRepository(UniversalServiceRequest);
+      const requestRepository = manager.getRepository(UniversalServiceRequest);
       // Refresh request inside transaction to avoid stale state.
-      const freshRequest = await unitRepository.findOne({ where: { id: request.id } });
+      const freshRequest = await requestRepository.findOne({ where: { id: request.id } });
       if (!freshRequest || freshRequest.status === UniversalRequestStatus.ASSIGNED) return;
 
       await this.stateMachine.transitionRequest(manager, freshRequest, UniversalRequestStatus.ASSIGNED, {
@@ -233,17 +234,18 @@ export class LegacyDispatchAdapterService {
       });
 
       // Find the dispatch unit for the assigned driver.
-      const unit = await manager
-        .getRepository('UniversalDispatchUnit')
-        .findOne({ where: { driverId }, order: { createdAt: 'DESC' } });
+      const unitRepository = manager.getRepository(UniversalDispatchUnit);
+      const unit = await unitRepository.findOne({ where: { driverId }, order: { createdAt: 'DESC' } });
       if (!unit) {
         this.logger.warn(`No dispatch unit for driver ${driverId}`);
         return;
       }
 
-      freshRequest.assignedDispatchUnitId = (unit as { id: string }).id;
+      freshRequest.assignedDispatchUnitId = unit.id;
       freshRequest.assignedAt = new Date();
-      await unitRepository.save(freshRequest);
+      unit.lastAssignedAt = new Date();
+      await requestRepository.save(freshRequest);
+      await unitRepository.save(unit);
 
       const assignmentRepository = manager.getRepository(UniversalDispatchAssignment);
       await assignmentRepository.save(

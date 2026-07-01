@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DataSource } from 'typeorm';
+import { DataSource, MoreThan } from 'typeorm';
 import { RedisService } from '../../infrastructure/redis.service';
 import { UniversalDispatchUnit } from '../domain/universal-dispatch.entities';
 import { DispatchUnitStatus, UniversalServiceType } from '../domain/universal-dispatch.enums';
+import { DispatchMetricsService } from './dispatch-metrics.service';
 
 export interface GeoCandidate {
   dispatchUnitId: string;
@@ -21,6 +22,7 @@ export class DispatchGeoIndexService {
     private readonly redis: RedisService,
     private readonly dataSource: DataSource,
     private readonly config: ConfigService,
+    private readonly metrics: DispatchMetricsService,
   ) {
     this.ttlSeconds = Number(this.config.get<string>('DRIVER_GEO_TTL_SECONDS') ?? 300);
   }
@@ -92,6 +94,7 @@ export class DispatchGeoIndexService {
       limit,
     );
     if (!matches.length) return [];
+    this.metrics.incrementGeoSource('REDIS');
     return matches.map((item) => ({
       dispatchUnitId: item.member,
       distanceKm: item.distanceKm,
@@ -133,6 +136,9 @@ export class DispatchGeoIndexService {
         LIMIT $6`,
         [longitude, latitude, marketId, DispatchUnitStatus.AVAILABLE, radiusKm * 1000, limit],
       );
+      if (rows.length) {
+        this.metrics.incrementGeoSource('POSTGIS');
+      }
       return rows.map((row) => ({
         dispatchUnitId: row.id,
         distanceKm: Number(row.distance_km),
@@ -155,12 +161,26 @@ export class DispatchGeoIndexService {
     radiusKm: number,
     limit: number,
   ): Promise<GeoCandidate[]> {
+    const fallbackEnabled = (this.config.get<string>('DISPATCH_GEO_FALLBACK_ENABLED') ?? 'true') === 'true';
+    if (!fallbackEnabled) return [];
+
+    const maxScan = Number(this.config.get<string>('DISPATCH_GEO_MAX_SCAN') ?? 500);
+    const freshnessSeconds = Number(this.config.get<string>('DISPATCH_LOCATION_FRESHNESS_SECONDS') ?? 60);
+    const cutoff = new Date(Date.now() - freshnessSeconds * 1000);
     const { haversineDistanceKm } = await import('../domain/universal-dispatch.utils');
+
     const units = await this.dataSource.getRepository(UniversalDispatchUnit).find({
-      where: { marketId, status: DispatchUnitStatus.AVAILABLE },
-      take: 200,
+      where: {
+        marketId,
+        status: DispatchUnitStatus.AVAILABLE,
+        locationRecordedAt: MoreThan(cutoff),
+      },
+      take: maxScan,
+      order: { locationRecordedAt: 'DESC' },
     });
-    return units
+
+    const candidates = units
+      .filter((unit) => this.unitSupportsService(unit, serviceType))
       .filter((unit) => unit.latitude != null && unit.longitude != null)
       .map((unit) => ({
         dispatchUnitId: unit.id,
@@ -173,5 +193,15 @@ export class DispatchGeoIndexService {
       .filter((item) => item.distanceKm <= radiusKm)
       .sort((a, b) => a.distanceKm - b.distanceKm)
       .slice(0, limit);
+
+    if (candidates.length) {
+      this.metrics.incrementGeoSource('HAVERSINE');
+    }
+    return candidates;
+  }
+
+  private unitSupportsService(unit: UniversalDispatchUnit, serviceType: UniversalServiceType): boolean {
+    const enabledServices = unit.enabledServices ?? unit.eligibilitySnapshot?.enabledServices ?? [];
+    return (enabledServices as UniversalServiceType[]).includes(serviceType);
   }
 }

@@ -45,6 +45,8 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { OperationsModule } from './operations/operations.module';
 import { PaymentsModule } from './payments/payments.module';
+import { PermissionGuard } from './permissions/permission.guard';
+import { PermissionsModule } from './permissions/permissions.module';
 import { PayoutsModule } from './payouts/payouts.module';
 import { PayoutsWorkerModule } from './payouts/workers/payouts-worker.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
@@ -53,6 +55,7 @@ import { PlacesModule } from './places/places.module';
 import { PricingModule } from './pricing/pricing.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { UniversalDispatchModule } from './universal-dispatch/universal-dispatch.module';
+import { WorkersModule } from './workers';
 import { RentalCatalogModule } from './rental-catalog/rental-catalog.module';
 import { RentalsModule } from './rentals/rentals.module';
 import { RidesModule } from './rides/rides.module';
@@ -66,10 +69,12 @@ import { WalletsModule } from './wallets/wallets.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env.local', '.env'] }),
+    WorkersModule.register(),
     TypeOrmModule.forRootAsync({ useFactory: createTypeOrmOptions }),
     DatabaseModule,
     InfrastructureModule,
     OrganizationsModule,
+    PermissionsModule,
     AccountingModule,
     OnboardingModule,
     OperationsModule,
@@ -130,6 +135,7 @@ import { WalletsModule } from './wallets/wallets.module';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: PermissionGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },

@@ -422,6 +422,10 @@ export class UniversalDispatchUnit extends UniversalDispatchBaseEntity {
   @Column({ nullable: true })
   availableSince?: Date;
 
+  @Index()
+  @Column({ nullable: true })
+  lastAssignedAt?: Date;
+
   @Column({ nullable: true })
   snapshotRefreshedAt?: Date;
 

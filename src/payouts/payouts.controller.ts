@@ -1,10 +1,13 @@
 import { Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payout } from '../database/entities';
+import { AuthUser } from '../common/interfaces';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../common/decorators/roles.decorator';
 import { PayoutStatus, UserRole } from '../common/enums';
+import { Permission, RequirePermission } from '../permissions';
 import { PayoutOrchestratorService } from './payout-orchestrator.service';
 import { PayoutStatusService } from './payout-status.service';
 import { PayoutProviderFactory } from './providers/payout-provider.factory';
@@ -22,7 +25,9 @@ export class PayoutsController {
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.SUPPORT)
+  @RequirePermission(Permission.FINANCE_PAYOUT_READ)
   async list(
+    @CurrentUser() user: AuthUser,
     @Query('status') status?: PayoutStatus,
     @Query('provider') provider?: string,
     @Query('from') from?: string,
@@ -38,6 +43,9 @@ export class PayoutsController {
       if (from) (where.createdAt as Record<string, Date>).gte = new Date(from);
       if (to) (where.createdAt as Record<string, Date>).lte = new Date(to);
     }
+    if (!user.isPlatformAdmin && user.activeOrganizationId) {
+      where.organizationId = user.activeOrganizationId;
+    }
     const [items, total] = await this.payouts.findAndCount({
       where,
       order: { createdAt: 'DESC' },
@@ -52,24 +60,28 @@ export class PayoutsController {
 
   @Get('status')
   @Roles(UserRole.ADMIN, UserRole.SUPPORT)
+  @RequirePermission(Permission.FINANCE_PAYOUT_READ)
   status() {
     return this.providerFactory.status();
   }
 
   @Post(':id/verify')
   @Roles(UserRole.ADMIN, UserRole.SUPPORT)
+  @RequirePermission(Permission.FINANCE_PAYOUT_RETRY)
   verify(@Param('id') id: string) {
     return this.statusService.verifyPayout(id);
   }
 
   @Post(':id/retry')
   @Roles(UserRole.ADMIN)
+  @RequirePermission(Permission.FINANCE_PAYOUT_RETRY)
   retry(@Param('id') id: string) {
     return this.orchestrator.retryPayout(id);
   }
 
   @Post(':id/cancel')
   @Roles(UserRole.ADMIN)
+  @RequirePermission(Permission.FINANCE_PAYOUT_RETRY)
   cancel(@Param('id') id: string) {
     return this.orchestrator.cancelPayout(id);
   }

@@ -18,6 +18,7 @@ import { DispatchPolicyService } from './dispatch-policy.service';
 import { UniversalDispatchStateMachineService } from './universal-dispatch-state-machine.service';
 import { EligibilityEngineService } from './eligibility-engine.service';
 import { RankingEngineService } from './ranking-engine.service';
+import { RankingDataService } from './ranking-data.service';
 import { DispatchGeoIndexService } from '../infrastructure/dispatch-geo-index.service';
 import { DispatchLiveStateService } from '../infrastructure/dispatch-live-state.service';
 import { RouteMatrixService } from '../infrastructure/route-matrix.service';
@@ -43,6 +44,7 @@ export class UniversalMatchingService {
     private readonly policyService: DispatchPolicyService,
     private readonly eligibility: EligibilityEngineService,
     private readonly ranking: RankingEngineService,
+    private readonly rankingData: RankingDataService,
     private readonly geoIndex: DispatchGeoIndexService,
     private readonly liveState: DispatchLiveStateService,
     private readonly routeMatrix: RouteMatrixService,
@@ -116,7 +118,13 @@ export class UniversalMatchingService {
     for (const unit of allCandidates) {
       const snapshot = unit.eligibilitySnapshot as unknown as DispatchUnitSnapshot | undefined;
       if (!snapshot) continue;
-      const result = await this.eligibility.evaluate(request, unit, policy, now, excludedDriverIds);
+      const result = await this.eligibility.evaluate(
+        request,
+        { id: unit.id, snapshot: unit.eligibilitySnapshot as unknown as DispatchUnitSnapshot },
+        policy,
+        now,
+        excludedDriverIds,
+      );
       for (const code of result.reasonCodes) {
         exclusionCounts[code] = (exclusionCounts[code] ?? 0) + 1;
       }
@@ -161,10 +169,23 @@ export class UniversalMatchingService {
       (candidate) => candidate.route.etaSeconds <= policy.maximumPickupEtaSeconds,
     );
 
+    const feasibleWithSignals = await Promise.all(
+      feasible.map(async (candidate) => ({
+        ...candidate,
+        signals: await this.rankingData.forUnit(candidate.unit, request),
+      })),
+    );
+
     const ranked = this.ranking.rank(
-      feasible.map((candidate) => ({
+      feasibleWithSignals.map((candidate) => ({
         unit: candidate.unit,
         route: candidate.route,
+        reliability: candidate.signals.reliability,
+        fairness: candidate.signals.fairness,
+        quality: candidate.signals.quality,
+        routeFit: candidate.signals.routeFit,
+        energyMargin: candidate.signals.energyMargin,
+        preference: candidate.signals.preference,
       })),
       policy,
       request.id,
@@ -176,13 +197,25 @@ export class UniversalMatchingService {
     trace.selectedDispatchUnitId = ranked[0]?.unit.id;
     trace.decisionSummary = {
       candidateSource,
+      candidateSourceCounts:
+        candidateSource === 'NONE' ? { NONE: 0 } : { [candidateSource]: allCandidates.length },
       exclusionCounts,
       topCandidates: ranked.slice(0, 5).map((candidate) => ({
         dispatchUnitId: candidate.unit.id,
         score: candidate.score,
         etaSeconds: candidate.route.etaSeconds,
+        distanceMeters: candidate.route.distanceMeters,
       })),
     };
+    trace.candidateDetails = ranked.slice(0, 5).map((candidate) => ({
+      dispatchUnitId: candidate.unit.id,
+      rank: candidate.rank,
+      score: candidate.score,
+      scoreComponents: candidate.scoreComponents,
+      etaSeconds: candidate.route.etaSeconds,
+      distanceMeters: candidate.route.distanceMeters,
+      source: candidateSource,
+    }));
     await this.traces.save(trace);
 
     if (!ranked.length) {

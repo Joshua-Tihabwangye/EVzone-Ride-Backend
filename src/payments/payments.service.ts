@@ -25,6 +25,7 @@ export interface ServicePaymentData {
   amount: number;
   currency: string;
   paymentStatus: PaymentStatus;
+  organizationId?: string;
 }
 
 @Injectable()
@@ -56,6 +57,7 @@ export class PaymentsService {
     return this.payments.save(
       this.payments.create({
         userId,
+        organizationId: service.organizationId,
         serviceType: dto.serviceType,
         serviceId: dto.serviceId,
         amount: service.amount,
@@ -90,6 +92,7 @@ export class PaymentsService {
         payment.reference,
         `${payment.serviceType} payment`,
         { serviceId: payment.serviceId },
+        payment.organizationId,
       );
     } else if (payment.method === PaymentMethod.CORPORATE_PAY) {
       const approved = providerToken?.startsWith('CORPORATEPAY-') || process.env.NODE_ENV !== 'production';
@@ -175,6 +178,7 @@ export class PaymentsService {
       `REF-${payment.reference}`,
       reason ?? 'Payment refund',
       { paymentId: payment.id, approvedBy: requesterId },
+      payment.organizationId,
     );
     payment.status =
       refundAmount === payment.amount ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED;
@@ -230,6 +234,7 @@ export class PaymentsService {
           amount: item.finalFare ?? item.estimatedFare,
           currency: item.currency,
           paymentStatus: item.paymentStatus,
+          organizationId: item.organizationId,
         };
       }
       case ServiceType.DELIVERY: {
@@ -241,6 +246,7 @@ export class PaymentsService {
           amount: item.finalCost ?? item.estimatedCost,
           currency: item.currency,
           paymentStatus: item.paymentStatus,
+          organizationId: item.organizationId,
         };
       }
       case ServiceType.TOURIST_VEHICLE: {
@@ -252,6 +258,7 @@ export class PaymentsService {
           amount: item.finalAmount ?? item.estimatedAmount,
           currency: item.currency,
           paymentStatus: item.paymentStatus,
+          organizationId: item.organizationId,
         };
       }
       case ServiceType.AMBULANCE: {
@@ -263,6 +270,7 @@ export class PaymentsService {
           amount: item.finalCost ?? item.estimatedCost,
           currency: 'UGX',
           paymentStatus: item.paymentStatus,
+          organizationId: item.organizationId,
         };
       }
       case ServiceType.CAR_RENTAL: {
@@ -274,6 +282,7 @@ export class PaymentsService {
           amount: item.finalAmount ?? item.estimatedAmount,
           currency: item.currency,
           paymentStatus: item.paymentStatus,
+          organizationId: item.organizationId,
         };
       }
     }

@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums';
+import { Permission, RequirePermission } from '../permissions';
 import { AuthUser } from '../common/interfaces';
 import { ConfirmPaymentDto, CreatePaymentDto, RefundPaymentDto } from './payments.dto';
 import { PaymentProviderFactory } from './providers/payment-provider.factory';
@@ -35,6 +36,7 @@ export class PaymentsController {
 
   @Post(':id/refund')
   @Roles(UserRole.ADMIN, UserRole.SUPPORT)
+  @RequirePermission(Permission.FINANCE_REFUND_CREATE)
   refund(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: RefundPaymentDto) {
     return this.service.refund(user.id, id, dto.amount, dto.reason);
   }

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DriverProfile, RideFeedback } from '../database/entities';
+import { WorkersConfigModule } from '../workers/workers-config.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { UNIVERSAL_DISPATCH_ENTITIES } from './domain/universal-dispatch.entities';
 import { DatabaseModule } from '../database/database.module';
@@ -10,6 +12,7 @@ import { UniversalRequestService } from './application/universal-request.service
 import { UniversalDispatchStateMachineService } from './application/universal-dispatch-state-machine.service';
 import { EligibilityEngineService } from './application/eligibility-engine.service';
 import { RankingEngineService } from './application/ranking-engine.service';
+import { RankingDataService } from './application/ranking-data.service';
 import { UniversalMatchingService } from './application/universal-matching.service';
 import { UniversalOfferService } from './application/universal-offer.service';
 import { UniversalTripService } from './application/universal-trip.service';
@@ -20,11 +23,17 @@ import { RouteMatrixService } from './infrastructure/route-matrix.service';
 import { RouteOptimizerService } from './infrastructure/route-optimizer.service';
 import { UniversalOutboxService } from './infrastructure/universal-outbox.service';
 import { DispatchRealtimeService } from './infrastructure/dispatch-realtime.service';
+import { DispatchMetricsService } from './infrastructure/dispatch-metrics.service';
 import { MatchingWorker } from './workers/matching.worker';
 import { OfferExpiryWorker } from './workers/offer-expiry.worker';
 import { OutboxWorker } from './workers/outbox.worker';
 import { StaleCleanupWorker } from './workers/stale-cleanup.worker';
 import { ScheduledDispatchWorker } from './workers/scheduled-dispatch.worker';
+import { DispatchMatchProcessor } from './workers/processors/dispatch-match.processor';
+import { DispatchExpireOffersProcessor } from './workers/processors/dispatch-expire-offers.processor';
+import { DispatchFlushOutboxProcessor } from './workers/processors/dispatch-flush-outbox.processor';
+import { DispatchScheduledRequestsProcessor } from './workers/processors/dispatch-scheduled-requests.processor';
+import { DispatchStaleCleanupProcessor } from './workers/processors/dispatch-stale-cleanup.processor';
 import { DispatchDriverController } from './controllers/dispatch-driver.controller';
 import { DispatchRiderController } from './controllers/dispatch-rider.controller';
 import { DispatchAdminController } from './controllers/dispatch-admin.controller';
@@ -35,9 +44,10 @@ import { VehiclesModule } from '../vehicles/vehicles.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([...UNIVERSAL_DISPATCH_ENTITIES]),
+    TypeOrmModule.forFeature([...UNIVERSAL_DISPATCH_ENTITIES, DriverProfile, RideFeedback]),
     DatabaseModule,
     StateMachineModule,
+    WorkersConfigModule,
     EventEmitterModule,
     NotificationsModule,
     RealtimeModule,
@@ -51,11 +61,13 @@ import { VehiclesModule } from '../vehicles/vehicles.module';
     UniversalDispatchStateMachineService,
     EligibilityEngineService,
     RankingEngineService,
+    RankingDataService,
     UniversalMatchingService,
     UniversalOfferService,
     UniversalTripService,
     LegacyDispatchAdapterService,
     DispatchGeoIndexService,
+    DispatchMetricsService,
     DispatchLiveStateService,
     RouteMatrixService,
     RouteOptimizerService,
@@ -66,6 +78,11 @@ import { VehiclesModule } from '../vehicles/vehicles.module';
     OutboxWorker,
     StaleCleanupWorker,
     ScheduledDispatchWorker,
+    DispatchMatchProcessor,
+    DispatchExpireOffersProcessor,
+    DispatchFlushOutboxProcessor,
+    DispatchScheduledRequestsProcessor,
+    DispatchStaleCleanupProcessor,
   ],
   controllers: [DispatchDriverController, DispatchRiderController, DispatchAdminController],
   exports: [

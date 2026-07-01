@@ -86,7 +86,7 @@ export class DeliveriesService {
     );
   }
 
-  async create(customerId: string, dto: CreateDeliveryDto) {
+  async create(customerId: string, dto: CreateDeliveryDto, organizationId?: string) {
     if (dto.scheduledAt && new Date(dto.scheduledAt) <= new Date()) {
       throw new BadRequestException('Scheduled pickup must be in the future');
     }
@@ -98,6 +98,7 @@ export class DeliveriesService {
     const order = await this.orders.save(
       this.orders.create({
         customerId,
+        organizationId,
         trackingCode,
         status: requiresAcceptance ? DeliveryStatus.WAITING_ACCEPTANCE : DeliveryStatus.ACCEPTED,
         serviceType: dto.serviceType,

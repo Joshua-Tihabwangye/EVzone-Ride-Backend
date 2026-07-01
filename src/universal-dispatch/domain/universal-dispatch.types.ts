@@ -115,6 +115,7 @@ export interface DispatchUnitLiveState {
   heading?: number;
   lastSeenAt?: string;
   availableSince?: string;
+  lastAssignedAt?: string;
   batterySoc?: number;
   usableRangeKm?: number;
   chargingState?: string;

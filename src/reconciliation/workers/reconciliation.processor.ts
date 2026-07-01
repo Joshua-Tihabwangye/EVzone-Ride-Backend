@@ -1,6 +1,7 @@
 import { InjectQueue, Processor } from '@nestjs/bullmq';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Queue, Job } from 'bullmq';
+import { RECONCILIATION_DAILY_QUEUE } from '../../workers';
 import { ReconciliationService } from '../reconciliation.service';
 
 export interface ReconcileJob {
@@ -13,13 +14,13 @@ export interface ReconcileJob {
 }
 
 @Injectable()
-@Processor('reconciliation')
+@Processor(RECONCILIATION_DAILY_QUEUE)
 export class ReconciliationProcessor {
   private readonly logger = new Logger(ReconciliationProcessor.name);
 
   constructor(
     private readonly service: ReconciliationService,
-    @InjectQueue('reconciliation') private readonly queue: Queue,
+    @Optional() @InjectQueue(RECONCILIATION_DAILY_QUEUE) private readonly queue?: Queue,
   ) {}
 
   async process(job: Job<ReconcileJob>): Promise<void> {
@@ -35,10 +36,14 @@ export class ReconciliationProcessor {
   }
 
   async schedule(job: ReconcileJob, delayMs = 0): Promise<void> {
-    await this.queue.add('reconcile', job, {
-      delay: delayMs,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 30_000 },
-    });
+    if (this.queue) {
+      await this.queue.add('reconcile', job, {
+        delay: delayMs,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 30_000 },
+      });
+    } else {
+      await this.process({ data: job } as Job<ReconcileJob>);
+    }
   }
 }

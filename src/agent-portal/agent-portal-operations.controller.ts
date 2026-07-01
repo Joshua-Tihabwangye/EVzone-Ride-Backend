@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums';
+import { Permission, RequirePermission } from '../permissions';
 import { AuthUser } from '../common/interfaces';
 import {
   AssignManualBookingDto,
@@ -51,6 +52,7 @@ export class AgentPortalOperationsController {
   @ApiOperation({
     summary: 'Create a manual ride, delivery, rental, tour, ambulance or school-shuttle booking',
   })
+  @RequirePermission(Permission.AGENT_MANUAL_BOOKING_WRITE)
   createBooking(
     @CurrentUser() user: AuthUser,
     @Body() dto: CreateManualBookingDto,
@@ -69,6 +71,7 @@ export class AgentPortalOperationsController {
   }
 
   @Patch('dispatch/bookings/:bookingId')
+  @RequirePermission(Permission.AGENT_MANUAL_BOOKING_WRITE)
   updateBooking(
     @CurrentUser() user: AuthUser,
     @Param('bookingId') bookingId: string,
@@ -79,6 +82,7 @@ export class AgentPortalOperationsController {
   }
 
   @Post('dispatch/bookings/:bookingId/assign')
+  @RequirePermission(Permission.AGENT_DRIVER_ASSIGN)
   assignBooking(
     @CurrentUser() user: AuthUser,
     @Param('bookingId') bookingId: string,
@@ -89,6 +93,7 @@ export class AgentPortalOperationsController {
   }
 
   @Post('dispatch/bookings/:bookingId/notes')
+  @RequirePermission(Permission.AGENT_CASE_WRITE)
   addBookingNote(
     @CurrentUser() user: AuthUser,
     @Param('bookingId') bookingId: string,
@@ -99,6 +104,7 @@ export class AgentPortalOperationsController {
   }
 
   @Post('dispatch/bookings/:bookingId/cancel')
+  @RequirePermission(Permission.AGENT_MANUAL_BOOKING_WRITE)
   cancelBooking(
     @CurrentUser() user: AuthUser,
     @Param('bookingId') bookingId: string,
@@ -136,6 +142,7 @@ export class AgentPortalOperationsController {
   }
 
   @Post('bookings')
+  @RequirePermission(Permission.AGENT_MANUAL_BOOKING_WRITE)
   createBookingAlias(
     @CurrentUser() user: AuthUser,
     @Body() dto: CreateManualBookingDto,
