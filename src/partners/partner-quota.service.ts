@@ -15,7 +15,10 @@ export class PartnerQuotaService {
       row = repo.create({ partnerId, period, metric, allowed: 0, used: 0 });
     }
     if (row.allowed > 0 && row.used + increment > row.allowed) {
-      throw new HttpException(`Quota exceeded for ${metric} in period ${period}`, HttpStatus.TOO_MANY_REQUESTS);
+      throw new HttpException(
+        `Quota exceeded for ${metric} in period ${period}`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
     row.used += increment;
     return repo.save(row);

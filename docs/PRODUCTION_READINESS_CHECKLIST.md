@@ -143,6 +143,9 @@ The script exits with a non-zero code if any hard requirement is not met.
 - [ ] Prometheus `/metrics` endpoint is scraped and returns default + custom metrics.
 - [ ] Alert rules (`monitoring/prometheus/alerts.yml`) have been reviewed and validated with `npm run monitoring:alerts:validate`.
 - [ ] Alertmanager config (`monitoring/alertmanager/alertmanager.yml`) has been validated with `npm run monitoring:alertmanager:validate`.
+- [ ] Prometheus scrape config (`monitoring/prometheus/prometheus.yml`) has been validated with `promtool check config`.
+- [ ] Grafana dashboards are provisioned from `monitoring/grafana/dashboards/` and visible in the UI.
+- [ ] Prometheus successfully scrapes the API `/metrics` target.
 - [ ] `docs/MONTH3_RUNBOOK.md` has been reviewed by on-call and every alert has a runbook section.
 
 ## 6. Payments & Ledger
@@ -164,6 +167,16 @@ DATABASE_URL=postgresql://... npm run smoke:document-lifecycle
 DATABASE_URL=postgresql://... npm run smoke:ride-to-offer
 DATABASE_URL=postgresql://... npm run smoke:payment-webhook-to-ledger
 ```
+
+### Month 3 smoke tests
+
+```bash
+BASE_URL=https://api-staging.evzone.local/api/v1 npm run smoke:month3
+```
+
+- [ ] `smoke:month3` passes end-to-end.
+- [ ] `smoke:metrics` confirms `/metrics` exposes `evzone_*` and `nodejs_*` metrics.
+- [ ] `smoke:dashboards` confirms Grafana health (when Grafana is deployed).
 
 ## 8. Deployment Checklist
 

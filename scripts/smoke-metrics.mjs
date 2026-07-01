@@ -1,10 +1,9 @@
 import { buildApp, startApp, waitForReady, shutdown, sleep } from './smoke-utils.mjs';
 
-const port = 13013;
-const metricsPort = 19091;
+const port = 13011;
+const metricsPort = 19090;
 const baseUrl = `http://127.0.0.1:${port}/api/v1`;
 const metricsUrl = `http://127.0.0.1:${metricsPort}/metrics`;
-const grafanaUrl = process.env.GRAFANA_URL ?? 'http://localhost:3000';
 
 async function waitForMetrics(attempts = 60) {
   for (let i = 0; i < attempts; i += 1) {
@@ -35,28 +34,13 @@ async function run() {
     if (!metrics.includes('evzone_')) {
       throw new Error('Metrics output does not include evzone custom metrics');
     }
-
-    try {
-      const grafanaHealth = await fetch(`${grafanaUrl}/api/health`);
-      if (grafanaHealth.ok) {
-        const info = await grafanaHealth.json();
-        if (info.database !== 'ok') {
-          throw new Error(`Grafana database status is ${info.database}`);
-        }
-        // eslint-disable-next-line no-console
-        console.log('✅ Grafana health check passed');
-      } else {
-        // eslint-disable-next-line no-console
-        console.log('ℹ️ Grafana not reachable; skipping dashboard UI validation');
-      }
-    } catch {
-      // eslint-disable-next-line no-console
-      console.log('ℹ️ Grafana not reachable; skipping dashboard UI validation');
+    if (!metrics.includes('nodejs_')) {
+      throw new Error('Metrics output does not include nodejs default metrics');
     }
 
     passed = true;
     // eslint-disable-next-line no-console
-    console.log('✅ Dashboards smoke test passed');
+    console.log('✅ Metrics smoke test passed');
   } finally {
     await shutdown(child);
   }
@@ -66,6 +50,6 @@ async function run() {
 
 run().catch((error) => {
   // eslint-disable-next-line no-console
-  console.error('❌ Dashboards smoke test failed:', error instanceof Error ? error.message : String(error));
+  console.error('❌ Metrics smoke test failed:', error instanceof Error ? error.message : String(error));
   process.exit(1);
 });

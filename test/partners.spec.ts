@@ -18,7 +18,6 @@ import { PartnerWebhookService } from '../src/partners/partner-webhook.service';
 import { PartnerGuard } from '../src/partners/guards/partner.guard';
 import { PartnerScopeGuard } from '../src/partners/guards/partner-scope.guard';
 
-
 const auditMock = { record: jest.fn().mockResolvedValue({}) };
 const metricsMock = {
   recordPartnerRequest: jest.fn(),
@@ -123,7 +122,9 @@ describe('Partner Integration Framework', () => {
 
     await quotaService.assertQuota(partner.id, 'actions:test', 1);
     await quotaService.assertQuota(partner.id, 'actions:test', 1);
-    await expect(quotaService.assertQuota(partner.id, 'actions:test', 1)).rejects.toBeInstanceOf(HttpException);
+    await expect(quotaService.assertQuota(partner.id, 'actions:test', 1)).rejects.toBeInstanceOf(
+      HttpException,
+    );
   });
 
   it('creates webhook subscriptions and enqueues outbox rows', async () => {
@@ -221,7 +222,9 @@ describe('Partner Integration Framework', () => {
   });
 
   it('PartnerScopeGuard enforces required scopes', async () => {
-    const reflector = { getAllAndOverride: jest.fn().mockReturnValue(['actions:write']) } as unknown as Reflector;
+    const reflector = {
+      getAllAndOverride: jest.fn().mockReturnValue(['actions:write']),
+    } as unknown as Reflector;
     const guard = new PartnerScopeGuard(reflector);
 
     const request = {

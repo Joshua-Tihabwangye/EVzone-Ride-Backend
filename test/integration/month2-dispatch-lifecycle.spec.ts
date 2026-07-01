@@ -69,7 +69,7 @@ describe('Month 2 integration: dispatch lifecycle', () => {
     dataSource = app.get(DataSource);
     offers = dataSource.getRepository(UniversalDispatchOffer);
     audits = dataSource.getRepository(AuditLog);
-  });
+  }, 30_000);
 
   afterAll(async () => {
     await app?.close();

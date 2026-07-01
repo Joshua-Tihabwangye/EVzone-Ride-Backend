@@ -120,8 +120,11 @@ services:
       ACTIVE_SERVICE_STUCK_THRESHOLD_MS: 1800000
       CASHOUT_AUTO_APPROVE: 'false'
       LEGACY_API_SUNSET: 2027-06-30
+      METRICS_ENABLED: 'true'
+      METRICS_PORT: '9090'
     ports:
       - '3001:3001'
+      - '9090:9090'
     volumes:
       - evzone_storage:/app/storage
 
@@ -140,8 +143,55 @@ services:
     volumes:
       - evzone_pgadmin:/var/lib/pgadmin
 
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      - evzone_prometheus:/prometheus
+    depends_on:
+      api:
+        condition: service_started
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+    ports:
+      - '9093:9093'
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager
+      - evzone_alertmanager:/alertmanager
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: evzone
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - evzone_grafana:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - alertmanager
+
 volumes:
   evzone_postgres:
   evzone_redis:
   evzone_storage:
   evzone_pgadmin:
+  evzone_prometheus:
+  evzone_alertmanager:
+  evzone_grafana:

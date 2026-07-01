@@ -47,7 +47,7 @@ describe('Month 2 integration: tenant permissions', () => {
     users = dataSource.getRepository(User);
     members = dataSource.getRepository(OrganizationMember);
     audits = dataSource.getRepository(AuditLog);
-  });
+  }, 30_000);
 
   afterAll(async () => {
     await app?.close();

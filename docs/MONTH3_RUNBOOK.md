@@ -166,3 +166,72 @@ Use `GET /operations/control-center` for a single-pane summary. The payload incl
 - SLO snapshot
 
 Access is restricted to `ADMIN`, `SUPPORT`, and `DISPATCHER` roles.
+
+## Grafana dashboards
+
+Dashboards are provisioned from `monitoring/grafana/dashboards/` and loaded automatically when the Grafana container starts.
+
+| Dashboard | UID | Purpose |
+|-----------|-----|---------|
+| Infrastructure Overview | `evzone-infra-overview` | HTTP rate/errors/latency, dependency health, drivers online, active services |
+| API RED | `evzone-api-red` | 5xx rate, p99 latency, error budget burn, upstream provider errors |
+| Dispatch & Matching | `evzone-dispatch-matching` | Dispatch offers, match runs, active services, stuck services |
+| Financial Pipeline | `evzone-financial-pipeline` | Payments, refunds, cashouts, payouts, wallet movements |
+| Webhooks & Partners | `evzone-webhooks-partners` | Partner requests, webhook backlog/delivery, inbound webhook events |
+| Operations Control | `evzone-operations-control` | Operations alerts, worker heartbeats, queue jobs, outbox backlog |
+
+Local URLs:
+
+- Grafana: http://localhost:3000 (`admin` / `evzone`)
+- Prometheus: http://localhost:9090
+- Alertmanager: http://localhost:9093
+
+Start the stack with:
+
+```bash
+docker compose up -d prometheus alertmanager grafana
+```
+
+## Partner integration runbooks
+
+### Partner webhook delivery failure
+
+1. Check `evzone_partner_webhook_backlog` and `evzone_partner_webhook_delivered_total{status="failed"}`.
+2. Verify the partner subscription URL and secret in `/admin/partners/:id/webhooks`.
+3. Inspect the `partner_webhook_outbox` table for `lastError` and `attempts`.
+4. Use `POST /partner/v1/events` or the retry mechanism to re-queue failed deliveries.
+
+### CorporatePay adapter failure
+
+1. Check `evzone_partner_requests_total{status="error"}` for the failing action.
+2. Verify the partner API key scope includes `actions:write`.
+3. Review `CorporateIntegrationService` logs for the mapped CorporatePay action.
+4. Confirm the partner `type` is `CORPORATEPAY` and the organization mapping is correct.
+
+## Month 3 smoke tests
+
+Run the full Month 3 smoke suite locally:
+
+```bash
+npm run smoke:month3
+```
+
+Individual scripts:
+
+```bash
+npm run smoke:tracing
+npm run smoke:metrics
+npm run smoke:ops
+npm run smoke:admin-finance
+npm run smoke:fleet-readiness
+npm run smoke:partners
+npm run smoke:dashboards
+```
+
+## CI
+
+The Month 3 CI pipeline adds:
+
+- `promtool-check` — validates `prometheus.yml` and `alerts.yml` with Promtool.
+- `metrics-smoke` — starts the app with `METRICS_ENABLED=true` and verifies `/metrics`.
+- `month3-smoke` — runs the full Month 3 smoke suite against a Postgres/Redis stack.

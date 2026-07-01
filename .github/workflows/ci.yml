@@ -2,33 +2,9 @@ name: CI
 
 on:
   push:
-<<<<<<< HEAD
     branches: [master, main]
   pull_request:
     branches: [master, main]
-
-jobs:
-  lint-and-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run build
-
-  test:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-=======
-    branches: [main]
-  pull_request:
-    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -65,49 +41,32 @@ jobs:
     services:
       postgres:
         image: postgis/postgis:15-3.4
->>>>>>> origin/main
         env:
           POSTGRES_USER: evzone
           POSTGRES_PASSWORD: evzone
           POSTGRES_DB: evzone
-<<<<<<< HEAD
-=======
         ports:
           - 5432:5432
->>>>>>> origin/main
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-<<<<<<< HEAD
-        ports:
-          - 5432:5432
       redis:
         image: redis:7
+        ports:
+          - 6379:6379
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        ports:
-          - 6379:6379
     env:
       NODE_ENV: test
       DATABASE_URL: postgresql://evzone:evzone@localhost:5432/evzone
+      REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-jwt-secret-must-be-at-least-32-characters-long
       AUDIT_HMAC_SECRET: ci-audit-secret-must-be-at-least-32-characters-long
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run db:migration:run
-      - run: npm test
-=======
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -121,8 +80,113 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run focused smoke tests
-        env:
-          DATABASE_URL: postgres://evzone:evzone@localhost:5432/evzone
+      - name: Run migrations
+        run: npm run db:migration:run
+
+      - name: Run smoke suite
         run: npm run smoke:suite
->>>>>>> origin/main
+
+  promtool-check:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Prometheus config
+        run: docker run --rm -v ${{ github.workspace }}:/wd prom/prometheus:v3.0.1 promtool check config /wd/monitoring/prometheus/prometheus.yml
+
+      - name: Validate Prometheus alert rules
+        run: docker run --rm -v ${{ github.workspace }}:/wd prom/prometheus:v3.0.1 promtool check rules /wd/monitoring/prometheus/alerts.yml
+
+      - name: Validate Alertmanager config
+        run: npm ci && npm run monitoring:alertmanager:validate
+
+  metrics-smoke:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    services:
+      postgres:
+        image: postgis/postgis:15-3.4
+        env:
+          POSTGRES_USER: evzone
+          POSTGRES_PASSWORD: evzone
+          POSTGRES_DB: evzone
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://evzone:evzone@localhost:5432/evzone
+      JWT_SECRET: ci-jwt-secret-must-be-at-least-32-characters-long
+      AUDIT_HMAC_SECRET: ci-audit-secret-must-be-at-least-32-characters-long
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run metrics smoke test
+        run: npm run smoke:metrics
+
+  month3-smoke:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    services:
+      postgres:
+        image: postgis/postgis:15-3.4
+        env:
+          POSTGRES_USER: evzone
+          POSTGRES_PASSWORD: evzone
+          POSTGRES_DB: evzone
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://evzone:evzone@localhost:5432/evzone
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-jwt-secret-must-be-at-least-32-characters-long
+      AUDIT_HMAC_SECRET: ci-audit-secret-must-be-at-least-32-characters-long
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run migrations
+        run: npm run db:migration:run
+
+      - name: Run Month 3 smoke tests
+        run: npm run smoke:month3
