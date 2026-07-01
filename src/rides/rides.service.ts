@@ -124,7 +124,7 @@ export class RidesService {
     );
   }
 
-  async create(riderId: string, dto: CreateRideDto) {
+  async create(riderId: string, dto: CreateRideDto, organizationId?: string) {
     this.validateCreate(dto);
     const route = this.routeMetrics(dto);
     const quote = await this.estimate(riderId, dto);
@@ -134,6 +134,7 @@ export class RidesService {
     const ride = await this.rides.save(
       this.rides.create({
         riderId,
+        organizationId,
         status: futureScheduled ? BookingStatus.REQUESTED : BookingStatus.SEARCHING,
         mode: dto.mode ?? (futureScheduled ? RideMode.SCHEDULED : RideMode.ON_DEMAND),
         category: dto.category ?? RideCategory.STANDARD,

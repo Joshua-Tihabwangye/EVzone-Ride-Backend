@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums';
+import { Permission, RequirePermission } from '../permissions';
 import { AuthUser } from '../common/interfaces';
 import {
   CreateFleetIncidentDto,
@@ -213,6 +214,7 @@ export class FleetPortalController {
   }
 
   @Post('drivers')
+  @RequirePermission(Permission.FLEET_DRIVER_WRITE)
   createDriver(
     @CurrentUser() user: AuthUser,
     @Body() dto: CreateFleetPortalDriverDto,
@@ -231,6 +233,7 @@ export class FleetPortalController {
   }
 
   @Patch('drivers/:driverId')
+  @RequirePermission(Permission.FLEET_DRIVER_WRITE)
   updateDriver(
     @CurrentUser() user: AuthUser,
     @Param('driverId') driverId: string,
@@ -241,6 +244,7 @@ export class FleetPortalController {
   }
 
   @Delete('drivers/:driverId')
+  @RequirePermission(Permission.FLEET_DRIVER_WRITE)
   removeDriver(
     @CurrentUser() user: AuthUser,
     @Param('driverId') driverId: string,
@@ -259,6 +263,7 @@ export class FleetPortalController {
   }
 
   @Post('vehicles')
+  @RequirePermission(Permission.FLEET_VEHICLE_WRITE)
   createVehicle(
     @CurrentUser() user: AuthUser,
     @Body() dto: CreateFleetPortalVehicleDto,
@@ -277,6 +282,7 @@ export class FleetPortalController {
   }
 
   @Patch('vehicles/:vehicleId')
+  @RequirePermission(Permission.FLEET_VEHICLE_WRITE)
   updateVehicle(
     @CurrentUser() user: AuthUser,
     @Param('vehicleId') vehicleId: string,
@@ -287,6 +293,7 @@ export class FleetPortalController {
   }
 
   @Delete('vehicles/:vehicleId')
+  @RequirePermission(Permission.FLEET_VEHICLE_WRITE)
   removeVehicle(
     @CurrentUser() user: AuthUser,
     @Param('vehicleId') vehicleId: string,
@@ -383,6 +390,7 @@ export class FleetPortalController {
   }
 
   @Post('dispatches')
+  @RequirePermission(Permission.FLEET_DISPATCH_WRITE)
   createDispatch(
     @CurrentUser() user: AuthUser,
     @Body() dto: CreateFleetPortalDispatchDto,
@@ -401,6 +409,7 @@ export class FleetPortalController {
   }
 
   @Patch('dispatches/:dispatchId')
+  @RequirePermission(Permission.FLEET_DISPATCH_WRITE)
   updateDispatch(
     @CurrentUser() user: AuthUser,
     @Param('dispatchId') dispatchId: string,

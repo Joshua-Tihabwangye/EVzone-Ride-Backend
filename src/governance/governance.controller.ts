@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums';
+import { Permission, RequirePermission } from '../permissions';
 import { AuthUser } from '../common/interfaces';
 import {
   CreateApprovalDto,
@@ -34,6 +35,7 @@ export class GovernanceController {
 
   @Post('feature-flags')
   @Roles(UserRole.ADMIN)
+  @RequirePermission(Permission.GOVERNANCE_FLAG_WRITE)
   upsertFlag(@CurrentUser() user: AuthUser, @Body() dto: UpsertFeatureFlagDto) {
     return this.service.upsertFlag(user.id, dto);
   }
@@ -59,12 +61,14 @@ export class GovernanceController {
 
   @Patch('approvals/:id/decision')
   @Roles(UserRole.ADMIN)
+  @RequirePermission(Permission.GOVERNANCE_APPROVAL_DECIDE)
   decide(@Param('id') id: string, @CurrentUser() user: AuthUser, @Body() dto: DecideApprovalDto) {
     return this.service.decideApproval(id, user.id, dto);
   }
 
   @Post('risk-cases')
   @Roles(UserRole.ADMIN, UserRole.SUPPORT)
+  @RequirePermission(Permission.GOVERNANCE_RISK_CASE_WRITE)
   createRisk(@Body() dto: CreateRiskCaseDto) {
     return this.service.createRiskCase(dto);
   }
@@ -81,6 +85,7 @@ export class GovernanceController {
 
   @Patch('risk-cases/:id')
   @Roles(UserRole.ADMIN, UserRole.SUPPORT)
+  @RequirePermission(Permission.GOVERNANCE_RISK_CASE_WRITE)
   updateRisk(@Param('id') id: string, @CurrentUser() user: AuthUser, @Body() dto: UpdateRiskCaseDto) {
     return this.service.updateRiskCase(id, user.id, dto);
   }
@@ -93,6 +98,7 @@ export class GovernanceController {
 
   @Post('service-configurations')
   @Roles(UserRole.ADMIN)
+  @RequirePermission(Permission.GOVERNANCE_CONFIG_WRITE)
   upsertConfiguration(@CurrentUser() user: AuthUser, @Body() dto: UpsertServiceConfigurationDto) {
     return this.service.upsertServiceConfiguration(user.id, dto);
   }
@@ -105,12 +111,14 @@ export class GovernanceController {
 
   @Patch('operational-alerts/:id/acknowledge')
   @Roles(UserRole.ADMIN, UserRole.SUPPORT, UserRole.DISPATCHER)
+  @RequirePermission(Permission.GOVERNANCE_ALERT_ACKNOWLEDGE)
   acknowledge(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     return this.service.acknowledgeAlert(id, user.id);
   }
 
   @Patch('operational-alerts/:id/resolve')
   @Roles(UserRole.ADMIN, UserRole.SUPPORT)
+  @RequirePermission(Permission.GOVERNANCE_ALERT_ACKNOWLEDGE)
   resolve(@Param('id') id: string, @CurrentUser() user: AuthUser, @Body() dto: ResolveOperationalAlertDto) {
     return this.service.resolveAlert(id, user.id, dto.notes);
   }

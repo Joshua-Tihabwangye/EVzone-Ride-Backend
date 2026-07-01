@@ -42,7 +42,7 @@ export class AmbulanceController {
 
   @Post('requests')
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateAmbulanceRequestDto) {
-    return this.service.create(user.id, dto);
+    return this.service.create(user.id, dto, user.activeOrganizationId);
   }
 
   @Get('requests')

@@ -2,7 +2,12 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+<<<<<<< HEAD
+import { OrganizationStatus, UserRole } from '../common/enums';
+import { Permission, RequirePermission } from '../permissions';
+=======
 import { OrganizationStatus, UserRole, WebhookEventStatus } from '../common/enums';
+>>>>>>> origin/main
 import { AuthUser } from '../common/interfaces';
 import {
   ReviewDocumentDto,
@@ -55,6 +60,7 @@ export class AdminController {
   }
 
   @Patch('users/:id/status')
+  @RequirePermission(Permission.ADMIN_USER_SUSPEND)
   updateUserStatus(@Param('id') id: string, @Body() dto: UpdateUserStatusDto) {
     return this.service.updateUserStatus(id, dto);
   }
@@ -136,6 +142,7 @@ export class AdminController {
   }
 
   @Patch('organizations/:id/review')
+  @RequirePermission(Permission.ADMIN_ORGANIZATION_REVIEW)
   reviewOrganization(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,

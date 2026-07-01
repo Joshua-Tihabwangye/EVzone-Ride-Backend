@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import {
   UniversalDispatchAssignment,
   UniversalDispatchUnit,
@@ -16,7 +16,7 @@ import {
   UniversalTripStatus,
   UniversalTripStopType,
 } from '../domain/universal-dispatch.enums';
-import { assertTripTransition } from '../domain/universal-dispatch.utils';
+import { UniversalDispatchStateMachineService } from './universal-dispatch-state-machine.service';
 import {
   ArrivalDto,
   TransitionUniversalTripDto,
@@ -36,6 +36,8 @@ export class UniversalTripService {
     private readonly requests: Repository<UniversalServiceRequest>,
     @InjectRepository(UniversalDispatchUnit)
     private readonly units: Repository<UniversalDispatchUnit>,
+    private readonly dataSource: DataSource,
+    private readonly stateMachine: UniversalDispatchStateMachineService,
   ) {}
 
   async transition(
@@ -53,34 +55,61 @@ export class UniversalTripService {
       throw new BadRequestException({ code: 'VERSION_CONFLICT' });
     }
 
-    assertTripTransition(trip.status, input.targetStatus);
-    trip.status = input.targetStatus;
+    await this.stateMachine.transitionTrip(this.dataSource.manager, trip, input.targetStatus, {
+      actorType: 'DRIVER',
+      actorId: driverId,
+    });
     trip.routeVersion += 1;
     const saved = await this.trips.save(trip);
 
     const request = await this.requests.findOne({ where: { id: trip.primaryRequestId } });
     if (request) {
       if (input.targetStatus === UniversalTripStatus.DRIVER_EN_ROUTE_PICKUP) {
-        request.status = UniversalRequestStatus.DRIVER_EN_ROUTE;
+        await this.stateMachine.transitionRequest(
+          this.dataSource.manager,
+          request,
+          UniversalRequestStatus.DRIVER_EN_ROUTE,
+          { actorType: 'DRIVER', actorId: driverId },
+        );
       } else if (input.targetStatus === UniversalTripStatus.DRIVER_ARRIVED) {
-        request.status = UniversalRequestStatus.ARRIVED;
+        await this.stateMachine.transitionRequest(
+          this.dataSource.manager,
+          request,
+          UniversalRequestStatus.ARRIVED,
+          { actorType: 'DRIVER', actorId: driverId },
+        );
       } else if (input.targetStatus === UniversalTripStatus.TRIP_STARTED) {
-        request.status = UniversalRequestStatus.ACTIVE;
+        await this.stateMachine.transitionRequest(
+          this.dataSource.manager,
+          request,
+          UniversalRequestStatus.ACTIVE,
+          { actorType: 'DRIVER', actorId: driverId },
+        );
       } else if (input.targetStatus === UniversalTripStatus.COMPLETED) {
-        request.status = UniversalRequestStatus.COMPLETED;
         request.completedAt = new Date();
+        await this.stateMachine.transitionRequest(
+          this.dataSource.manager,
+          request,
+          UniversalRequestStatus.COMPLETED,
+          { actorType: 'DRIVER', actorId: driverId },
+        );
         const assignment = await this.assignments.findOne({ where: { requestId: request.id } });
         if (assignment) {
-          assignment.status = UniversalAssignmentStatus.COMPLETED;
           assignment.endedAt = new Date();
-          await this.assignments.save(assignment);
+          await this.stateMachine.transitionAssignment(
+            this.dataSource.manager,
+            assignment,
+            UniversalAssignmentStatus.COMPLETED,
+            { actorType: 'DRIVER', actorId: driverId },
+          );
         }
-        unit.status = DispatchUnitStatus.AVAILABLE;
         unit.activeRequestId = undefined;
         unit.activeOfferId = undefined;
-        await this.units.save(unit);
+        await this.stateMachine.transitionUnit(this.dataSource.manager, unit, DispatchUnitStatus.AVAILABLE, {
+          actorType: 'DRIVER',
+          actorId: driverId,
+        });
       }
-      await this.requests.save(request);
     }
 
     return saved;

@@ -1,0 +1,98 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { EntityManager, Repository } from 'typeorm';
+import { signPayload } from '../common/utils/crypto-vault';
+import { AuditLog } from './audit-log.entity';
+
+export interface AuditRecordInput {
+  actorUserId?: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  reason?: string;
+  ipAddress?: string;
+  requestId?: string;
+  route?: string;
+  metadata?: Record<string, unknown>;
+}
+
+function canonicalJson(value: unknown): string {
+  return JSON.stringify(value, Object.keys(value as object).sort());
+}
+
+function computeChangedFields(before?: Record<string, unknown>, after?: Record<string, unknown>): string[] | undefined {
+  if (!before || !after) return undefined;
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  const changed: string[] = [];
+  for (const key of keys) {
+    if (canonicalJson(before[key]) !== canonicalJson(after[key])) {
+      changed.push(key);
+    }
+  }
+  return changed.length ? changed : undefined;
+}
+
+@Injectable()
+export class AuditService {
+  private readonly logger = new Logger(AuditService.name);
+
+  constructor(@InjectRepository(AuditLog) private readonly audits: Repository<AuditLog>) {}
+
+  private hmacSecret(): string {
+    const secret = process.env.AUDIT_HMAC_SECRET ?? process.env.JWT_SECRET;
+    if (!secret) {
+      this.logger.warn('AUDIT_HMAC_SECRET and JWT_SECRET are both unset; audit checksums will use a deterministic fallback');
+      return 'evzone-audit-local-fallback';
+    }
+    return secret;
+  }
+
+  private computeChecksum(input: AuditRecordInput): string {
+    const payload = canonicalJson({
+      actorUserId: input.actorUserId,
+      action: input.action,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      before: input.before,
+      after: input.after,
+      changedFields: input.before && input.after ? computeChangedFields(input.before, input.after) : undefined,
+      reason: input.reason,
+      requestId: input.requestId,
+      route: input.route,
+      metadata: input.metadata,
+    });
+    return signPayload(payload, this.hmacSecret());
+  }
+
+  async record(input: AuditRecordInput, manager?: EntityManager): Promise<AuditLog> {
+    const repo = manager ? manager.getRepository(AuditLog) : this.audits;
+    const changedFields = computeChangedFields(input.before, input.after);
+    const checksum = this.computeChecksum(input);
+    const audit = repo.create({
+      ...input,
+      changedFields,
+      checksum,
+    });
+    return repo.save(audit);
+  }
+
+  async verify(id: string): Promise<{ valid: boolean; audit: AuditLog | null }> {
+    const audit = await this.audits.findOne({ where: { id } });
+    if (!audit) return { valid: false, audit: null };
+    const expected = this.computeChecksum({
+      actorUserId: audit.actorUserId,
+      action: audit.action,
+      entityType: audit.entityType,
+      entityId: audit.entityId,
+      before: audit.before,
+      after: audit.after,
+      reason: audit.reason,
+      requestId: audit.requestId,
+      route: audit.route,
+      metadata: audit.metadata,
+    });
+    return { valid: audit.checksum === expected, audit };
+  }
+}

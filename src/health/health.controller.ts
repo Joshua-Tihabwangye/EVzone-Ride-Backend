@@ -9,6 +9,8 @@ import { MigrationsHealthIndicator } from './indicators/migrations.health';
 import { RedisHealthIndicator } from './indicators/redis.health';
 import { StorageHealthIndicator } from './indicators/storage.health';
 import { WorkersHealthIndicator } from './indicators/workers.health';
+import { WorkerHealthService } from '../workers';
+import { ProductionConfigService } from '../infrastructure/production-config.service';
 
 @ApiTags('Health')
 @Controller()
@@ -21,6 +23,9 @@ export class HealthController {
     private readonly kafka: KafkaHealthIndicator,
     private readonly storage: StorageHealthIndicator,
     private readonly workersIndicator: WorkersHealthIndicator,
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly workerHealth: WorkerHealthService,
+    private readonly production: ProductionConfigService,
   ) {}
 
   @Public()
@@ -112,5 +117,17 @@ export class HealthController {
       () => this.storage.isHealthy('storage'),
       () => this.workersIndicator.isHealthy('workers'),
     ]);
+  }
+
+  @Public()
+  @Get('health/workers')
+  workers() {
+    const statuses = this.workerHealth.status();
+    const healthy = Object.values(statuses).every((s) => s.healthy);
+    return {
+      status: healthy ? 'ok' : 'degraded',
+      workers: statuses,
+      timestamp: new Date().toISOString(),
+    };
   }
 }

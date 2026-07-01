@@ -38,6 +38,10 @@ export class WalletsController {
   }
 
   @Post('withdraw')
+<<<<<<< HEAD
+  withdraw(@CurrentUser() user: AuthUser, @Body() dto: WithdrawDto) {
+    return this.service.withdraw(user.id, dto.amount, dto.destination, user.activeOrganizationId);
+=======
   @RequireIdempotency()
   withdraw(
     @CurrentUser() user: AuthUser,
@@ -45,5 +49,6 @@ export class WalletsController {
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     return this.service.withdraw(user.id, dto.amount, dto.destination, idempotencyKey);
+>>>>>>> origin/main
   }
 }

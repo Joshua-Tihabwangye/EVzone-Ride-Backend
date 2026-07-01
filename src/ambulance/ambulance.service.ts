@@ -79,7 +79,7 @@ export class AmbulanceService {
     );
   }
 
-  async create(requesterId: string, dto: CreateAmbulanceRequestDto) {
+  async create(requesterId: string, dto: CreateAmbulanceRequestDto, organizationId?: string) {
     if (!dto.consentToShareMedicalInfo) {
       throw new BadRequestException('Consent to share the minimum required medical information is required');
     }
@@ -96,6 +96,7 @@ export class AmbulanceService {
     const request = await this.requests.save(
       this.requests.create({
         requesterId,
+        organizationId,
         status: BookingStatus.SEARCHING,
         priority: dto.priority,
         patientName: dto.patientName,

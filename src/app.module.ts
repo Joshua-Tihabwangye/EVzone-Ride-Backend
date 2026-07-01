@@ -11,6 +11,7 @@ import { AgentPortalModule } from './agent-portal/agent-portal.module';
 import { AccountingModule } from './accounting/accounting.module';
 import { AmbulanceModule } from './ambulance/ambulance.module';
 import { AuthModule } from './auth/auth.module';
+import { CommissioningModule } from './commissioning/commissioning.module';
 import { ChatModule } from './chat/chat.module';
 import { CorporatePayModule } from './corporate-pay/corporate-pay.module';
 import { CorporateIntegrationModule } from './corporate-integration/corporate-integration.module';
@@ -18,6 +19,7 @@ import { CommutesModule } from './commutes/commutes.module';
 import { CompatibilityModule } from './compatibility/compatibility.module';
 import { DispatchModule } from './dispatch/dispatch.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { AuditModule } from './audit/audit.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -46,10 +48,17 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { OperationsModule } from './operations/operations.module';
 import { PaymentsModule } from './payments/payments.module';
+import { PermissionGuard } from './permissions/permission.guard';
+import { PermissionsModule } from './permissions/permissions.module';
+import { PayoutsModule } from './payouts/payouts.module';
+import { PayoutsWorkerModule } from './payouts/workers/payouts-worker.module';
+import { ReconciliationModule } from './reconciliation/reconciliation.module';
+import { ReconciliationWorkerModule } from './reconciliation/workers/reconciliation-worker.module';
 import { PlacesModule } from './places/places.module';
 import { PricingModule } from './pricing/pricing.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { UniversalDispatchModule } from './universal-dispatch/universal-dispatch.module';
+import { WorkersModule } from './workers';
 import { RentalCatalogModule } from './rental-catalog/rental-catalog.module';
 import { RentalsModule } from './rentals/rentals.module';
 import { RidesModule } from './rides/rides.module';
@@ -63,17 +72,23 @@ import { WalletsModule } from './wallets/wallets.module';
 
 @Module({
   imports: [
+<<<<<<< HEAD
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env.local', '.env'] }),
+    WorkersModule.register(),
+=======
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
       validationSchema,
       validationOptions,
     }),
+>>>>>>> origin/main
     TypeOrmModule.forRootAsync({ useFactory: createTypeOrmOptions }),
     LoggingModule,
     DatabaseModule,
     InfrastructureModule,
     OrganizationsModule,
+    PermissionsModule,
     AccountingModule,
     OnboardingModule,
     OperationsModule,
@@ -90,6 +105,8 @@ import { WalletsModule } from './wallets/wallets.module';
     GovernanceModule,
     IdempotencyModule,
     AuthModule,
+    AuditModule,
+    CommissioningModule,
     UsersModule,
     NotificationsModule,
     MatchingModule,
@@ -98,7 +115,14 @@ import { WalletsModule } from './wallets/wallets.module';
     PricingModule,
     WalletsModule,
     PaymentsModule,
+<<<<<<< HEAD
+    PayoutsModule,
+    PayoutsWorkerModule.register(),
+    ReconciliationModule,
+    ReconciliationWorkerModule.register(),
+=======
     WebhooksModule,
+>>>>>>> origin/main
     CorporatePayModule,
     CorporateIntegrationModule,
     CommutesModule,
@@ -130,6 +154,7 @@ import { WalletsModule } from './wallets/wallets.module';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: PermissionGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },

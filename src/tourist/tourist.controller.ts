@@ -54,7 +54,7 @@ export class TouristController {
 
   @Post('bookings')
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateTouristBookingDto) {
-    return this.service.create(user.id, dto);
+    return this.service.create(user.id, dto, user.activeOrganizationId);
   }
 
   @Get('bookings')

@@ -6,7 +6,9 @@ import {
   Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  VersionColumn,
 } from 'typeorm';
+export { AuditLog } from '../audit/audit-log.entity';
 import {
   AccountStatus,
   BookingStatus,
@@ -28,6 +30,8 @@ import {
   PackageSize,
   PaymentMethod,
   PaymentStatus,
+  PayoutStatus,
+  CashoutRequestStatus,
   RentalStatus,
   RideCategory,
   RideMode,
@@ -75,6 +79,9 @@ import {
   TripPauseStatus,
 } from '../common/enums';
 import { numberTransformer } from '../common/utils/money';
+import { CommissionRule } from '../commissioning/commission-rule.entity';
+import { ReconciliationRecord } from '../reconciliation/entities/reconciliation-record.entity';
+import { ReconciliationRun } from '../reconciliation/entities/reconciliation-run.entity';
 import { UNIVERSAL_DISPATCH_ENTITIES } from '../universal-dispatch/domain/universal-dispatch.entities';
 
 export abstract class BaseEntity {
@@ -359,32 +366,6 @@ export class FileAsset extends BaseEntity {
 
   @Column({ type: 'simple-json', nullable: true })
   metadata?: Record<string, unknown>;
-}
-
-@Entity('audit_logs')
-export class AuditLog extends BaseEntity {
-  @Index()
-  @Column({ nullable: true })
-  actorUserId?: string;
-
-  @Column()
-  action!: string;
-
-  @Column()
-  entityType!: string;
-
-  @Index()
-  @Column({ nullable: true })
-  entityId?: string;
-
-  @Column({ nullable: true })
-  route?: string;
-
-  @Column({ nullable: true })
-  ipAddress?: string;
-
-  @Column({ type: 'simple-json', nullable: true })
-  data?: Record<string, unknown>;
 }
 
 @Entity('driver_profiles')
@@ -714,6 +695,9 @@ export class TrainingModule extends BaseEntity {
 
   @Column({ default: true })
   active!: boolean;
+
+  @VersionColumn()
+  version!: number;
 }
 
 @Entity('training_progress')
@@ -907,6 +891,9 @@ export class Wallet extends BaseEntity {
   @Column({ type: 'decimal', precision: 16, scale: 2, default: 0, transformer: numberTransformer })
   pendingBalance!: number;
 
+  @Column({ type: 'decimal', precision: 16, scale: 2, default: 0, transformer: numberTransformer })
+  reservedForCashout!: number;
+
   @Column({ default: true })
   active!: boolean;
 }
@@ -914,6 +901,10 @@ export class Wallet extends BaseEntity {
 @Index('IDX_wallet_tx_wallet_ref_direction', ['walletId', 'reference', 'direction'], { unique: true })
 @Entity('wallet_transactions')
 export class WalletTransaction extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
   @Index()
   @Column()
   walletId!: string;
@@ -947,6 +938,10 @@ export class WalletTransaction extends BaseEntity {
 @Entity('payments')
 @Index('IDX_payment_user_idempotency', ['userId', 'idempotencyKey'], { unique: true })
 export class Payment extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
   @Index()
   @Column()
   userId!: string;
@@ -997,11 +992,27 @@ export class Payment extends BaseEntity {
   refundedAmount!: number;
 }
 
+@Index('IDX_payouts_cashout_idempotency', ['cashoutRequestId', 'idempotencyKey'], { unique: true })
 @Entity('payouts')
 export class Payout extends BaseEntity {
   @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
+  @Index()
   @Column()
   driverId!: string;
+
+  @Index({ unique: true })
+  @Column()
+  reference!: string;
+
+  @Column()
+  idempotencyKey!: string;
+
+  @Index()
+  @Column({ nullable: true })
+  cashoutRequestId?: string;
 
   @Column({ type: 'decimal', precision: 16, scale: 2, transformer: numberTransformer })
   amount!: number;
@@ -1009,15 +1020,59 @@ export class Payout extends BaseEntity {
   @Column({ default: 'UGX' })
   currency!: string;
 
-  @Column({ type: 'simple-enum', enum: PaymentStatus, default: PaymentStatus.PENDING })
-  status!: PaymentStatus;
+  @Column({ type: 'simple-enum', enum: PayoutStatus, default: PayoutStatus.PENDING })
+  status!: PayoutStatus;
+
+  @Column({ default: 'flutterwave' })
+  provider!: string;
 
   @Column()
   destination!: string;
 
-  @Index({ unique: true })
-  @Column()
-  reference!: string;
+  @Column({ type: 'simple-json', nullable: true })
+  destinationDetails?: Record<string, unknown>;
+
+  @Column({ nullable: true })
+  providerReference?: string;
+
+  @Column({ nullable: true })
+  providerBatchId?: string;
+
+  @Column({ nullable: true })
+  providerTransactionId?: string;
+
+  @Column({ type: 'decimal', precision: 16, scale: 2, nullable: true, transformer: numberTransformer })
+  fee?: number;
+
+  @Column({ nullable: true, type: 'text' })
+  failureReason?: string;
+
+  @Column({ nullable: true })
+  initiatedAt?: Date;
+
+  @Column({ nullable: true })
+  completedAt?: Date;
+
+  @Column({ nullable: true })
+  failedAt?: Date;
+
+  @Column({ nullable: true })
+  reversedAt?: Date;
+
+  @Column({ nullable: true })
+  verifiedAt?: Date;
+
+  @Column({ nullable: true })
+  reconciledAt?: Date;
+
+  @Column({ nullable: true })
+  initiatedByUserId?: string;
+
+  @Column({ type: 'simple-json', nullable: true })
+  providerPayload?: Record<string, unknown>;
+
+  @Column({ type: 'simple-json', nullable: true })
+  providerError?: Record<string, unknown>;
 
   @Column({ type: 'simple-json', nullable: true })
   metadata?: Record<string, unknown>;
@@ -1025,6 +1080,10 @@ export class Payout extends BaseEntity {
 
 @Entity('rides')
 export class Ride extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
   @Index()
   @Column()
   riderId!: string;
@@ -1261,6 +1320,10 @@ export class RideFeedback extends BaseEntity {
 
 @Entity('delivery_orders')
 export class DeliveryOrder extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
   @Index()
   @Column()
   customerId!: string;
@@ -1553,6 +1616,10 @@ export class TourPackage extends BaseEntity {
 @Entity('tourist_bookings')
 export class TouristBooking extends BaseEntity {
   @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
+  @Index()
   @Column()
   customerId!: string;
 
@@ -1646,6 +1713,10 @@ export class MedicalFacility extends BaseEntity {
 
 @Entity('ambulance_requests')
 export class AmbulanceRequest extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
   @Index()
   @Column()
   requesterId!: string;
@@ -1747,6 +1818,10 @@ export class AmbulanceEvent extends BaseEntity {
 
 @Entity('rental_bookings')
 export class RentalBooking extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
   @Index()
   @Column()
   renterId!: string;
@@ -3395,6 +3470,10 @@ export class StoredPaymentMethod extends BaseEntity {
 @Index('IDX_cashout_user_idempotency', ['userId', 'idempotencyKey'], { unique: true })
 export class CashoutRequest extends BaseEntity {
   @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
+
+  @Index()
   @Column()
   userId!: string;
 
@@ -3402,17 +3481,37 @@ export class CashoutRequest extends BaseEntity {
   @Column({ nullable: true })
   driverId?: string;
 
+  @Index({ unique: true })
+  @Column()
+  reference!: string;
+
   @Column({ type: 'decimal', precision: 16, scale: 2, transformer: numberTransformer })
   amount!: number;
 
-  @Column({ default: 'PENDING' })
-  status!: string;
+  @Column({ default: 'UGX' })
+  currency!: string;
+
+  @Column({ type: 'simple-enum', enum: CashoutRequestStatus, default: CashoutRequestStatus.PENDING })
+  status!: CashoutRequestStatus;
 
   @Column({ type: 'simple-json' })
   method!: Record<string, unknown>;
 
   @Column({ type: 'simple-json', nullable: true })
   metadata?: Record<string, unknown>;
+
+  @Index()
+  @Column({ nullable: true })
+  payoutId?: string;
+
+  @Column({ nullable: true })
+  provider?: string;
+
+  @Column({ nullable: true })
+  providerReference?: string;
+
+  @Column({ nullable: true })
+  ledgerJournalReference?: string;
 
   @Column({ nullable: true })
   reviewedByUserId?: string;
@@ -4004,12 +4103,19 @@ export class LedgerAccount extends BaseEntity {
   @Column({ type: 'simple-enum', enum: LedgerAccountType })
   accountType!: LedgerAccountType;
 
+  @Column({ type: 'varchar', default: 'ASSET' })
+  accountCategory!: string;
+
   @Column({ default: 'SYSTEM' })
   ownerType!: string;
 
   @Index()
   @Column({ nullable: true })
   ownerId?: string;
+
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
 
   @Column({ default: 'UGX' })
   currency!: string;
@@ -4019,6 +4125,41 @@ export class LedgerAccount extends BaseEntity {
 
   @Column({ default: true })
   active!: boolean;
+}
+
+@Entity('ledger_account_period_balances')
+@Index(['accountId', 'year', 'month'], { unique: true })
+export class LedgerAccountPeriodBalance extends BaseEntity {
+  @Index()
+  @Column()
+  accountId!: string;
+
+  @Column({ type: 'smallint' })
+  year!: number;
+
+  @Column({ type: 'smallint' })
+  month!: number;
+
+  @Column({ type: 'varchar', default: 'OPEN' })
+  status!: 'OPEN' | 'CLOSED';
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  openingBalance!: number;
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  closingBalance!: number;
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  totalDebits!: number;
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  totalCredits!: number;
+
+  @Column({ nullable: true })
+  closedAt?: Date;
+
+  @Column({ nullable: true })
+  closedByUserId?: string;
 }
 
 @Entity('journal_transactions')
@@ -4042,6 +4183,13 @@ export class JournalTransaction extends BaseEntity {
   @Index()
   @Column({ nullable: true })
   serviceId?: string;
+
+  @Column({ default: 'UGX' })
+  currency!: string;
+
+  @Index()
+  @Column({ nullable: true })
+  organizationId?: string;
 
   @Column({ nullable: true })
   postedAt?: Date;
@@ -5120,9 +5268,13 @@ export const ENTITIES = [
   JobOffer,
   DeliveryRoute,
   LedgerAccount,
+  LedgerAccountPeriodBalance,
   JournalTransaction,
   LedgerEntry,
   EarningsLedger,
+  CommissionRule,
+  ReconciliationRun,
+  ReconciliationRecord,
   TripPauseRequest,
   UserPlace,
   RentalBranch,

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';
+import { WorkersConfigModule } from '../workers/workers-config.module';
 import { HealthController } from './health.controller';
 import { DatabaseHealthIndicator } from './indicators/database.health';
 import { KafkaHealthIndicator } from './indicators/kafka.health';
@@ -19,5 +20,7 @@ import { WorkersHealthIndicator } from './indicators/workers.health';
     StorageHealthIndicator,
     WorkersHealthIndicator,
   ],
+  imports: [WorkersConfigModule],
+  controllers: [HealthController],
 })
 export class HealthModule {}

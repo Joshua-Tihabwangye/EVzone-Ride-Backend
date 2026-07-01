@@ -74,6 +74,10 @@ export class CreateCashoutRequestDto {
   @Min(100)
   amount!: number;
 
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
   @IsObject()
   method!: Record<string, unknown>;
 
@@ -93,4 +97,8 @@ export class ReviewCashoutRequestDto {
   @IsOptional()
   @IsString()
   reason?: string;
+
+  @IsOptional()
+  @IsString()
+  provider?: string;
 }

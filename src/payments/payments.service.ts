@@ -2,6 +2,10 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
+<<<<<<< HEAD
+import { Between, Repository } from 'typeorm';
+import { PaymentMethod, PaymentStatus, ServiceType, WalletTransactionType } from '../common/enums';
+=======
 import { DataSource, Repository } from 'typeorm';
 import {
   PaymentMethod,
@@ -11,6 +15,7 @@ import {
   WalletTransactionType,
 } from '../common/enums';
 import { getRepository, Transactional } from '../common/transaction';
+>>>>>>> origin/main
 import {
   AmbulanceRequest,
   DeliveryOrder,
@@ -23,6 +28,7 @@ import {
 } from '../database/entities';
 import { NotificationsService } from '../notifications/notifications.service';
 import { WalletsService } from '../wallets/wallets.service';
+import { CommissioningService } from '../commissioning/commissioning.service';
 import { CreatePaymentDto } from './payments.dto';
 import { PaymentProviderFactory } from './providers/payment-provider.factory';
 
@@ -34,6 +40,7 @@ export interface ServicePaymentData {
   amount: number;
   currency: string;
   paymentStatus: PaymentStatus;
+  organizationId?: string;
 }
 
 @Injectable()
@@ -51,6 +58,7 @@ export class PaymentsService {
     private readonly notifications: NotificationsService,
     private readonly events: EventEmitter2,
     private readonly providerFactory: PaymentProviderFactory,
+    private readonly commissioning: CommissioningService,
   ) {}
 
   @Transactional()
@@ -72,6 +80,7 @@ export class PaymentsService {
     return payments.save(
       payments.create({
         userId,
+        organizationId: service.organizationId,
         serviceType: dto.serviceType,
         serviceId: dto.serviceId,
         amount: service.amount,
@@ -118,6 +127,7 @@ export class PaymentsService {
         payment.reference,
         `${payment.serviceType} payment`,
         { serviceId: payment.serviceId },
+        payment.organizationId,
       );
     } else if (payment.method === PaymentMethod.CORPORATE_PAY) {
       const approved = providerToken?.startsWith('CORPORATEPAY-') || process.env.NODE_ENV !== 'production';
@@ -251,7 +261,12 @@ export class PaymentsService {
       WalletTransactionType.REFUND,
       refundReference,
       reason ?? 'Payment refund',
+<<<<<<< HEAD
+      { paymentId: payment.id, approvedBy: requesterId },
+      payment.organizationId,
+=======
       { paymentId: payment.id, approvedBy: requesterId, idempotencyKey },
+>>>>>>> origin/main
     );
 
     payment.refundedAmount = rounded(alreadyRefunded + refundAmount);
@@ -281,19 +296,15 @@ export class PaymentsService {
     if (payment.serviceType === ServiceType.SCHOOL_SHUTTLE) return;
     const service = await this.getServiceData(payment.serviceType, payment.serviceId);
     if (!service.providerUserId || service.providerUserId === payment.userId) return;
-    const providerShare = Math.round(payment.amount * 0.85 * 100) / 100;
-    await this.wallets.credit(
-      service.providerUserId,
-      providerShare,
-      WalletTransactionType.EARNING,
-      `EARN-${payment.reference}`,
-      `${payment.serviceType} earnings`,
-      {
-        serviceId: payment.serviceId,
-        serviceType: payment.serviceType,
-        platformFee: payment.amount - providerShare,
-      },
-    );
+    await this.commissioning.applyPaymentCommission({
+      reference: payment.reference,
+      serviceType: payment.serviceType,
+      serviceId: payment.serviceId,
+      amount: Number(payment.amount),
+      currency: payment.currency,
+      providerUserId: service.providerUserId,
+      payerUserId: payment.userId,
+    });
   }
 
   private async providerUserId(driverId?: string): Promise<string | undefined> {
@@ -312,6 +323,7 @@ export class PaymentsService {
           amount: item.finalFare ?? item.estimatedFare,
           currency: item.currency,
           paymentStatus: item.paymentStatus,
+          organizationId: item.organizationId,
         };
       }
       case ServiceType.DELIVERY: {
@@ -323,6 +335,7 @@ export class PaymentsService {
           amount: item.finalCost ?? item.estimatedCost,
           currency: item.currency,
           paymentStatus: item.paymentStatus,
+          organizationId: item.organizationId,
         };
       }
       case ServiceType.TOURIST_VEHICLE: {
@@ -334,6 +347,7 @@ export class PaymentsService {
           amount: item.finalAmount ?? item.estimatedAmount,
           currency: item.currency,
           paymentStatus: item.paymentStatus,
+          organizationId: item.organizationId,
         };
       }
       case ServiceType.AMBULANCE: {
@@ -345,6 +359,7 @@ export class PaymentsService {
           amount: item.finalCost ?? item.estimatedCost,
           currency: 'UGX',
           paymentStatus: item.paymentStatus,
+          organizationId: item.organizationId,
         };
       }
       case ServiceType.CAR_RENTAL: {
@@ -356,10 +371,24 @@ export class PaymentsService {
           amount: item.finalAmount ?? item.estimatedAmount,
           currency: item.currency,
           paymentStatus: item.paymentStatus,
+          organizationId: item.organizationId,
         };
       }
     }
     throw new NotFoundException('Service booking not found');
+  }
+
+  async getSettlementRecords(periodStart: Date, periodEnd: Date, provider?: string) {
+    const where: Record<string, unknown> = {
+      status: PaymentStatus.PAID,
+      paidAt: Between(periodStart, periodEnd),
+    };
+    if (provider) where.provider = provider;
+    return this.payments.find({
+      where,
+      order: { paidAt: 'DESC' },
+      select: ['id', 'reference', 'providerReference', 'amount', 'currency', 'provider', 'paidAt'],
+    });
   }
 
   private async updateServicePaymentStatus(

@@ -100,7 +100,7 @@ export class TouristService {
     return quote;
   }
 
-  async create(customerId: string, dto: CreateTouristBookingDto) {
+  async create(customerId: string, dto: CreateTouristBookingDto, organizationId?: string) {
     const startAt = new Date(dto.startAt);
     const endAt = new Date(dto.endAt);
     if (startAt <= new Date() || endAt <= startAt) throw new BadRequestException('Tour dates are invalid');
@@ -109,6 +109,7 @@ export class TouristService {
     const booking = await this.bookings.save(
       this.bookings.create({
         customerId,
+        organizationId,
         operatorUserId: packageItem?.operatorUserId,
         tourPackageId: dto.tourPackageId,
         status: BookingStatus.REQUESTED,

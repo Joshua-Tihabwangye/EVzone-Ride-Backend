@@ -100,4 +100,84 @@ describe('RankingEngineService', () => {
     );
     expect(ranked[0].score).toBeLessThan(1);
   });
+
+  it('uses real signal values instead of defaults', () => {
+    const units = [{ id: 'du_low' }, { id: 'du_high' }] as UniversalDispatchUnit[];
+    const routes: RouteMatrixResult[] = [
+      {
+        dispatchUnitId: 'du_low',
+        distanceMeters: 1000,
+        etaSeconds: 120,
+        source: 'ROUTE_PROVIDER',
+        uncertaintyPenalty: 0,
+        mode: 'driving',
+      },
+      {
+        dispatchUnitId: 'du_high',
+        distanceMeters: 1000,
+        etaSeconds: 120,
+        source: 'ROUTE_PROVIDER',
+        uncertaintyPenalty: 0,
+        mode: 'driving',
+      },
+    ];
+
+    const ranked = service.rank(
+      [
+        { unit: units[0], route: routes[0], reliability: 0.2, quality: 0.2 },
+        { unit: units[1], route: routes[1], reliability: 1, quality: 1 },
+      ],
+      basePolicy,
+      'req_2',
+    );
+    expect(ranked[0].unit.id).toBe('du_high');
+    expect(ranked[0].scoreComponents.reliability).toBe(1);
+    expect(ranked[0].scoreComponents.serviceQuality).toBe(1);
+  });
+
+  it('boosts fairness when configured', () => {
+    const units = [{ id: 'du_recent' }, { id: 'du_stale' }] as UniversalDispatchUnit[];
+    const routes: RouteMatrixResult[] = [
+      {
+        dispatchUnitId: 'du_recent',
+        distanceMeters: 1000,
+        etaSeconds: 120,
+        source: 'ROUTE_PROVIDER',
+        uncertaintyPenalty: 0,
+        mode: 'driving',
+      },
+      {
+        dispatchUnitId: 'du_stale',
+        distanceMeters: 1000,
+        etaSeconds: 120,
+        source: 'ROUTE_PROVIDER',
+        uncertaintyPenalty: 0,
+        mode: 'driving',
+      },
+    ];
+
+    const fairnessPolicy: DispatchPolicyConfig = {
+      ...basePolicy,
+      weights: {
+        ...basePolicy.weights,
+        pickupEta: 0,
+        fairness: 1,
+        reliability: 0,
+        serviceQuality: 0,
+        routeFit: 0,
+        energyMargin: 0,
+      },
+    };
+
+    const ranked = service.rank(
+      [
+        { unit: units[0], route: routes[0], fairness: 0.2 },
+        { unit: units[1], route: routes[1], fairness: 1 },
+      ],
+      fairnessPolicy,
+      'req_3',
+    );
+    expect(ranked[0].unit.id).toBe('du_stale');
+    expect(ranked[0].scoreComponents.fairness).toBe(1);
+  });
 });
