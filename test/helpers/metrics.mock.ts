@@ -23,6 +23,8 @@ export function createBusinessMetricsMock(): jest.Mocked<BusinessMetricsService>
     recordAuditLog: jest.fn(),
     recordOperationsAlert: jest.fn(),
     recordOperationsIntervention: jest.fn(),
+    recordFleetPayoutRequested: jest.fn(),
+    recordFleetComplianceScored: jest.fn(),
     recordProviderRequest: jest.fn(),
     recordQueueJob: jest.fn(),
     recordWalletMovement: jest.fn(),

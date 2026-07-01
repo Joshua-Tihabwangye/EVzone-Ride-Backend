@@ -38,6 +38,9 @@ export class BusinessMetricsService {
 
   private readonly operationsInterventions: Counter<'action'>;
 
+  private readonly fleetPayoutsRequested: Counter<string>;
+  private readonly fleetComplianceScored: Counter<string>;
+
   private readonly providerDuration: Histogram<'provider' | 'operation'>;
   private readonly providerTotal: Counter<'provider' | 'operation' | 'status'>;
 
@@ -147,6 +150,15 @@ export class BusinessMetricsService {
       'evzone_operations_interventions_total',
       'Total operations interventions',
       ['action'],
+    );
+
+    this.fleetPayoutsRequested = this.metrics.getCounter(
+      'evzone_fleet_payouts_requested_total',
+      'Total fleet payout requests',
+    );
+    this.fleetComplianceScored = this.metrics.getCounter(
+      'evzone_fleet_compliance_scored_total',
+      'Total fleet compliance score computations',
     );
 
     this.providerDuration = this.metrics.getHistogram(
@@ -282,6 +294,14 @@ export class BusinessMetricsService {
 
   recordOperationsIntervention(action: string): void {
     this.operationsInterventions.inc({ action });
+  }
+
+  recordFleetPayoutRequested(): void {
+    this.fleetPayoutsRequested.inc();
+  }
+
+  recordFleetComplianceScored(): void {
+    this.fleetComplianceScored.inc();
   }
 
   recordProviderRequest(provider: string, operation: string, status: string, durationSeconds: number): void {

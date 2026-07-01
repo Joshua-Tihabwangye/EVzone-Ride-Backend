@@ -3,12 +3,17 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { DataSource, In, Not } from 'typeorm';
+import { AuditService } from '../audit/audit.service';
+import { CreateCashoutRequestDto } from '../financial-operations/financial-operations.dto';
+import { FinancialOperationsService } from '../financial-operations/financial-operations.service';
+import { BusinessMetricsService } from '../observability/metrics/business-metrics.service';
 import {
   AccountStatus,
   BookingStatus,
@@ -58,6 +63,7 @@ import {
   RefreshToken,
   RentalBooking,
   Ride,
+  ServiceReview,
   SupportTicket,
   TouristBooking,
   TrainingModule,
@@ -74,12 +80,14 @@ import {
   CreateFleetPortalDriverDto,
   CreateFleetPortalVehicleDto,
   CreateFleetServiceOrderDto,
+  FleetDateRangeQueryDto,
   FleetPortalListQueryDto,
   PatchFleetBranchDto,
   PatchFleetPortalDispatchDto,
   PatchFleetPortalDriverDto,
   PatchFleetPortalVehicleDto,
   PatchFleetServiceOrderDto,
+  RequestFleetPayoutDto,
   UpdateFleetPortalProfileDto,
   UpsertFleetBranchDto,
 } from './fleet-portal.dto';
@@ -99,9 +107,14 @@ export type PortalEvent = {
 
 @Injectable()
 export class FleetPortalService {
+  private readonly logger = new Logger(FleetPortalService.name);
+
   constructor(
     private readonly db: DataSource,
     private readonly events: EventEmitter2,
+    private readonly financialOperations: FinancialOperationsService,
+    private readonly auditService: AuditService,
+    private readonly businessMetrics: BusinessMetricsService,
   ) {}
 
   async context(user: AuthUser, organizationId?: string): Promise<FleetPortalContext> {
@@ -1461,6 +1474,182 @@ export class FleetPortalService {
     return {
       ...statement,
       entries: entries.filter((item) => item.createdAt.toISOString().startsWith(statement.period)),
+    };
+  }
+
+  async earningsDetailed(user: AuthUser, query: FleetDateRangeQueryDto = {}, organizationId?: string) {
+    return this.earningsStatements(user, query, organizationId);
+  }
+
+  async requestPayout(user: AuthUser, dto: RequestFleetPayoutDto, organizationId?: string) {
+    const { fleet, organization } = await this.context(user, organizationId);
+    const driverLink = await this.db.getRepository(FleetDriver).findOne({
+      where: { fleetId: fleet.id, driverId: dto.driverId },
+    });
+    if (!driverLink) throw new NotFoundException('Driver is not assigned to this fleet');
+
+    const driver = await this.db.getRepository(DriverProfile).findOne({ where: { id: dto.driverId } });
+    if (!driver) throw new NotFoundException('Driver profile not found');
+
+    const cashoutDto: CreateCashoutRequestDto = {
+      amount: dto.amount,
+      currency: dto.currency ?? organization.currency ?? 'UGX',
+      method: dto.method,
+      idempotencyKey: `fleet-payout-${fleet.id}-${dto.driverId}-${Date.now()}`,
+      metadata: { requestedBy: user.id, fleetId: fleet.id, reason: dto.reason },
+    };
+
+    const cashout = await this.financialOperations.requestCashout(driver.userId, cashoutDto, organization.id);
+
+    this.businessMetrics.recordFleetPayoutRequested();
+    void this.auditService
+      .record({
+        actorUserId: user.id,
+        action: 'FLEET_PAYOUT_REQUESTED',
+        entityType: 'CashoutRequest',
+        entityId: cashout.id,
+        after: { ...cashout },
+        reason: dto.reason,
+        metadata: { fleetId: fleet.id, driverId: dto.driverId },
+      })
+      .catch((error) =>
+        this.logger?.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+
+    this.events.emit('fleet.portal.event', {
+      fleetId: fleet.id,
+      event: 'payout.requested',
+      data: { cashoutId: cashout.id, driverId: dto.driverId, amount: dto.amount },
+    });
+
+    return {
+      id: cashout.id,
+      driverId: dto.driverId,
+      amount: cashout.amount,
+      currency: cashout.currency,
+      status: cashout.status,
+      reference: cashout.reference,
+      requestedAt: cashout.createdAt,
+    };
+  }
+
+  async fleetComplianceScore(user: AuthUser, organizationId?: string) {
+    const { fleet } = await this.context(user, organizationId);
+    const driverLinks = await this.db.getRepository(FleetDriver).find({ where: { fleetId: fleet.id } });
+    const vehicleLinks = await this.db.getRepository(FleetVehicle).find({ where: { fleetId: fleet.id } });
+
+    const totalDrivers = driverLinks.length;
+    const activeDrivers = driverLinks.filter((item) => item.status === FleetAssetStatus.ACTIVE).length;
+    const totalVehicles = vehicleLinks.length;
+    const activeVehicles = vehicleLinks.filter((item) => item.status === FleetAssetStatus.ACTIVE).length;
+
+    const incidents = await this.db.getRepository(FleetPortalResource).find({
+      where: { fleetId: fleet.id, resourceType: 'INCIDENT' },
+    });
+    const openIncidents = incidents.filter(
+      (item) => (item.data as Record<string, unknown>)?.status === 'OPEN',
+    ).length;
+
+    const driverIds = driverLinks.map((item) => item.driverId);
+    const vehicleIds = vehicleLinks.map((item) => item.vehicleId);
+
+    const [trainingProgress, vehicleDocuments] = await Promise.all([
+      driverIds.length
+        ? this.db.getRepository(TrainingProgress).find({ where: { driverId: In(driverIds) } })
+        : Promise.resolve([]),
+      vehicleIds.length
+        ? this.db.getRepository(VehicleDocument).find({ where: { vehicleId: In(vehicleIds) } })
+        : Promise.resolve([]),
+    ]);
+
+    const completedTraining = trainingProgress.filter(
+      (item) => item.status === TrainingProgressStatus.COMPLETED,
+    ).length;
+    const verifiedDocuments = vehicleDocuments.filter(
+      (item) => item.status === DocumentStatus.VERIFIED,
+    ).length;
+
+    const denominator = totalDrivers + totalVehicles + incidents.length || 1;
+    const score = Math.round(
+      ((activeDrivers + activeVehicles + completedTraining + verifiedDocuments - openIncidents) /
+        denominator) *
+        100,
+    );
+
+    this.businessMetrics.recordFleetComplianceScored();
+
+    return {
+      score: Math.max(0, Math.min(100, score)),
+      fleetId: fleet.id,
+      generatedAt: new Date(),
+      breakdown: {
+        totalDrivers,
+        activeDrivers,
+        totalVehicles,
+        activeVehicles,
+        openIncidents,
+        totalIncidents: incidents.length,
+        completedTraining,
+        totalTraining: trainingProgress.length,
+        verifiedDocuments,
+        totalDocuments: vehicleDocuments.length,
+      },
+    };
+  }
+
+  async fleetPerformanceMetrics(user: AuthUser, query: FleetDateRangeQueryDto = {}, organizationId?: string) {
+    const { fleet, organization } = await this.context(user, organizationId);
+    const assignments = await this.db.getRepository(FleetAssignment).find({
+      where: { fleetId: fleet.id },
+      order: { createdAt: 'DESC' },
+    });
+
+    const from = query.from ? new Date(query.from) : undefined;
+    const to = query.to ? new Date(query.to) : undefined;
+    const filtered = assignments.filter((item) => {
+      if (from && item.createdAt < from) return false;
+      if (to && item.createdAt > to) return false;
+      return true;
+    });
+
+    const completed = filtered.filter((item) => item.status === FleetAssignmentStatus.COMPLETED);
+    const cancelled = filtered.filter((item) => item.status === FleetAssignmentStatus.CANCELLED);
+    const active = filtered.filter((item) => item.status === FleetAssignmentStatus.ACTIVE);
+
+    const driverLinks = await this.db.getRepository(FleetDriver).find({ where: { fleetId: fleet.id } });
+    const driverIds = driverLinks.map((item) => item.driverId);
+    const earnings = driverIds.length
+      ? await this.db.getRepository(EarningsLedger).find({ where: { driverId: In(driverIds) } })
+      : [];
+
+    const serviceIds = completed.map((item) => item.serviceId).filter((id): id is string => Boolean(id));
+    const reviews = serviceIds.length
+      ? await this.db.getRepository(ServiceReview).find({ where: { serviceId: In(serviceIds) } })
+      : [];
+    const averageRating =
+      reviews.length > 0 ? reviews.reduce((sum, item) => sum + Number(item.rating), 0) / reviews.length : 0;
+
+    return {
+      fleetId: fleet.id,
+      currency: organization.currency,
+      generatedAt: new Date(),
+      totals: {
+        assignments: filtered.length,
+        completed: completed.length,
+        cancelled: cancelled.length,
+        active: active.length,
+        completionRate: filtered.length > 0 ? Math.round((completed.length / filtered.length) * 100) : 0,
+      },
+      earnings: {
+        gross: earnings.reduce((sum, item) => sum + Number(item.grossAmount), 0),
+        net: earnings.reduce((sum, item) => sum + Number(item.netAmount), 0),
+        platformFees: earnings.reduce((sum, item) => sum + Number(item.platformFee), 0),
+        tips: earnings.reduce((sum, item) => sum + Number(item.tipAmount), 0),
+      },
+      quality: {
+        averageRating: Math.round(averageRating * 10) / 10,
+        reviewCount: reviews.length,
+      },
     };
   }
 

@@ -11,12 +11,14 @@ import {
   CreateFleetPortalDriverDto,
   CreateFleetPortalVehicleDto,
   CreateFleetServiceOrderDto,
+  FleetDateRangeQueryDto,
   FleetPortalListQueryDto,
   PatchFleetBranchDto,
   PatchFleetPortalDispatchDto,
   PatchFleetPortalDriverDto,
   PatchFleetPortalVehicleDto,
   PatchFleetServiceOrderDto,
+  RequestFleetPayoutDto,
   UpdateFleetPortalProfileDto,
   UpsertFleetBranchDto,
 } from './fleet-portal.dto';
@@ -885,6 +887,51 @@ export class FleetPortalController {
     @Headers('x-organization-id') organizationId?: string,
   ) {
     return this.service.earningsStatement(user, period, organizationId);
+  }
+
+  @Get('earnings/detailed')
+  earningsDetailed(
+    @CurrentUser() user: AuthUser,
+    @Query() query: FleetDateRangeQueryDto,
+    @Headers('x-organization-id') organizationId?: string,
+  ) {
+    return this.service.earningsDetailed(user, query, organizationId);
+  }
+
+  @Post('earnings/payout-requests')
+  @RequirePermission(Permission.FLEET_PAYOUT_REQUEST)
+  requestPayout(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: RequestFleetPayoutDto,
+    @Headers('x-organization-id') organizationId?: string,
+  ) {
+    return this.service.requestPayout(user, dto, organizationId);
+  }
+
+  @Get('compliance/score')
+  @RequirePermission(Permission.FLEET_COMPLIANCE_READ)
+  complianceScore(@CurrentUser() user: AuthUser, @Headers('x-organization-id') organizationId?: string) {
+    return this.service.fleetComplianceScore(user, organizationId);
+  }
+
+  @Get('performance/metrics')
+  @RequirePermission(Permission.FLEET_FINANCE_READ)
+  performanceMetrics(
+    @CurrentUser() user: AuthUser,
+    @Query() query: FleetDateRangeQueryDto,
+    @Headers('x-organization-id') organizationId?: string,
+  ) {
+    return this.service.fleetPerformanceMetrics(user, query, organizationId);
+  }
+
+  @Get('performance/drivers')
+  @RequirePermission(Permission.FLEET_FINANCE_READ)
+  driverPerformance(
+    @CurrentUser() user: AuthUser,
+    @Query() query: FleetPortalListQueryDto,
+    @Headers('x-organization-id') organizationId?: string,
+  ) {
+    return this.service.listDrivers(user, query, organizationId);
   }
 
   @Get('trips')

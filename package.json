@@ -34,6 +34,7 @@
     "smoke:report-upgrade": "node scripts/report-upgrade-smoke-test.mjs",
     "smoke:report": "node scripts/report-upgrades-smoke-test.mjs",
     "smoke:fleet": "node scripts/fleet-partner-smoke-test.mjs",
+    "smoke:fleet-readiness": "node scripts/smoke-fleet-readiness.mjs",
     "smoke:agent": "node scripts/agent-portal-smoke-test.mjs",
     "smoke:admin": "node scripts/admin-portal-smoke-test.mjs",
     "smoke:admin-finance": "node scripts/smoke-admin-finance.mjs",
