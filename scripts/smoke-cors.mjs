@@ -1,15 +1,12 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { buildApp, startApp, waitForReady, shutdown } from './smoke-utils.mjs';
 
 const allowedOrigin = 'https://app.evzone.example';
 const rejectedOrigin = 'https://unauthorized.example';
 const port = 13001;
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const baseUrl = `http://127.0.0.1:${port}/api/v1`;
 
 async function request(origin) {
-  const response = await fetch(`http://127.0.0.1:${port}/api/v1/health`, {
+  const response = await fetch(`${baseUrl}/health`, {
     method: 'GET',
     headers: { Origin: origin },
   });
@@ -19,55 +16,17 @@ async function request(origin) {
   };
 }
 
-async function waitForReady(attempts = 30) {
-  for (let i = 0; i < attempts; i += 1) {
-    try {
-      const response = await fetch(`http://127.0.0.1:${port}/api/v1/health`);
-      if (response.status === 200) return;
-    } catch {
-      // not ready yet
-    }
-    await sleep(500);
-  }
-  throw new Error('App did not become ready in time');
-}
-
-function buildApp() {
-  const result = spawnSync('npm', ['run', 'build'], { stdio: 'inherit', shell: true });
-  if (result.status !== 0) process.exit(result.status ?? 1);
-}
-
-function startApp() {
-  const env = {
-    ...process.env,
-    NODE_ENV: 'development',
-    PORT: String(port),
-    HOST: '127.0.0.1',
-    DATABASE_URL: process.env.DATABASE_URL ?? 'postgresql://evzone:evzone@localhost:5432/evzone',
-    DB_SYNCHRONIZE: 'false',
-    DB_MIGRATIONS_RUN: 'true',
-    DB_LOGGING: 'false',
-    CORS_ORIGINS: allowedOrigin,
-    SOCKET_CORS_ORIGINS: allowedOrigin,
-    JWT_SECRET: 'smoke-test-jwt-secret-with-more-than-32-characters',
-    INTEGRATION_ENCRYPTION_KEY: 'smoke-test-integration-key-with-more-than-32-characters',
-    REDIS_DISABLED: 'true',
-    KAFKA_DISABLED: 'true',
-  };
-
-  return spawn(process.execPath, ['dist/main.js'], {
-    stdio: 'inherit',
-    env,
-  });
-}
-
 async function run() {
   buildApp();
-  const child = startApp();
+  const child = startApp(port, {
+    SEED_DEMO: 'false',
+    CORS_ORIGINS: allowedOrigin,
+    SOCKET_CORS_ORIGINS: allowedOrigin,
+  });
   let passed = false;
 
   try {
-    await waitForReady();
+    await waitForReady(baseUrl);
 
     const allowed = await request(allowedOrigin);
     if (allowed.status !== 200) {
@@ -90,9 +49,7 @@ async function run() {
     // eslint-disable-next-line no-console
     console.log('✅ CORS smoke test passed');
   } finally {
-    child.kill('SIGTERM');
-    await sleep(500);
-    if (!child.killed) child.kill('SIGKILL');
+    await shutdown(child);
   }
 
   return passed;

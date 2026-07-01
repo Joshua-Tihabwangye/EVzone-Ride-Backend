@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AmbulanceModule } from '../ambulance/ambulance.module';
 import { CorporatePayModule } from '../corporate-pay/corporate-pay.module';
 import { DeliveriesModule } from '../deliveries/deliveries.module';
+import { HealthModule } from '../health/health.module';
 import { DispatchModule } from '../dispatch/dispatch.module';
 import { RentalsModule } from '../rentals/rentals.module';
 import { RidesModule } from '../rides/rides.module';

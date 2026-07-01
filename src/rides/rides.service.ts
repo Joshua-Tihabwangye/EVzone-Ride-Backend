@@ -1,4 +1,10 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -37,6 +43,7 @@ import {
   Vehicle,
 } from '../database/entities';
 import { DriversService } from '../drivers/drivers.service';
+import { WorkerHeartbeatService } from '../infrastructure/worker-heartbeat.service';
 import { MatchingService } from '../matching/matching.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaymentsService } from '../payments/payments.service';
@@ -99,6 +106,7 @@ export class RidesService {
     private readonly payments: PaymentsService,
     private readonly wallets: WalletsService,
     private readonly eventBus: EventEmitter2,
+    @Optional() private readonly heartbeat?: WorkerHeartbeatService,
   ) {}
 
   async estimate(userId: string | undefined, dto: EstimateRideDto) {
@@ -342,7 +350,7 @@ export class RidesService {
     const vehicleId = driver.currentVehicleId;
     if (!vehicleId) throw new BadRequestException('No active vehicle selected');
 
-    return this.rides.manager.transaction(async (manager) => {
+    await this.rides.manager.transaction(async (manager) => {
       const ride = await manager.findOne(Ride, {
         where: { id: rideId },
         lock: { mode: 'pessimistic_write' },
@@ -406,8 +414,8 @@ export class RidesService {
         data: { rideId: ride.id, driverId: driver.id },
       });
       this.emitRide(ride);
-      return this.detailForUser(userId, rideId, UserRole.DRIVER);
     });
+    return this.detailForUser(userId, rideId, UserRole.DRIVER);
   }
 
   async reject(userId: string, rideId: string, reason?: string) {
@@ -742,6 +750,7 @@ export class RidesService {
       });
       if (!activeOffers) void this.match(ride.id);
     }
+    await this.heartbeat?.record('RidesService.processMatchingAndSchedules', 10);
   }
 
   private async assignedDriverRide(userId: string, rideId: string, includeCode = false) {

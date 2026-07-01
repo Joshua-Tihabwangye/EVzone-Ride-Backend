@@ -36,6 +36,7 @@ import { FleetPortalModule } from './fleet-portal/fleet-portal.module';
 import { FinancialOperationsModule } from './financial-operations/financial-operations.module';
 import { HealthModule } from './health/health.module';
 import { GeolocationModule } from './geolocation/geolocation.module';
+import { LoggingModule } from './logging/logging.module';
 import { GovernanceModule } from './governance/governance.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
 import { IdempotencyInterceptor } from './idempotency/idempotency.interceptor';
@@ -83,6 +84,7 @@ import { WalletsModule } from './wallets/wallets.module';
     }),
 >>>>>>> origin/main
     TypeOrmModule.forRootAsync({ useFactory: createTypeOrmOptions }),
+    LoggingModule,
     DatabaseModule,
     InfrastructureModule,
     OrganizationsModule,

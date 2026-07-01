@@ -4,11 +4,24 @@ import { InfrastructureController } from './infrastructure.controller';
 import { ProcessRoleService } from './process-role.service';
 import { ProductionConfigService } from './production-config.service';
 import { RedisService } from './redis.service';
+import { WorkerHeartbeatService } from './worker-heartbeat.service';
 
 @Global()
 @Module({
   controllers: [InfrastructureController],
-  providers: [RedisService, DomainEventsService, ProcessRoleService, ProductionConfigService],
-  exports: [RedisService, DomainEventsService, ProcessRoleService, ProductionConfigService],
+  providers: [
+    RedisService,
+    DomainEventsService,
+    ProcessRoleService,
+    ProductionConfigService,
+    WorkerHeartbeatService,
+  ],
+  exports: [
+    RedisService,
+    DomainEventsService,
+    ProcessRoleService,
+    ProductionConfigService,
+    WorkerHeartbeatService,
+  ],
 })
 export class InfrastructureModule {}

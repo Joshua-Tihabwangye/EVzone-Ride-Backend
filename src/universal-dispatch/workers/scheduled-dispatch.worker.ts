@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 <<<<<<< HEAD
 import { DispatchScheduledRequestsProcessor } from './processors/dispatch-scheduled-requests.processor';
 =======
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
+import { WorkerHeartbeatService } from '../../infrastructure/worker-heartbeat.service';
 import { ProcessRoleService } from '../../infrastructure/process-role.service';
 import { UniversalServiceRequest } from '../domain/universal-dispatch.entities';
 import { UniversalRequestStatus, UniversalScheduleType } from '../domain/universal-dispatch.enums';
@@ -37,6 +38,7 @@ export class ScheduledDispatchWorker {
     private readonly requests: Repository<UniversalServiceRequest>,
     private readonly matching: UniversalMatchingService,
     private readonly roles: ProcessRoleService,
+    @Optional() private readonly heartbeat?: WorkerHeartbeatService,
   ) {}
 
   @Cron(CronExpression.EVERY_MINUTE)
@@ -68,5 +70,6 @@ export class ScheduledDispatchWorker {
       }
 >>>>>>> origin/main
     }
+    await this.heartbeat?.record('ScheduledDispatchWorker.run', 60);
   }
 }
