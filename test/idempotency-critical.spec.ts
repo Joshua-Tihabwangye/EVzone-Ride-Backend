@@ -19,6 +19,9 @@ import { FinancialOperationsModule } from '../src/financial-operations/financial
 import { WalletsService } from '../src/wallets/wallets.service';
 import { PaymentsService } from '../src/payments/payments.service';
 import { FinancialOperationsService } from '../src/financial-operations/financial-operations.service';
+import { getTestDatabaseUrl, isPostgresReachableSync } from './helpers/db-availability';
+
+const describeIfDb = isPostgresReachableSync() ? describe : describe.skip;
 
 class CounterService {
   private counter = 0;
@@ -54,12 +57,12 @@ class IdempotencyTestController {
   }
 }
 
-describe('Idempotency critical flows', () => {
+describeIfDb('Idempotency critical flows', () => {
   let app: INestApplication;
   let dataSource: DataSource;
 
   beforeAll(async () => {
-    const databaseUrl = process.env.DATABASE_URL ?? 'postgresql://evzone:evzone@localhost:5432/evzone';
+    const databaseUrl = getTestDatabaseUrl();
     const moduleRef = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),

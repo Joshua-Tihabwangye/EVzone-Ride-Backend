@@ -43,6 +43,7 @@ describe('Tenant isolation', () => {
     users = db.getRepository(User);
     permissionsService = new PermissionsService(organizations, members);
     financialOperations = new FinancialOperationsService(
+      db,
       db.getRepository(StoredPaymentMethod),
       cashouts,
       db.getRepository(DriverProfile),

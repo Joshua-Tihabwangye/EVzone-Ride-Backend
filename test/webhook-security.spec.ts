@@ -18,8 +18,11 @@ import { NotificationsModule } from '../src/notifications/notifications.module';
 import { PaymentsModule } from '../src/payments/payments.module';
 import { WalletsModule } from '../src/wallets/wallets.module';
 import { WebhooksModule } from '../src/webhooks/webhooks.module';
+import { getTestDatabaseUrl, isPostgresReachableSync } from './helpers/db-availability';
 
-describe('Webhook security', () => {
+const describeIfDb = isPostgresReachableSync() ? describe : describe.skip;
+
+describeIfDb('Webhook security', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let corporatePayService: CorporatePayService;
@@ -28,7 +31,7 @@ describe('Webhook security', () => {
   const corporatePaySecret = 'corporatepay-webhook-secret-32-bytes';
 
   beforeAll(async () => {
-    process.env.DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://evzone:evzone@localhost:5432/evzone';
+    process.env.DATABASE_URL = getTestDatabaseUrl();
 
     paytotaKeys = generateKeyPairSync('rsa', {
       modulusLength: 2048,

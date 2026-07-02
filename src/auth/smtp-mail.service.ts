@@ -13,7 +13,9 @@ export class SmtpMailService {
     const port = Number(this.config.get('SMTP_PORT') ?? 465);
     const account = this.config.get<string>('SMTP_USER') ?? this.config.get<string>('EMAIL_USER');
     const secret =
-      this.config.get<string>(['SMTP', 'APP', 'PASSWORD'].join('_')) ?? this.config.get<string>('SMTP_PASS');
+      this.config.get<string>('SMTP_APP_PASSWORD') ??
+      this.config.get<string>('SMTP_PASSWORD') ??
+      this.config.get<string>('SMTP_PASS');
     const sender = this.config.get<string>('SMTP_FROM') ?? account;
 
     if (!account || !secret || !sender) {

@@ -864,7 +864,7 @@ export class AdminPortalService {
       resource: item.entityType,
       resourceId: item.entityId ?? '',
       createdAt: item.createdAt.getTime(),
-      metadata: { ...(item.data ?? {}), route: item.route, ipAddress: item.ipAddress },
+      metadata: { ...(item.metadata ?? {}), route: item.route, ipAddress: item.ipAddress },
     }));
   }
 

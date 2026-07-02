@@ -2,12 +2,8 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
-<<<<<<< HEAD
-import { OrganizationStatus, UserRole } from '../common/enums';
-import { Permission, RequirePermission } from '../permissions';
-=======
 import { OrganizationStatus, UserRole, WebhookEventStatus } from '../common/enums';
->>>>>>> origin/main
+import { Permission, RequirePermission } from '../permissions';
 import { AuthUser } from '../common/interfaces';
 import {
   ReviewDocumentDto,

@@ -1,5 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
 import { BRAND } from '../common/constants';
 import { Public } from '../common/decorators/public.decorator';
@@ -119,15 +121,4 @@ export class HealthController {
     ]);
   }
 
-  @Public()
-  @Get('health/workers')
-  workers() {
-    const statuses = this.workerHealth.status();
-    const healthy = Object.values(statuses).every((s) => s.healthy);
-    return {
-      status: healthy ? 'ok' : 'degraded',
-      workers: statuses,
-      timestamp: new Date().toISOString(),
-    };
-  }
 }

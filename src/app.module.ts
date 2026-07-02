@@ -72,17 +72,13 @@ import { WalletsModule } from './wallets/wallets.module';
 
 @Module({
   imports: [
-<<<<<<< HEAD
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env.local', '.env'] }),
-    WorkersModule.register(),
-=======
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
       validationSchema,
       validationOptions,
     }),
->>>>>>> origin/main
+    WorkersModule.register(),
     TypeOrmModule.forRootAsync({ useFactory: createTypeOrmOptions }),
     LoggingModule,
     DatabaseModule,
@@ -115,14 +111,11 @@ import { WalletsModule } from './wallets/wallets.module';
     PricingModule,
     WalletsModule,
     PaymentsModule,
-<<<<<<< HEAD
+    WebhooksModule,
     PayoutsModule,
     PayoutsWorkerModule.register(),
     ReconciliationModule,
     ReconciliationWorkerModule.register(),
-=======
-    WebhooksModule,
->>>>>>> origin/main
     CorporatePayModule,
     CorporateIntegrationModule,
     CommutesModule,

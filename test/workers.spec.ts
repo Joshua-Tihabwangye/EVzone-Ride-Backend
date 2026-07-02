@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { DataSource } from 'typeorm';
+
 import { Queue, Job } from 'bullmq';
 import {
   BullmqConfigService,
@@ -11,7 +11,7 @@ import {
   RECONCILIATION_DAILY_QUEUE,
   WorkerHeartbeat,
 } from '../src/workers';
-import { HealthController } from '../src/health/health.controller';
+
 import { DispatchMatchProcessor } from '../src/universal-dispatch/workers/processors/dispatch-match.processor';
 import { UniversalMatchingService } from '../src/universal-dispatch/application/universal-matching.service';
 
@@ -181,33 +181,27 @@ describe('Workers infrastructure', () => {
     });
   });
 
-  describe('HealthController workers endpoint', () => {
+  describe('WorkerHealthService status aggregation', () => {
     it('reports degraded when a worker is unhealthy', () => {
       const health = new WorkerHealthService();
       health.beat('expire', 'failure');
       health.beat('expire', 'failure');
       health.beat('expire', 'failure');
 
-      const controller = new HealthController(
-        { query: jest.fn(), isInitialized: true } as unknown as DataSource,
-        health,
-      );
-      const result = controller.workers();
-      expect(result.status).toBe('degraded');
-      expect(result.workers.expire.healthy).toBe(false);
+      const statuses = health.status();
+      const healthy = Object.values(statuses).every((s) => s.healthy);
+      expect(healthy).toBe(false);
+      expect(statuses.expire.healthy).toBe(false);
     });
 
     it('reports ok when all tracked workers are healthy', () => {
       const health = new WorkerHealthService();
       health.beat('match', 'success');
 
-      const controller = new HealthController(
-        { query: jest.fn(), isInitialized: true } as unknown as DataSource,
-        health,
-      );
-      const result = controller.workers();
-      expect(result.status).toBe('ok');
-      expect(result.workers.match.healthy).toBe(true);
+      const statuses = health.status();
+      const healthy = Object.values(statuses).every((s) => s.healthy);
+      expect(healthy).toBe(true);
+      expect(statuses.match.healthy).toBe(true);
     });
   });
 

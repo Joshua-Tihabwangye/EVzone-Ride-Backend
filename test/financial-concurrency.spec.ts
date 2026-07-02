@@ -13,8 +13,11 @@ import { PaymentsModule } from '../src/payments/payments.module';
 import { PaymentsService } from '../src/payments/payments.service';
 import { WalletsModule } from '../src/wallets/wallets.module';
 import { WalletsService } from '../src/wallets/wallets.service';
+import { getTestDatabaseUrl, isPostgresReachableSync } from './helpers/db-availability';
 
-describe('financial concurrency (Postgres)', () => {
+const describeIfDb = isPostgresReachableSync() ? describe : describe.skip;
+
+describeIfDb('financial concurrency (Postgres)', () => {
   let moduleRef: any;
   let dataSource: DataSource;
   let walletsService: any;
@@ -22,7 +25,7 @@ describe('financial concurrency (Postgres)', () => {
   let financialOpsService: any;
 
   beforeAll(async () => {
-    const databaseUrl = process.env.DATABASE_URL ?? 'postgresql://evzone:evzone@localhost:5432/evzone';
+    const databaseUrl = getTestDatabaseUrl();
     moduleRef = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),

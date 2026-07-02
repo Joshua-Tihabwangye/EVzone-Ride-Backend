@@ -2,11 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
-<<<<<<< HEAD
-import { Between, Repository } from 'typeorm';
-import { PaymentMethod, PaymentStatus, ServiceType, WalletTransactionType } from '../common/enums';
-=======
-import { DataSource, Repository } from 'typeorm';
+import { Between, DataSource, Repository } from 'typeorm';
 import {
   PaymentMethod,
   PaymentStatus,
@@ -15,7 +11,6 @@ import {
   WalletTransactionType,
 } from '../common/enums';
 import { getRepository, Transactional } from '../common/transaction';
->>>>>>> origin/main
 import {
   AmbulanceRequest,
   DeliveryOrder,
@@ -261,12 +256,8 @@ export class PaymentsService {
       WalletTransactionType.REFUND,
       refundReference,
       reason ?? 'Payment refund',
-<<<<<<< HEAD
-      { paymentId: payment.id, approvedBy: requesterId },
-      payment.organizationId,
-=======
       { paymentId: payment.id, approvedBy: requesterId, idempotencyKey },
->>>>>>> origin/main
+      payment.organizationId,
     );
 
     payment.refundedAmount = rounded(alreadyRefunded + refundAmount);

@@ -52,6 +52,7 @@ import {
   VerifyPasswordResetOtpDto,
 } from './auth.dto';
 import { AccessTokenClaims } from './access-token-verifier.service';
+import { SmtpMailService } from './smtp-mail.service';
 
 const DRIVER_ONBOARDING_CHECKLIST = [
   { key: 'PROFILE', label: 'Personal profile', required: true },
@@ -90,6 +91,7 @@ export class AuthService {
     private readonly organizationMembers: Repository<OrganizationMember>,
     @InjectRepository(FleetProfile) private readonly fleetProfiles: Repository<FleetProfile>,
     private readonly redis: RedisService,
+    private readonly smtp: SmtpMailService,
   ) {}
 
   async register(dto: RegisterDto, metadata?: { userAgent?: string; ipAddress?: string }) {
@@ -151,7 +153,20 @@ export class AuthService {
       this.wallets.create({ userId: user.id, currency: user.currency, availableBalance: 0 }),
     );
     if (role === UserRole.DRIVER) {
-      await this.ensureDriverOnboarding(user.id, roles);
+      await this.ensureDriverOnboarding(user.id, roles, {
+        profile: {
+          fullName,
+          email: user.email,
+          phone: user.phone,
+          country: dto.country,
+          dateOfBirth: dto.dateOfBirth,
+          streetAddress: dto.streetAddress,
+          city: dto.city,
+          district: dto.district,
+          postalCode: dto.postalCode,
+          landmark: dto.landmark,
+        },
+      });
     }
     return this.issueSession(user, metadata);
   }
@@ -196,8 +211,16 @@ export class AuthService {
   }
 
   async requestOtp(dto: RequestOtpDto) {
+    if (dto.purpose !== 'PASSWORD_RESET') {
+      if (dto.channel === 'EMAIL') {
+        await this.usersService.assertEmailPhoneAvailable(dto.destination, undefined);
+      } else {
+        await this.usersService.assertEmailPhoneAvailable(undefined, dto.destination);
+      }
+    }
+
     const code = randomOtp();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 60 * 1000);
     const otp = await this.otpCodes.save(
       this.otpCodes.create({
         destination: dto.destination,
@@ -210,8 +233,25 @@ export class AuthService {
     await this.redis.setJson(
       this.otpKey(dto.destination, dto.purpose),
       { id: otp.id, codeHash: sha256(code), expiresAt: expiresAt.toISOString(), attempts: 0 },
-      600,
+      60,
     );
+
+    if (dto.channel === 'EMAIL') {
+      const emailResult = await this.smtp.sendVerificationCode({
+        to: dto.destination,
+        code,
+        purpose: dto.purpose ?? 'VERIFY_ACCOUNT',
+      });
+
+      if (!emailResult.sent) {
+        throw new BadRequestException(
+          emailResult.reason === 'EMAIL_NOT_CONFIGURED'
+            ? 'Email delivery is not configured on the backend.'
+            : 'Unable to send verification email.',
+        );
+      }
+    }
+
     return {
       sent: true,
       channel: dto.channel,
@@ -483,7 +523,13 @@ export class AuthService {
     };
   }
 
-  private async ensureDriverOnboarding(userId: string, roles: string[] = ['driver']): Promise<DriverProfile> {
+  private async ensureDriverOnboarding(
+    userId: string,
+    roles: string[] = ['driver'],
+    registrationData?: {
+      profile?: Record<string, unknown>;
+    },
+  ): Promise<DriverProfile> {
     let driver = await this.driverProfiles.findOne({ where: { userId } });
     if (!driver) {
       driver = await this.driverProfiles.save(
@@ -498,6 +544,19 @@ export class AuthService {
       );
     }
 
+    if (registrationData?.profile) {
+      const existingPreferences = (driver.preferences ?? {}) as Record<string, unknown>;
+      const existingProfile = (existingPreferences.profile ?? {}) as Record<string, unknown>;
+      driver.preferences = {
+        ...existingPreferences,
+        profile: {
+          ...existingProfile,
+          ...registrationData.profile,
+        },
+      };
+      driver = await this.driverProfiles.save(driver);
+    }
+
     let application = await this.onboardingApplications.findOne({
       where: { userId, applicationType: 'DRIVER' },
       order: { createdAt: 'DESC' },
@@ -509,9 +568,25 @@ export class AuthService {
           applicationType: 'DRIVER',
           status: 'IN_PROGRESS',
           completionPercent: 0,
-          profileData: { roles },
+          profileData: {
+            roles,
+            ...(registrationData?.profile ? { profile: registrationData.profile } : {}),
+          },
         }),
       );
+    } else if (registrationData?.profile) {
+      application.profileData = {
+        ...(application.profileData ?? {}),
+        roles,
+        profile: {
+          ...((application.profileData as Record<string, unknown> | undefined)?.profile as Record<
+            string,
+            unknown
+          >),
+          ...registrationData.profile,
+        },
+      };
+      await this.onboardingApplications.save(application);
     }
 
     const existingItems = await this.onboardingChecklist.find({

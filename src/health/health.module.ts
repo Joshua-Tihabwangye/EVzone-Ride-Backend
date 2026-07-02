@@ -10,7 +10,7 @@ import { StorageHealthIndicator } from './indicators/storage.health';
 import { WorkersHealthIndicator } from './indicators/workers.health';
 
 @Module({
-  imports: [TerminusModule],
+  imports: [TerminusModule, WorkersConfigModule],
   controllers: [HealthController],
   providers: [
     DatabaseHealthIndicator,
@@ -20,7 +20,5 @@ import { WorkersHealthIndicator } from './indicators/workers.health';
     StorageHealthIndicator,
     WorkersHealthIndicator,
   ],
-  imports: [WorkersConfigModule],
-  controllers: [HealthController],
 })
 export class HealthModule {}

@@ -3,7 +3,6 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums';
-import { Permission, RequirePermission } from '../permissions';
 import { AuthUser } from '../common/interfaces';
 import { RequireIdempotency } from '../idempotency/require-idempotency.decorator';
 import { ConfirmPaymentDto, CreatePaymentDto, RefundPaymentDto } from './payments.dto';
@@ -51,11 +50,6 @@ export class PaymentsController {
 
   @Post(':id/refund')
   @Roles(UserRole.ADMIN, UserRole.SUPPORT)
-<<<<<<< HEAD
-  @RequirePermission(Permission.FINANCE_REFUND_CREATE)
-  refund(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: RefundPaymentDto) {
-    return this.service.refund(user.id, id, dto.amount, dto.reason);
-=======
   @RequireIdempotency()
   refund(
     @CurrentUser() user: AuthUser,
@@ -64,7 +58,6 @@ export class PaymentsController {
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     return this.service.refund(user.id, id, dto.amount, dto.reason, idempotencyKey);
->>>>>>> origin/main
   }
 
   @Get()
