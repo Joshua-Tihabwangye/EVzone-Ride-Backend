@@ -1,4 +1,10 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -19,6 +25,7 @@ import {
 } from '../common/enums';
 import { AuthUser } from '../common/interfaces';
 import { estimatedMinutes, haversineKm } from '../common/utils/geo';
+import { BusinessMetricsService } from '../observability/metrics/business-metrics.service';
 import { randomOtp, safeEqualHash, sha256 } from '../common/utils/security';
 import {
   DeliveryEvent,
@@ -66,6 +73,7 @@ export class DeliveriesService {
     private readonly payments: PaymentsService,
     private readonly wallets: WalletsService,
     private readonly eventBus: EventEmitter2,
+    @Optional() private readonly businessMetrics?: BusinessMetricsService,
   ) {}
 
   async estimate(userId: string | undefined, dto: EstimateDeliveryDto) {
@@ -155,6 +163,7 @@ export class DeliveriesService {
       }),
     ]);
     await this.log(order.id, 'DELIVERY_CREATED', customerId, { quote });
+    this.businessMetrics?.recordDeliveryCreated();
     await this.pricing.recordRedemption({
       code: dto.promoCode,
       userId: customerId,
@@ -472,6 +481,7 @@ export class DeliveriesService {
     order.status = DeliveryStatus.COMPLETED;
     order.completedAt = new Date();
     await this.orders.save(order);
+    this.businessMetrics?.recordDeliveryCompleted();
     if (order.driverId) {
       const driver = await this.driverProfiles.findOne({ where: { id: order.driverId } });
       if (driver) {

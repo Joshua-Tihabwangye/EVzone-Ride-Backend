@@ -2,6 +2,7 @@ import { DataSource, Repository } from 'typeorm';
 import { ENTITIES } from '../src/database/entities';
 import { FinancialOperationsService } from '../src/financial-operations/financial-operations.service';
 import { PermissionsService } from '../src/permissions/permissions.service';
+import { createBusinessMetricsMock } from './helpers/metrics.mock';
 import {
   CashoutRequest,
   DriverProfile,
@@ -49,6 +50,8 @@ describe('Tenant isolation', () => {
       db.getRepository(DriverProfile),
       {} as any,
       {} as any,
+      { record: jest.fn(async () => ({ id: 'audit-1' })) } as any,
+      createBusinessMetricsMock() as any,
     );
   });
 

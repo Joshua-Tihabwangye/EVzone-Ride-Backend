@@ -1,31 +1,7 @@
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { DataSource, EntityManager } from 'typeorm';
 import { PaymentMethod, PaymentStatus, ServiceType } from '../src/common/enums';
-import { TransactionStore } from '../src/common/transaction';
-import { Payment } from '../src/database/entities';
 import { PaymentsService } from '../src/payments/payments.service';
-
-function mockManager(repos: Record<string, unknown>): EntityManager {
-  return {
-    getRepository: (entity: unknown) => {
-      const name = typeof entity === 'function' ? entity.name : String(entity);
-      return (repos[name] ?? {
-        findOne: jest.fn(),
-        save: jest.fn(async (value: unknown) => value),
-        create: jest.fn((value: unknown) => value),
-        update: jest.fn(),
-      }) as never;
-    },
-  } as unknown as EntityManager;
-}
-
-function mockDataSource(manager: EntityManager): DataSource {
-  return {
-    transaction: jest.fn(async (fn: (m: EntityManager) => Promise<unknown>) =>
-      TransactionStore.run(manager, () => fn(manager)),
-    ),
-  } as unknown as DataSource;
-}
+import { createBusinessMetricsMock } from './helpers/metrics.mock';
 
 describe('School Shuttle CorporatePay payment bridge', () => {
   it('creates and confirms a payment for an externally managed school trip', async () => {
@@ -43,11 +19,9 @@ describe('School Shuttle CorporatePay payment bridge', () => {
     };
     const notifications = { create: jest.fn(async () => ({ id: 'notification-1' })) };
     const events = { emit: jest.fn() } as unknown as EventEmitter2;
-    const manager = mockManager({ Payment: payments });
-    const dataSource = mockDataSource(manager);
     const service = new PaymentsService(
-      dataSource,
       payments as never,
+      {} as never,
       {} as never,
       {} as never,
       {} as never,
@@ -59,6 +33,8 @@ describe('School Shuttle CorporatePay payment bridge', () => {
       events,
       {} as never,
       {} as never,
+      { record: jest.fn(async () => ({ id: 'audit-1' })) } as never,
+      createBusinessMetricsMock() as never,
     );
 
     const created = await service.createIntent(

@@ -1,6 +1,7 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
+import { AuditService } from '../audit/audit.service';
 import {
   ApprovalRequest,
   FeatureFlag,
@@ -19,6 +20,8 @@ import {
 
 @Injectable()
 export class GovernanceService {
+  private readonly logger = new Logger(GovernanceService.name);
+
   constructor(
     @InjectRepository(FeatureFlag) private readonly flags: Repository<FeatureFlag>,
     @InjectRepository(ApprovalRequest) private readonly approvals: Repository<ApprovalRequest>,
@@ -26,6 +29,7 @@ export class GovernanceService {
     @InjectRepository(ServiceConfiguration)
     private readonly serviceConfigurations: Repository<ServiceConfiguration>,
     @InjectRepository(OperationalAlert) private readonly alerts: Repository<OperationalAlert>,
+    private readonly auditService: AuditService,
   ) {}
 
   listFlags(scope?: string) {
@@ -47,23 +51,49 @@ export class GovernanceService {
     const scope = dto.scope?.trim() || 'GLOBAL';
     let flag = await this.flags.findOne({ where: { key: dto.key, scope } });
     flag ??= this.flags.create({ key: dto.key, scope });
+    const before = flag.id ? { ...flag } : null;
     Object.assign(flag, {
       enabled: dto.enabled,
       description: dto.description,
       rules: dto.rules,
       updatedByUserId: userId,
     });
-    return this.flags.save(flag);
+    const saved = await this.flags.save(flag);
+    void this.auditService
+      .record({
+        actorUserId: userId,
+        action: before ? 'FEATURE_FLAG_UPDATED' : 'FEATURE_FLAG_CREATED',
+        entityType: 'FeatureFlag',
+        entityId: `${saved.key}:${saved.scope}`,
+        before: before ?? undefined,
+        after: { ...saved },
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 
-  createApproval(userId: string, dto: CreateApprovalDto) {
-    return this.approvals.save(
+  async createApproval(userId: string, dto: CreateApprovalDto) {
+    const saved = await this.approvals.save(
       this.approvals.create({
         ...dto,
         requestedByUserId: userId,
         status: 'PENDING',
       }),
     );
+    void this.auditService
+      .record({
+        actorUserId: userId,
+        action: 'APPROVAL_CREATED',
+        entityType: 'ApprovalRequest',
+        entityId: saved.id,
+        after: { ...saved },
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 
   listApprovals(status?: string, entityType?: string) {
@@ -77,17 +107,43 @@ export class GovernanceService {
     const approval = await this.approvals.findOne({ where: { id } });
     if (!approval) throw new NotFoundException('Approval request not found');
     if (approval.status !== 'PENDING') throw new ConflictException('Approval request already decided');
+    const before = { ...approval };
     approval.status = dto.status;
     approval.notes = dto.notes ?? approval.notes;
     approval.reviewedByUserId = reviewerId;
     approval.reviewedAt = new Date();
-    return this.approvals.save(approval);
+    const saved = await this.approvals.save(approval);
+    void this.auditService
+      .record({
+        actorUserId: reviewerId,
+        action: 'APPROVAL_DECIDED',
+        entityType: 'ApprovalRequest',
+        entityId: saved.id,
+        before,
+        after: { ...saved },
+        reason: dto.notes,
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 
-  createRiskCase(dto: CreateRiskCaseDto) {
-    return this.riskCases.save(
+  async createRiskCase(dto: CreateRiskCaseDto) {
+    const saved = await this.riskCases.save(
       this.riskCases.create({ ...dto, severity: dto.severity ?? 'MEDIUM', status: 'OPEN' }),
     );
+    void this.auditService
+      .record({
+        action: 'RISK_CASE_CREATED',
+        entityType: 'RiskCase',
+        entityId: saved.id,
+        after: { ...saved },
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 
   listRiskCases(status?: string, severity?: string, subjectId?: string) {
@@ -101,12 +157,26 @@ export class GovernanceService {
   async updateRiskCase(id: string, userId: string, dto: UpdateRiskCaseDto) {
     const riskCase = await this.riskCases.findOne({ where: { id } });
     if (!riskCase) throw new NotFoundException('Risk case not found');
+    const before = { ...riskCase };
     Object.assign(riskCase, dto);
     if (dto.status === 'RESOLVED' || dto.status === 'DISMISSED') {
       riskCase.resolvedAt = new Date();
       riskCase.resolvedByUserId = userId;
     }
-    return this.riskCases.save(riskCase);
+    const saved = await this.riskCases.save(riskCase);
+    void this.auditService
+      .record({
+        actorUserId: userId,
+        action: 'RISK_CASE_UPDATED',
+        entityType: 'RiskCase',
+        entityId: saved.id,
+        before,
+        after: { ...saved },
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 
   listServiceConfigurations() {
@@ -116,8 +186,22 @@ export class GovernanceService {
   async upsertServiceConfiguration(userId: string, dto: UpsertServiceConfigurationDto) {
     let record = await this.serviceConfigurations.findOne({ where: { key: dto.key } });
     record ??= this.serviceConfigurations.create({ key: dto.key });
+    const before = record.id ? { ...record } : null;
     Object.assign(record, dto, { updatedByUserId: userId });
-    return this.serviceConfigurations.save(record);
+    const saved = await this.serviceConfigurations.save(record);
+    void this.auditService
+      .record({
+        actorUserId: userId,
+        action: before ? 'SERVICE_CONFIGURATION_UPDATED' : 'SERVICE_CONFIGURATION_CREATED',
+        entityType: 'ServiceConfiguration',
+        entityId: saved.key,
+        before: before ?? undefined,
+        after: { ...saved },
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 
   listAlerts(status?: string, severity?: string) {
@@ -130,20 +214,49 @@ export class GovernanceService {
   async acknowledgeAlert(id: string, userId: string) {
     const alert = await this.alerts.findOne({ where: { id } });
     if (!alert) throw new NotFoundException('Operational alert not found');
+    const before = { ...alert };
     alert.status = alert.status === 'OPEN' ? 'ACKNOWLEDGED' : alert.status;
     alert.acknowledgedByUserId = userId;
     alert.acknowledgedAt = new Date();
-    return this.alerts.save(alert);
+    const saved = await this.alerts.save(alert);
+    void this.auditService
+      .record({
+        actorUserId: userId,
+        action: 'OPERATIONAL_ALERT_ACKNOWLEDGED',
+        entityType: 'OperationalAlert',
+        entityId: saved.id,
+        before,
+        after: { ...saved },
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 
   async resolveAlert(id: string, userId: string, notes?: string) {
     const alert = await this.alerts.findOne({ where: { id } });
     if (!alert) throw new NotFoundException('Operational alert not found');
+    const before = { ...alert };
     alert.status = 'RESOLVED';
     alert.resolvedAt = new Date();
     alert.acknowledgedByUserId ??= userId;
     alert.acknowledgedAt ??= new Date();
     alert.details = { ...(alert.details ?? {}), resolutionNotes: notes };
-    return this.alerts.save(alert);
+    const saved = await this.alerts.save(alert);
+    void this.auditService
+      .record({
+        actorUserId: userId,
+        action: 'OPERATIONAL_ALERT_RESOLVED',
+        entityType: 'OperationalAlert',
+        entityId: saved.id,
+        before,
+        after: { ...saved },
+        reason: notes,
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    return saved;
   }
 }

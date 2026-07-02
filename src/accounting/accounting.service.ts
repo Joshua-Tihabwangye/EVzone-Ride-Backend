@@ -56,17 +56,7 @@ export class AccountingService {
       });
     }
 
-    if (!managerOverride) {
-      const existing = await this.journals.findOne({ where: { reference: input.reference } });
-      if (existing) return this.detail(existing.id);
-    }
-
     const executor = async (manager: EntityManager) => {
-      const duplicate = await manager.findOne(JournalTransaction, {
-        where: { reference: input.reference },
-      });
-      if (duplicate) return duplicate;
-
       await this.periodService.assertPeriodOpen(new Date(), manager);
 
       let journal = await manager.save(
@@ -286,7 +276,7 @@ export class AccountingService {
     const journalRepo = manager ? manager.getRepository(JournalTransaction) : this.journals;
     const journal = await journalRepo
       .createQueryBuilder('journal')
-      .where('journal.id::text = :value', { value: idOrReference })
+      .where('journal.id = :value', { value: idOrReference })
       .orWhere('journal.reference = :value', { value: idOrReference })
       .getOne();
     if (!journal) throw new NotFoundException('Journal not found');

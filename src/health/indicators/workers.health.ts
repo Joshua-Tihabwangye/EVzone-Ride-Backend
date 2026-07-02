@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { HealthCheckError, HealthIndicator, HealthIndicatorResult } from '@nestjs/terminus';
 import { WorkerHeartbeatConfig, WorkerHeartbeatService } from '../../infrastructure/worker-heartbeat.service';
 
-const CRITICAL_WORKERS: WorkerHeartbeatConfig[] = [
+export const CRITICAL_WORKERS: WorkerHeartbeatConfig[] = [
   { name: 'WebhookRetryWorker.run', intervalSeconds: 30 },
   { name: 'MatchingWorker.run', intervalSeconds: 5 },
   { name: 'OfferExpiryWorker.run', intervalSeconds: 10 },

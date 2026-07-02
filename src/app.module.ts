@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { validationSchema, validationOptions } from './config/env.validation';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AdminFinanceModule } from './admin-finance/admin-finance.module';
 import { AdminModule } from './admin/admin.module';
 import { AgentPortalModule } from './agent-portal/agent-portal.module';
 import { AccountingModule } from './accounting/accounting.module';
@@ -41,7 +41,10 @@ import { GovernanceModule } from './governance/governance.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
 import { IdempotencyInterceptor } from './idempotency/idempotency.interceptor';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
+import { TraceInterceptor } from './observability/tracing/trace.interceptor';
+import { MetricsInterceptor } from './observability/metrics/metrics.interceptor';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ObservabilityModule } from './observability/observability.module';
 import { MatchingModule } from './matching/matching.module';
 import { MobileModule } from './mobile/mobile.module';
 import { OrganizationsModule } from './organizations/organizations.module';
@@ -51,6 +54,8 @@ import { PaymentsModule } from './payments/payments.module';
 import { PermissionGuard } from './permissions/permission.guard';
 import { PermissionsModule } from './permissions/permissions.module';
 import { PayoutsModule } from './payouts/payouts.module';
+import { PartnersModule } from './partners/partners.module';
+import { PartnersWorkerModule } from './partners/workers/partners-worker.module';
 import { PayoutsWorkerModule } from './payouts/workers/payouts-worker.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
 import { ReconciliationWorkerModule } from './reconciliation/workers/reconciliation-worker.module';
@@ -67,20 +72,15 @@ import { SafetyModule } from './safety/safety.module';
 import { TouristModule } from './tourist/tourist.module';
 import { UsersModule } from './users/users.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
-import { WebhooksModule } from './webhooks/webhooks.module';
 import { WalletsModule } from './wallets/wallets.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: ['.env.local', '.env'],
-      validationSchema,
-      validationOptions,
-    }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env.local', '.env'] }),
     WorkersModule.register(),
     TypeOrmModule.forRootAsync({ useFactory: createTypeOrmOptions }),
     LoggingModule,
+    ObservabilityModule,
     DatabaseModule,
     InfrastructureModule,
     OrganizationsModule,
@@ -111,7 +111,8 @@ import { WalletsModule } from './wallets/wallets.module';
     PricingModule,
     WalletsModule,
     PaymentsModule,
-    WebhooksModule,
+    PartnersModule,
+    PartnersWorkerModule.register(),
     PayoutsModule,
     PayoutsWorkerModule.register(),
     ReconciliationModule,
@@ -141,6 +142,7 @@ import { WalletsModule } from './wallets/wallets.module';
     UniversalDispatchModule,
     AgentPortalModule,
     AdminModule,
+    AdminFinanceModule,
     RealtimeModule,
   ],
   providers: [
@@ -150,6 +152,8 @@ import { WalletsModule } from './wallets/wallets.module';
     { provide: APP_GUARD, useClass: PermissionGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: TraceInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
     { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
   ],

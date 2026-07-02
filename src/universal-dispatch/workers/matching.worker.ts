@@ -2,10 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
-import { ProcessRoleService } from '../../infrastructure/process-role.service';
 import { UniversalServiceRequest } from '../domain/universal-dispatch.entities';
 import { UniversalRequestStatus } from '../domain/universal-dispatch.enums';
-import { UniversalMatchingService } from '../application/universal-matching.service';
+import { DispatchMatchProcessor } from './processors/dispatch-match.processor';
 
 @Injectable()
 export class MatchingWorker {
@@ -15,13 +14,11 @@ export class MatchingWorker {
   constructor(
     @InjectRepository(UniversalServiceRequest)
     private readonly requests: Repository<UniversalServiceRequest>,
-    private readonly matching: UniversalMatchingService,
-    private readonly roles: ProcessRoleService,
+    private readonly processor: DispatchMatchProcessor,
   ) {}
 
   @Cron(CronExpression.EVERY_5_SECONDS)
   async run(): Promise<void> {
-    if (!this.roles.runsWorkers()) return;
     if (this.processing) return;
     this.processing = true;
     try {
@@ -33,15 +30,17 @@ export class MatchingWorker {
             nextMatchAt: LessThan(new Date()),
           },
         ],
+        select: ['id', 'createdAt'],
         take: 50,
         order: { createdAt: 'ASC' },
       });
+
       for (const request of pending) {
         try {
-          await this.matching.matchRequest(request.id);
+          await this.processor.schedule(request.id);
         } catch (error) {
           this.logger.warn(
-            `Matching failed for request ${request.id}: ${
+            `Failed to schedule matching for request ${request.id}: ${
               error instanceof Error ? error.message : String(error)
             }`,
           );

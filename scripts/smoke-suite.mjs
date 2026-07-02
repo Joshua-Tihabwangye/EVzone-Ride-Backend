@@ -9,6 +9,13 @@ const smokeScripts = [
   'scripts/smoke-document-lifecycle.mjs',
   'scripts/smoke-ride-to-offer.mjs',
   'scripts/smoke-payment-webhook-to-ledger.mjs',
+  'scripts/smoke-tracing.mjs',
+  'scripts/smoke-metrics.mjs',
+  'scripts/smoke-ops.mjs',
+  'scripts/smoke-admin-finance.mjs',
+  'scripts/smoke-fleet-readiness.mjs',
+  'scripts/smoke-partners.mjs',
+  'scripts/smoke-dashboards.mjs',
 ];
 
 async function runScript(script) {

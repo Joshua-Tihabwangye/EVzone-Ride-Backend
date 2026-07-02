@@ -4271,6 +4271,237 @@ export class EarningsLedger extends BaseEntity {
   status!: string;
 }
 
+@Entity('wallet_reconciliation_reports')
+export class WalletReconciliationReport extends BaseEntity {
+  @Index()
+  @Column({ nullable: true })
+  runId?: string;
+
+  @Index()
+  @Column()
+  periodStart!: Date;
+
+  @Index()
+  @Column()
+  periodEnd!: Date;
+
+  @Index()
+  @Column()
+  type!: string;
+
+  @Index()
+  @Column()
+  status!: string;
+
+  @Column({ default: 'UGX' })
+  currency!: string;
+
+  @Column({ type: 'int', default: 0 })
+  totalWalletTransactions!: number;
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  totalWalletAmount!: number;
+
+  @Column({ type: 'int', default: 0 })
+  matchedCount!: number;
+
+  @Column({ type: 'int', default: 0 })
+  varianceCount!: number;
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  varianceAmount!: number;
+
+  @Column({ type: 'simple-json', nullable: true })
+  details?: Record<string, unknown>;
+
+  @Column({ nullable: true })
+  createdByUserId?: string;
+}
+
+@Entity('finance_settlement_batches')
+export class FinanceSettlementBatch extends BaseEntity {
+  @Index({ unique: true })
+  @Column()
+  reference!: string;
+
+  @Index()
+  @Column()
+  status!: string;
+
+  @Index()
+  @Column()
+  periodStart!: Date;
+
+  @Index()
+  @Column()
+  periodEnd!: Date;
+
+  @Column({ default: 'UGX' })
+  currency!: string;
+
+  @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: numberTransformer })
+  totalAmount!: number;
+
+  @Column({ type: 'int', default: 0 })
+  totalCount!: number;
+
+  @Column({ nullable: true })
+  provider?: string;
+
+  @Column({ nullable: true })
+  settlementDate?: Date;
+
+  @Column({ nullable: true })
+  postedAt?: Date;
+
+  @Column({ nullable: true })
+  postedByUserId?: string;
+
+  @Column({ type: 'simple-json', nullable: true })
+  details?: Record<string, unknown>;
+}
+
+@Entity('partners')
+export class Partner extends BaseEntity {
+  @Index({ unique: true })
+  @Column()
+  code!: string;
+
+  @Column()
+  name!: string;
+
+  @Index()
+  @Column()
+  status!: string;
+
+  @Index()
+  @Column()
+  type!: string;
+
+  @Column({ nullable: true })
+  webhookUrl?: string;
+
+  @Column({ type: 'simple-json', nullable: true })
+  config?: Record<string, unknown>;
+
+  @Column({ nullable: true })
+  createdByUserId?: string;
+}
+
+@Entity('partner_api_keys')
+export class PartnerApiKey extends BaseEntity {
+  @Index()
+  @Column()
+  partnerId!: string;
+
+  @Index()
+  @Column()
+  keyHash!: string;
+
+  @Column()
+  prefix!: string;
+
+  @Column({ type: 'simple-json' })
+  scopes!: string[];
+
+  @Index()
+  @Column()
+  status!: string;
+
+  @Column({ nullable: true })
+  expiresAt?: Date;
+
+  @Column({ nullable: true })
+  lastUsedAt?: Date;
+
+  @Column({ nullable: true })
+  revokedAt?: Date;
+
+  @Column({ nullable: true })
+  revokedByUserId?: string;
+}
+
+@Entity('partner_webhook_subscriptions')
+export class PartnerWebhookSubscription extends BaseEntity {
+  @Index()
+  @Column()
+  partnerId!: string;
+
+  @Column({ type: 'simple-json' })
+  eventTypes!: string[];
+
+  @Column()
+  url!: string;
+
+  @Column({ nullable: true })
+  secret?: string;
+
+  @Index()
+  @Column()
+  status!: string;
+}
+
+@Entity('partner_quota_usage')
+export class PartnerQuotaUsage extends BaseEntity {
+  @Index()
+  @Column()
+  partnerId!: string;
+
+  @Index()
+  @Column()
+  period!: string;
+
+  @Index()
+  @Column()
+  metric!: string;
+
+  @Column({ type: 'int', default: 0 })
+  allowed!: number;
+
+  @Column({ type: 'int', default: 0 })
+  used!: number;
+
+  @Column({ nullable: true })
+  resetAt?: Date;
+}
+
+@Entity('partner_webhook_outbox')
+export class PartnerWebhookOutbox extends BaseEntity {
+  @Index()
+  @Column()
+  partnerId!: string;
+
+  @Index()
+  @Column()
+  subscriptionId!: string;
+
+  @Index()
+  @Column()
+  eventType!: string;
+
+  @Column({ nullable: true })
+  externalEventId?: string;
+
+  @Column({ type: 'simple-json' })
+  payload!: Record<string, unknown>;
+
+  @Index()
+  @Column()
+  status!: string;
+
+  @Column({ type: 'int', default: 0 })
+  attempts!: number;
+
+  @Column({ nullable: true, type: 'text' })
+  lastError?: string;
+
+  @Column({ nullable: true })
+  nextAttemptAt?: Date;
+
+  @Column({ nullable: true })
+  deliveredAt?: Date;
+}
+
 @Entity('trip_pause_requests')
 export class TripPauseRequest extends BaseEntity {
   @Index()
@@ -5273,6 +5504,13 @@ export const ENTITIES = [
   JournalTransaction,
   LedgerEntry,
   EarningsLedger,
+  WalletReconciliationReport,
+  FinanceSettlementBatch,
+  Partner,
+  PartnerApiKey,
+  PartnerWebhookSubscription,
+  PartnerQuotaUsage,
+  PartnerWebhookOutbox,
   CommissionRule,
   ReconciliationRun,
   ReconciliationRecord,

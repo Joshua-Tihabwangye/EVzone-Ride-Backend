@@ -814,6 +814,22 @@
         "operationId": "Accounting_trialBalance",
         "parameters": [
           {
+            "name": "year",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "month",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "currency",
             "required": false,
             "in": "query",
@@ -822,6 +838,76 @@
         ],
         "responses": {
           "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Accounting & Double-Entry Ledger"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/accounting/periods/close": {
+      "post": {
+        "operationId": "Accounting_closePeriod",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClosePeriodDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LedgerAccountPeriodBalance"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Accounting & Double-Entry Ledger"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/accounting/periods/reopen": {
+      "post": {
+        "operationId": "Accounting_reopenPeriod",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClosePeriodDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
             "description": ""
           }
         },
@@ -1459,6 +1545,144 @@
         "x-route-type": "canonical"
       }
     },
+    "/api/v1/operations/control-center": {
+      "get": {
+        "operationId": "OperationsControlCenter_dashboard",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Operations"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/operations/control-center/health": {
+      "get": {
+        "operationId": "OperationsControlCenter_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Operations"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/operations/control-center/alerts": {
+      "get": {
+        "operationId": "OperationsControlCenter_alerts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Operations"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/operations/control-center/workers": {
+      "get": {
+        "operationId": "OperationsControlCenter_workers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Operations"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/operations/slos": {
+      "get": {
+        "operationId": "OperationsControlCenter_slos",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Operations"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
     "/api/v1": {
       "get": {
         "operationId": "Health_index",
@@ -1476,13 +1700,848 @@
     },
     "/api/v1/health": {
       "get": {
-        "operationId": "Health_health",
+        "operationId": "Health_legacyHealth",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         },
+        "summary": "Backward-compatible health check. Returns 200 when the database is reachable.",
+        "tags": [
+          "Health"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/health/live": {
+      "get": {
+        "operationId": "Health_live",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Liveness probe. Minimal check that the process is responsive.",
+        "tags": [
+          "Health"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "operationId": "Health_ready",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Readiness probe. Verifies database, migrations, Redis, Kafka, and storage.",
+        "tags": [
+          "Health"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/health/dependencies": {
+      "get": {
+        "operationId": "Health_dependencies",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Detailed dependency matrix. Returns the status of every external dependency.",
+        "tags": [
+          "Health"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/health/workers": {
+      "get": {
+        "operationId": "Health_workersHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Worker heartbeat status. Returns 503 if any critical cron worker is stale.",
         "tags": [
           "Health"
         ],
@@ -1491,13 +2550,14 @@
     },
     "/api/v1/ready": {
       "get": {
-        "operationId": "Health_ready",
+        "operationId": "Health_simpleReady",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
           }
         },
+        "summary": "Backward-compatible readiness endpoint.",
         "tags": [
           "Health"
         ],
@@ -2614,6 +3674,506 @@
         "x-route-type": "canonical"
       }
     },
+    "/api/v1/auth/rider/register": {
+      "post": {
+        "operationId": "RiderAuth_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiderRegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "RiderAuth"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/auth/rider/verify": {
+      "post": {
+        "operationId": "RiderAuth_verify",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiderVerifyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "RiderAuth"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/auth/rider/resend-verification": {
+      "post": {
+        "operationId": "RiderAuth_resendVerification",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiderResendVerificationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "RiderAuth"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/auth/rider/login": {
+      "post": {
+        "operationId": "RiderAuth_login",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiderLoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "RiderAuth"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/auth/rider/forgot-password": {
+      "post": {
+        "operationId": "RiderAuth_forgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiderForgotPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "RiderAuth"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/auth/rider/verify-reset": {
+      "post": {
+        "operationId": "RiderAuth_verifyReset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiderVerifyResetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "RiderAuth"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/auth/rider/reset-password": {
+      "post": {
+        "operationId": "RiderAuth_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiderResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "RiderAuth"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/commission-rules": {
+      "post": {
+        "operationId": "Commissioning_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommissionRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommissionRule"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Commission Rules"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      },
+      "get": {
+        "operationId": "Commissioning_list",
+        "parameters": [
+          {
+            "name": "serviceType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "RIDE",
+                "DELIVERY",
+                "TOURIST_VEHICLE",
+                "AMBULANCE",
+                "CAR_RENTAL",
+                "SCHOOL_SHUTTLE"
+              ]
+            }
+          },
+          {
+            "name": "active",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CommissionRule"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Commission Rules"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/commission-rules/{id}": {
+      "get": {
+        "operationId": "Commissioning_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommissionRule"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Commission Rules"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      },
+      "patch": {
+        "operationId": "Commissioning_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCommissionRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommissionRule"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Commission Rules"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/commission-rules/{id}/activate": {
+      "post": {
+        "operationId": "Commissioning_activate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommissionRule"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Commission Rules"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/commission-rules/{id}/deactivate": {
+      "post": {
+        "operationId": "Commissioning_deactivate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommissionRule"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Commission Rules"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/commission-rules/preview": {
+      "post": {
+        "operationId": "Commissioning_preview",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommissionPreviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Commission Rules"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
     "/api/v1/users/me": {
       "get": {
         "operationId": "Users_me",
@@ -3671,6 +5231,58 @@
         "x-route-type": "canonical"
       }
     },
+    "/api/v1/files/{id}/download": {
+      "get": {
+        "operationId": "Files_download",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expiresAt",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "signature",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Files"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
     "/api/v1/pricing/quote": {
       "post": {
         "operationId": "Pricing_quote",
@@ -4423,6 +6035,1234 @@
         "tags": [
           "Payments"
         ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/partner/v1/profile": {
+      "get": {
+        "operationId": "Partners_profile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Partner"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partner Self-Service"
+        ],
+        "x-route-type": "canonical"
+      },
+      "patch": {
+        "operationId": "Partners_updateProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartnerSelfUpdateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Partner"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partner Self-Service"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/partner/v1/webhooks": {
+      "post": {
+        "operationId": "Partners_createWebhook",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePartnerWebhookDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerWebhookSubscription"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partner Self-Service"
+        ],
+        "x-route-type": "canonical"
+      },
+      "get": {
+        "operationId": "Partners_listWebhooks",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 250,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Partner Self-Service"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/partner/v1/webhooks/{id}": {
+      "delete": {
+        "operationId": "Partners_revokeWebhook",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerWebhookSubscription"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partner Self-Service"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/partner/v1/usage": {
+      "get": {
+        "operationId": "Partners_usage",
+        "parameters": [
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "metric",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 250,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Partner Self-Service"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/partner/v1/actions/{action}": {
+      "post": {
+        "operationId": "Partners_dispatchAction",
+        "parameters": [
+          {
+            "name": "action",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartnerAdapterActionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partner Self-Service"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/partner/v1/events": {
+      "get": {
+        "operationId": "Partners_events",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eventType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 250,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Partner Self-Service"
+        ],
+        "x-route-type": "canonical"
+      },
+      "post": {
+        "operationId": "Partners_enqueueEvent",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnqueuePartnerEventDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Partner Self-Service"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/partners": {
+      "get": {
+        "operationId": "PartnersAdmin_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 250,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Partners"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      },
+      "post": {
+        "operationId": "PartnersAdmin_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePartnerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Partner"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Partners"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/partners/{id}": {
+      "get": {
+        "operationId": "PartnersAdmin_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Partner"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Partners"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      },
+      "patch": {
+        "operationId": "PartnersAdmin_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePartnerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Partner"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Partners"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/partners/{id}/rotate-key": {
+      "post": {
+        "operationId": "PartnersAdmin_rotateKey",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePartnerApiKeyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Partners"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/partners/{id}/revoke-key/{keyId}": {
+      "post": {
+        "operationId": "PartnersAdmin_revokeKey",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerApiKey"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Partners"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/partners/{id}/usage": {
+      "get": {
+        "operationId": "PartnersAdmin_usage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "metric",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 250,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Partners"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/partners/{id}/quota": {
+      "post": {
+        "operationId": "PartnersAdmin_setQuota",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPartnerQuotaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerQuotaUsage"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Partners"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/payouts": {
+      "get": {
+        "operationId": "Payouts_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "provider",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Payouts"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/payouts/status": {
+      "get": {
+        "operationId": "Payouts_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Payouts"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/payouts/{id}/verify": {
+      "post": {
+        "operationId": "Payouts_verify",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payout"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Payouts"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/payouts/{id}/retry": {
+      "post": {
+        "operationId": "Payouts_retry",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payout"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Payouts"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/payouts/{id}/cancel": {
+      "post": {
+        "operationId": "Payouts_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payout"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Payouts"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/reconciliation/runs": {
+      "post": {
+        "operationId": "Reconciliation_startRun",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartReconciliationRunDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationRun"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Reconciliation"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      },
+      "get": {
+        "operationId": "Reconciliation_listRuns",
+        "parameters": [
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PAYMENTS",
+                "PAYOUTS",
+                "CORPORATEPAY"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "RUNNING",
+                "COMPLETED",
+                "FAILED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReconciliationRun"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Reconciliation"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/reconciliation/runs/{id}": {
+      "get": {
+        "operationId": "Reconciliation_getRun",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationRun"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Reconciliation"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/reconciliation/runs/{id}/records": {
+      "get": {
+        "operationId": "Reconciliation_listRecords",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "MATCHED",
+                "VARIANCE",
+                "RESOLVED",
+                "IGNORED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReconciliationRecord"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Reconciliation"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/reconciliation/runs/{id}/records/{recordId}/resolve": {
+      "post": {
+        "operationId": "Reconciliation_resolveRecord",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveReconciliationRecordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationRecord"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Reconciliation"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/reconciliation/upload-settlement": {
+      "post": {
+        "operationId": "Reconciliation_uploadSettlement",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadSettlementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationRun"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Reconciliation"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/reconciliation/providers": {
+      "get": {
+        "operationId": "Reconciliation_providers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Reconciliation"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
         "x-route-type": "canonical"
       }
     },
@@ -8717,6 +11557,113 @@
         "x-route-type": "compatibility"
       }
     },
+    "/api/v1/drivers/me/vehicles/{vehicleId}/accessories": {
+      "get": {
+        "operationId": "DriverCompatibility_getVehicleAccessories",
+        "parameters": [
+          {
+            "name": "vehicleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Driver Compatibility API"
+        ],
+        "deprecated": true,
+        "x-audience": "driver",
+        "x-owner-module": "DriverJobsModule",
+        "x-lifecycle": "ride",
+        "x-route-type": "compatibility"
+      },
+      "patch": {
+        "operationId": "DriverCompatibility_patchVehicleAccessories",
+        "parameters": [
+          {
+            "name": "vehicleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAccessoriesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Driver Compatibility API"
+        ],
+        "deprecated": true,
+        "x-audience": "driver",
+        "x-owner-module": "DriverJobsModule",
+        "x-lifecycle": "ride",
+        "x-route-type": "compatibility"
+      }
+    },
+    "/api/v1/drivers/me/vehicles/{vehicleId}/select-active": {
+      "post": {
+        "operationId": "DriverCompatibility_selectActiveVehicle",
+        "parameters": [
+          {
+            "name": "vehicleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Driver Compatibility API"
+        ],
+        "deprecated": true,
+        "x-audience": "driver",
+        "x-owner-module": "DriverJobsModule",
+        "x-lifecycle": "ride",
+        "x-route-type": "compatibility"
+      }
+    },
     "/api/v1/drivers/me/active-vehicle": {
       "patch": {
         "operationId": "DriverCompatibility_activateVehicle",
@@ -9188,6 +12135,88 @@
         "responses": {
           "200": {
             "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Driver Compatibility API"
+        ],
+        "deprecated": true,
+        "x-audience": "driver",
+        "x-owner-module": "DriverJobsModule",
+        "x-lifecycle": "ride",
+        "x-route-type": "compatibility"
+      }
+    },
+    "/api/v1/drivers/me/wallet/transactions": {
+      "get": {
+        "operationId": "DriverCompatibility_walletTransactions",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Driver Compatibility API"
+        ],
+        "deprecated": true,
+        "x-audience": "driver",
+        "x-owner-module": "DriverJobsModule",
+        "x-lifecycle": "ride",
+        "x-route-type": "compatibility"
+      }
+    },
+    "/api/v1/drivers/me/cashout-requests": {
+      "post": {
+        "operationId": "DriverCompatibility_createCashoutRequest",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCashoutRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashoutRequest"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -16891,6 +19920,270 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "x-organization-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Fleet Partner Portal v6"
+        ],
+        "x-audience": "fleet",
+        "x-owner-module": "FleetPortalModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/fleet/earnings/detailed": {
+      "get": {
+        "operationId": "FleetPortal_earningsDetailed",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-organization-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Fleet Partner Portal v6"
+        ],
+        "x-audience": "fleet",
+        "x-owner-module": "FleetPortalModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/fleet/earnings/payout-requests": {
+      "post": {
+        "operationId": "FleetPortal_requestPayout",
+        "parameters": [
+          {
+            "name": "x-organization-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestFleetPayoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Fleet Partner Portal v6"
+        ],
+        "x-audience": "fleet",
+        "x-owner-module": "FleetPortalModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/fleet/compliance/score": {
+      "get": {
+        "operationId": "FleetPortal_complianceScore",
+        "parameters": [
+          {
+            "name": "x-organization-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Fleet Partner Portal v6"
+        ],
+        "x-audience": "fleet",
+        "x-owner-module": "FleetPortalModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/fleet/performance/metrics": {
+      "get": {
+        "operationId": "FleetPortal_performanceMetrics",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-organization-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Fleet Partner Portal v6"
+        ],
+        "x-audience": "fleet",
+        "x-owner-module": "FleetPortalModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/fleet/performance/drivers": {
+      "get": {
+        "operationId": "FleetPortal_driverPerformance",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "serviceType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "parentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 250,
+              "type": "number"
             }
           },
           {
@@ -25209,6 +28502,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "idempotency-key",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -26359,12 +29660,12 @@
         "x-route-type": "canonical"
       }
     },
-    "/api/v1/universal-dispatch/admin/dispatch-decisions/{requestId}": {
+    "/api/v1/universal-dispatch/admin/decision-traces/{traceId}": {
       "get": {
         "operationId": "DispatchAdmin_getDecisionTrace",
         "parameters": [
           {
-            "name": "requestId",
+            "name": "traceId",
             "required": true,
             "in": "path",
             "schema": {
@@ -32329,19 +35630,86 @@
     },
     "/api/v1/admin/audit-logs": {
       "get": {
-        "operationId": "Admin_auditLogs",
+        "operationId": "AdminAudit_list",
         "parameters": [
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {}
-          },
           {
             "name": "page",
             "required": false,
             "in": "query",
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actorUserId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Administration"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin/audit-logs/{id}/verify": {
+      "get": {
+        "operationId": "AdminAudit_verify",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -34297,6 +37665,1010 @@
         "x-owner-module": "AdminModule",
         "x-route-type": "compatibility"
       }
+    },
+    "/api/v1/admin-finance/cashouts": {
+      "get": {
+        "operationId": "AdminFinance_listCashouts",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 250,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/cashouts/{id}": {
+      "get": {
+        "operationId": "AdminFinance_getCashout",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashoutRequest"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/cashouts/{id}/review": {
+      "patch": {
+        "operationId": "AdminFinance_reviewCashout",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewCashoutAdminDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashoutRequest"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/payouts": {
+      "get": {
+        "operationId": "AdminFinance_listPayouts",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 250,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/payouts/{id}": {
+      "get": {
+        "operationId": "AdminFinance_getPayout",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payout"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/payouts/{id}/retry": {
+      "post": {
+        "operationId": "AdminFinance_retryPayout",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payout"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/payments": {
+      "get": {
+        "operationId": "AdminFinance_listPayments",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 250,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/payments/{id}/refund": {
+      "post": {
+        "operationId": "AdminFinance_refundPayment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundPaymentAdminDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payment"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/revenue": {
+      "get": {
+        "operationId": "AdminFinance_revenue",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 250,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/revenue/summary": {
+      "get": {
+        "operationId": "AdminFinance_revenueSummary",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 250,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/settlements": {
+      "get": {
+        "operationId": "AdminFinance_listSettlements",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 250,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      },
+      "post": {
+        "operationId": "AdminFinance_createSettlement",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSettlementBatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinanceSettlementBatch"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/settlements/{id}": {
+      "get": {
+        "operationId": "AdminFinance_getSettlement",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinanceSettlementBatch"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/settlements/{id}/post": {
+      "patch": {
+        "operationId": "AdminFinance_postSettlement",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinanceSettlementBatch"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/settlements/{id}/cancel": {
+      "patch": {
+        "operationId": "AdminFinance_cancelSettlement",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinanceSettlementBatch"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/wallet-reconciliation": {
+      "get": {
+        "operationId": "AdminFinance_listWalletReconciliations",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 250,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      },
+      "post": {
+        "operationId": "AdminFinance_createWalletReconciliation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWalletReconciliationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletReconciliationReport"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/admin-finance/wallet-reconciliation/{id}": {
+      "get": {
+        "operationId": "AdminFinance_getWalletReconciliation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletReconciliationReport"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin Finance"
+        ],
+        "x-audience": "admin",
+        "x-owner-module": "AdminModule",
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/webhooks/paytota": {
+      "post": {
+        "operationId": "Webhooks_paytotaWebhook",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaytotaWebhookDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ],
+        "x-route-type": "canonical"
+      }
+    },
+    "/api/v1/webhooks/flutterwave": {
+      "post": {
+        "operationId": "Webhooks_flutterwaveWebhook",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlutterwaveWebhookDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ],
+        "x-route-type": "canonical"
+      }
     }
   },
   "info": {
@@ -34677,6 +39049,25 @@
         "type": "object",
         "properties": {}
       },
+      "ClosePeriodDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "month": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "year",
+          "month"
+        ]
+      },
+      "LedgerAccountPeriodBalance": {
+        "type": "object",
+        "properties": {}
+      },
       "LedgerLineDto": {
         "type": "object",
         "properties": {
@@ -34696,10 +39087,16 @@
               "EQUITY"
             ]
           },
+          "accountCategory": {
+            "type": "string"
+          },
           "ownerType": {
             "type": "string"
           },
           "ownerId": {
+            "type": "string"
+          },
+          "organizationId": {
             "type": "string"
           },
           "direction": {
@@ -34755,6 +39152,9 @@
             "type": "string"
           },
           "currency": {
+            "type": "string"
+          },
+          "organizationId": {
             "type": "string"
           },
           "lines": {
@@ -35423,6 +39823,393 @@
           "newPassword"
         ]
       },
+      "RiderRegisterDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fullName",
+          "email",
+          "password"
+        ]
+      },
+      "RiderVerifyDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 6
+          }
+        },
+        "required": [
+          "email",
+          "code"
+        ]
+      },
+      "RiderResendVerificationDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "RiderLoginDto": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "identifier",
+          "password"
+        ]
+      },
+      "RiderForgotPasswordDto": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "identifier"
+        ]
+      },
+      "RiderVerifyResetDto": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 6
+          }
+        },
+        "required": [
+          "identifier",
+          "code"
+        ]
+      },
+      "RiderResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "resetToken": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "resetToken",
+          "newPassword"
+        ]
+      },
+      "CreateCommissionRuleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "serviceType": {
+            "enum": [
+              "RIDE",
+              "DELIVERY",
+              "TOURIST_VEHICLE",
+              "AMBULANCE",
+              "CAR_RENTAL",
+              "SCHOOL_SHUTTLE"
+            ],
+            "type": "string"
+          },
+          "marketId": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "fleetId": {
+            "type": "string"
+          },
+          "vehicleType": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "number"
+          },
+          "effectiveFrom": {
+            "type": "string"
+          },
+          "effectiveUntil": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "driverSharePercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "platformFeePercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "fixedPlatformFee": {
+            "type": "number",
+            "minimum": 0
+          },
+          "taxPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "tipPayoutPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "currency": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "serviceType",
+          "effectiveFrom"
+        ]
+      },
+      "CommissionRule": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "serviceType": {
+            "enum": [
+              "RIDE",
+              "DELIVERY",
+              "TOURIST_VEHICLE",
+              "AMBULANCE",
+              "CAR_RENTAL",
+              "SCHOOL_SHUTTLE"
+            ],
+            "type": "string"
+          },
+          "marketId": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "fleetId": {
+            "type": "string"
+          },
+          "vehicleType": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "number"
+          },
+          "effectiveFrom": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "effectiveUntil": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "driverSharePercent": {
+            "type": "number"
+          },
+          "platformFeePercent": {
+            "type": "number"
+          },
+          "fixedPlatformFee": {
+            "type": "number"
+          },
+          "taxPercent": {
+            "type": "number"
+          },
+          "tipPayoutPercent": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "serviceType",
+          "priority",
+          "effectiveFrom",
+          "active",
+          "driverSharePercent",
+          "platformFeePercent",
+          "fixedPlatformFee",
+          "taxPercent",
+          "tipPayoutPercent",
+          "currency",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateCommissionRuleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "serviceType": {
+            "enum": [
+              "RIDE",
+              "DELIVERY",
+              "TOURIST_VEHICLE",
+              "AMBULANCE",
+              "CAR_RENTAL",
+              "SCHOOL_SHUTTLE"
+            ],
+            "type": "string"
+          },
+          "marketId": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "fleetId": {
+            "type": "string"
+          },
+          "vehicleType": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "number"
+          },
+          "effectiveFrom": {
+            "type": "string"
+          },
+          "effectiveUntil": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "driverSharePercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "platformFeePercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "fixedPlatformFee": {
+            "type": "number",
+            "minimum": 0
+          },
+          "taxPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "tipPayoutPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "currency": {
+            "type": "string"
+          }
+        }
+      },
+      "CommissionPreviewDto": {
+        "type": "object",
+        "properties": {
+          "serviceType": {
+            "enum": [
+              "RIDE",
+              "DELIVERY",
+              "TOURIST_VEHICLE",
+              "AMBULANCE",
+              "CAR_RENTAL",
+              "SCHOOL_SHUTTLE"
+            ],
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string"
+          },
+          "marketId": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "fleetId": {
+            "type": "string"
+          },
+          "vehicleType": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "serviceType",
+          "amount"
+        ]
+      },
       "UpdateProfileDto": {
         "type": "object",
         "properties": {
@@ -36025,6 +40812,398 @@
           }
         }
       },
+      "Partner": {
+        "type": "object",
+        "properties": {}
+      },
+      "PartnerSelfUpdateDto": {
+        "type": "object",
+        "properties": {
+          "webhookUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "config": {
+            "type": "object"
+          }
+        }
+      },
+      "CreatePartnerWebhookDto": {
+        "type": "object",
+        "properties": {
+          "eventTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "secret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "eventTypes",
+          "url"
+        ]
+      },
+      "PartnerWebhookSubscription": {
+        "type": "object",
+        "properties": {}
+      },
+      "PartnerAdapterActionDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "action",
+          "payload"
+        ]
+      },
+      "EnqueuePartnerEventDto": {
+        "type": "object",
+        "properties": {
+          "eventType": {
+            "type": "string"
+          },
+          "externalEventId": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "eventType",
+          "payload"
+        ]
+      },
+      "CreatePartnerDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "webhookUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "config": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ]
+      },
+      "UpdatePartnerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED"
+            ]
+          },
+          "webhookUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "config": {
+            "type": "object"
+          }
+        }
+      },
+      "CreatePartnerApiKeyDto": {
+        "type": "object",
+        "properties": {
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scopes"
+        ]
+      },
+      "PartnerApiKey": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetPartnerQuotaDto": {
+        "type": "object",
+        "properties": {
+          "metric": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "allowed": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "metric",
+          "period",
+          "allowed"
+        ]
+      },
+      "PartnerQuotaUsage": {
+        "type": "object",
+        "properties": {}
+      },
+      "StartReconciliationRunDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "PAYMENTS",
+              "PAYOUTS",
+              "CORPORATEPAY"
+            ]
+          },
+          "periodStart": {
+            "type": "string"
+          },
+          "periodEnd": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "tolerance": {
+            "type": "number",
+            "minimum": 0
+          },
+          "fileContent": {
+            "type": "string"
+          },
+          "fileMimeType": {
+            "type": "string"
+          },
+          "columnMapping": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "type",
+          "periodStart",
+          "periodEnd"
+        ]
+      },
+      "ReconciliationRun": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "periodStart": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "periodEnd": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "OPEN",
+              "RUNNING",
+              "COMPLETED",
+              "FAILED"
+            ],
+            "type": "string"
+          },
+          "summary": {
+            "type": "object"
+          },
+          "createdByUserId": {
+            "type": "string"
+          },
+          "completedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "periodStart",
+          "periodEnd",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ReconciliationRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "runId": {
+            "type": "string"
+          },
+          "internalRecordType": {
+            "type": "string"
+          },
+          "internalRecordId": {
+            "type": "string"
+          },
+          "providerReference": {
+            "type": "string"
+          },
+          "expectedAmount": {
+            "type": "number"
+          },
+          "settledAmount": {
+            "type": "number"
+          },
+          "variance": {
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "OPEN",
+              "MATCHED",
+              "VARIANCE",
+              "RESOLVED",
+              "IGNORED"
+            ],
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "resolvedByUserId": {
+            "type": "string"
+          },
+          "resolvedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "statementDate": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "runId",
+          "internalRecordType",
+          "internalRecordId",
+          "expectedAmount",
+          "settledAmount",
+          "variance",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ResolveReconciliationRecordDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "object"
+          },
+          "resolution": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "UploadSettlementDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PAYMENTS",
+              "PAYOUTS",
+              "CORPORATEPAY"
+            ]
+          },
+          "fileContent": {
+            "type": "string"
+          },
+          "fileMimeType": {
+            "type": "string"
+          },
+          "statementDate": {
+            "type": "string"
+          },
+          "columnMapping": {
+            "type": "object"
+          },
+          "tolerance": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "provider",
+          "type",
+          "fileContent"
+        ]
+      },
       "CorporatePayWebhookDto": {
         "type": "object",
         "properties": {
@@ -36270,7 +41449,7 @@
             "enum": [
               "OPEN",
               "MATCHED",
-              "MISMATCHED",
+              "VARIANCE",
               "RESOLVED",
               "IGNORED"
             ],
@@ -37428,6 +42607,20 @@
           "url"
         ]
       },
+      "SetAccessoriesDto": {
+        "type": "object",
+        "properties": {
+          "accessories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "accessories"
+        ]
+      },
       "CompatRejectJobDto": {
         "type": "object",
         "properties": {
@@ -37467,6 +42660,35 @@
             "minimum": 0
           }
         }
+      },
+      "CreateCashoutRequestDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "minimum": 100
+          },
+          "currency": {
+            "type": "string"
+          },
+          "method": {
+            "type": "object"
+          },
+          "idempotencyKey": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "amount",
+          "method"
+        ]
+      },
+      "CashoutRequest": {
+        "type": "object",
+        "properties": {}
       },
       "CompatDriverLocationHeartbeatDto": {
         "type": "object",
@@ -37825,20 +43047,6 @@
       "VehicleDocument": {
         "type": "object",
         "properties": {}
-      },
-      "SetAccessoriesDto": {
-        "type": "object",
-        "properties": {
-          "accessories": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "accessories"
-        ]
       },
       "VehicleAccessory": {
         "type": "object",
@@ -38614,7 +43822,63 @@
       },
       "AuditLog": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "actorUserId": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string"
+          },
+          "ipAddress": {
+            "type": "string"
+          },
+          "before": {
+            "type": "object"
+          },
+          "after": {
+            "type": "object"
+          },
+          "changedFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reason": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "checksum": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "action",
+          "entityType"
+        ]
       },
       "CreateFleetPortalDriverDto": {
         "type": "object",
@@ -39022,6 +44286,32 @@
           "description"
         ]
       },
+      "RequestFleetPayoutDto": {
+        "type": "object",
+        "properties": {
+          "driverId": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 100
+          },
+          "currency": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "method": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "driverId",
+          "amount",
+          "method"
+        ]
+      },
       "AmbulanceRequest": {
         "type": "object",
         "properties": {}
@@ -39092,29 +44382,6 @@
           }
         }
       },
-      "CreateCashoutRequestDto": {
-        "type": "object",
-        "properties": {
-          "amount": {
-            "type": "number",
-            "minimum": 100
-          },
-          "method": {
-            "type": "object"
-          },
-          "metadata": {
-            "type": "object"
-          }
-        },
-        "required": [
-          "amount",
-          "method"
-        ]
-      },
-      "CashoutRequest": {
-        "type": "object",
-        "properties": {}
-      },
       "ReviewCashoutRequestDto": {
         "type": "object",
         "properties": {
@@ -39126,6 +44393,9 @@
             ]
           },
           "reason": {
+            "type": "string"
+          },
+          "provider": {
             "type": "string"
           }
         },
@@ -42935,6 +48205,158 @@
           "category",
           "value"
         ]
+      },
+      "ReviewCashoutAdminDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "RefundPaymentAdminDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateSettlementBatchDto": {
+        "type": "object",
+        "properties": {
+          "periodStart": {
+            "type": "string"
+          },
+          "periodEnd": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "totalAmount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "totalCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "provider": {
+            "type": "string"
+          },
+          "settlementDate": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "periodStart",
+          "periodEnd"
+        ]
+      },
+      "FinanceSettlementBatch": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateWalletReconciliationDto": {
+        "type": "object",
+        "properties": {
+          "periodStart": {
+            "type": "string"
+          },
+          "periodEnd": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "runId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "periodStart",
+          "periodEnd"
+        ]
+      },
+      "WalletReconciliationReport": {
+        "type": "object",
+        "properties": {}
+      },
+      "PaytotaWebhookDataDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "PaytotaWebhookDto": {
+        "type": "object",
+        "properties": {
+          "eventType": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PaytotaWebhookDataDto"
+          }
+        }
+      },
+      "FlutterwaveWebhookDataDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "txRef": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "FlutterwaveWebhookDto": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string"
+          },
+          "event.type": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/FlutterwaveWebhookDataDto"
+          }
+        }
       }
     }
   },

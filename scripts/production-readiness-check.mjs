@@ -95,16 +95,30 @@ function checkLogConfig() {
   return pass('Logging configuration is production-ready');
 }
 
+const SUPPORTED_PAYMENT_PROVIDERS = ['MOCK', 'FLUTTERWAVE', 'PAYTOTA'];
+
 function checkPaymentProvider() {
   const provider = (getEnv('PAYMENT_PROVIDER') || 'MOCK').toUpperCase();
+
+  if (!SUPPORTED_PAYMENT_PROVIDERS.includes(provider)) {
+    return fail(
+      `PAYMENT_PROVIDER '${provider}' is not supported (expected one of ${SUPPORTED_PAYMENT_PROVIDERS.join(', ')})`,
+    );
+  }
+
   if (provider === 'MOCK') return warn('PAYMENT_PROVIDER is MOCK; configure a real provider for production');
+
   if (provider === 'FLUTTERWAVE') {
     if (!getEnv('FLUTTERWAVE_SECRET_KEY')) return fail('FLUTTERWAVE_SECRET_KEY is missing');
     if (!getEnv('FLUTTERWAVE_WEBHOOK_SECRET')) return fail('FLUTTERWAVE_WEBHOOK_SECRET is missing');
+    return pass(`Payment provider ${provider} is configured`);
   }
+
   if (provider === 'PAYTOTA') {
     if (!getEnv('PAYTOTA_WEBHOOK_PUBLIC_KEY')) return fail('PAYTOTA_WEBHOOK_PUBLIC_KEY is missing');
+    return pass(`Payment provider ${provider} is configured`);
   }
+
   return pass(`Payment provider ${provider} is configured`);
 }
 

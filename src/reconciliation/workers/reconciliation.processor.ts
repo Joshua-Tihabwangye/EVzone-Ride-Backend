@@ -1,7 +1,9 @@
-import { InjectQueue, Processor } from '@nestjs/bullmq';
+import { InjectQueue, OnQueueEvent, Processor } from '@nestjs/bullmq';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Queue, Job } from 'bullmq';
 import { RECONCILIATION_DAILY_QUEUE } from '../../workers';
+import { BusinessMetricsService } from '../../observability/metrics/business-metrics.service';
+import { WithSpan } from '../../observability/tracing/trace.decorator';
 import { ReconciliationService } from '../reconciliation.service';
 
 export interface ReconcileJob {
@@ -20,11 +22,14 @@ export class ReconciliationProcessor {
 
   constructor(
     private readonly service: ReconciliationService,
+    private readonly businessMetrics: BusinessMetricsService,
     @Optional() @InjectQueue(RECONCILIATION_DAILY_QUEUE) private readonly queue?: Queue,
   ) {}
 
+  @WithSpan()
   async process(job: Job<ReconcileJob>): Promise<void> {
     this.logger.debug(`Running reconciliation ${job.data.type}`);
+    this.businessMetrics.recordQueueJob(RECONCILIATION_DAILY_QUEUE, 'processed');
     await this.service.startRun({
       type: job.data.type,
       periodStart: new Date(job.data.periodStart),
@@ -33,6 +38,11 @@ export class ReconciliationProcessor {
       tolerance: job.data.tolerance,
       createdByUserId: job.data.createdByUserId,
     });
+  }
+
+  @OnQueueEvent('failed')
+  onFailed(_job: Job<ReconcileJob>): void {
+    this.businessMetrics.recordQueueJob(RECONCILIATION_DAILY_QUEUE, 'failed');
   }
 
   async schedule(job: ReconcileJob, delayMs = 0): Promise<void> {

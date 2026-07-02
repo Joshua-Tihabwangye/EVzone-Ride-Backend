@@ -1,26 +1,55 @@
 import 'reflect-metadata';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ForbiddenException } from '@nestjs/common';
+import { ExecutionContext, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import {
   AccountStatus,
+  DocumentStatus,
+  DocumentType,
+  DriverVerificationStatus,
+  EnergyType,
+  FleetAssetStatus,
+  FleetAssignmentStatus,
   MembershipStatus,
   OrganizationMemberRole,
   OrganizationStatus,
   OrganizationType,
   ServiceType,
+  TrainingProgressStatus,
   UserRole,
+  VehicleStatus,
+  VehicleType,
 } from '../src/common/enums';
 import { AuthUser } from '../src/common/interfaces';
 import {
+  DriverProfile,
+  EarningsLedger,
   ENTITIES,
+  FleetAssignment,
+  FleetDriver,
   FleetPortalResource,
   FleetProfile,
+  FleetVehicle,
   Organization,
   OrganizationMember,
+  TrainingModule,
+  TrainingProgress,
   User,
+  Vehicle,
+  VehicleDocument,
 } from '../src/database/entities';
 import { FleetPortalService, PortalEvent } from '../src/fleet-portal/fleet-portal.service';
+import { FleetPortalController } from '../src/fleet-portal/fleet-portal.controller';
+import { RolesGuard } from '../src/common/guards/roles.guard';
+import { PermissionGuard } from '../src/permissions/permission.guard';
+import { Reflector } from '@nestjs/core';
+
+const financialOperationsMock = { requestCashout: jest.fn() };
+const auditServiceMock = { record: jest.fn().mockResolvedValue({}) };
+const businessMetricsMock = {
+  recordFleetPayoutRequested: jest.fn(),
+  recordFleetComplianceScored: jest.fn(),
+};
 
 describe('Fleet Partner portal contract', () => {
   let db: DataSource;
@@ -43,7 +72,13 @@ describe('Fleet Partner portal contract', () => {
 
     const events = new EventEmitter2();
     events.on('fleet.portal.event', (event: PortalEvent) => emitted.push(event));
-    service = new FleetPortalService(db, events);
+    service = new FleetPortalService(
+      db,
+      events,
+      financialOperationsMock as never,
+      auditServiceMock as never,
+      businessMetricsMock as never,
+    );
 
     user = await db.getRepository(User).save(
       db.getRepository(User).create({
@@ -285,5 +320,238 @@ describe('Fleet Partner portal contract', () => {
   it('persists generic resources in the fleet tenant only', async () => {
     const count = await db.getRepository(FleetPortalResource).count({ where: { fleetId: fleet.id } });
     expect(count).toBeGreaterThanOrEqual(5);
+  });
+
+  describe('fleet readiness (Phase 3.6)', () => {
+    beforeEach(() => {
+      financialOperationsMock.requestCashout.mockReset().mockResolvedValue(undefined);
+      auditServiceMock.record.mockReset().mockResolvedValue({});
+      businessMetricsMock.recordFleetPayoutRequested.mockClear();
+      businessMetricsMock.recordFleetComplianceScored.mockClear();
+    });
+
+    it('allows fleet managers to request a driver payout', async () => {
+      const driverUser = await db.getRepository(User).save(
+        db.getRepository(User).create({
+          email: 'driver.payout@evzone.local',
+          phone: '+256700444555',
+          passwordHash: 'hash',
+          firstName: 'Driver',
+          lastName: 'Payout',
+          role: UserRole.DRIVER,
+          status: AccountStatus.ACTIVE,
+        }),
+      );
+      const driver = await db.getRepository(DriverProfile).save(
+        db.getRepository(DriverProfile).create({
+          userId: driverUser.id,
+          verificationStatus: DriverVerificationStatus.VERIFIED,
+        }),
+      );
+      await db.getRepository(FleetDriver).save(
+        db.getRepository(FleetDriver).create({
+          fleetId: fleet.id,
+          driverId: driver.id,
+          status: FleetAssetStatus.ACTIVE,
+        }),
+      );
+
+      financialOperationsMock.requestCashout.mockResolvedValue({
+        id: 'cashout-1',
+        amount: 5000,
+        currency: 'UGX',
+        status: 'PENDING',
+        reference: 'CO-FLEET-1',
+        createdAt: new Date(),
+      });
+
+      const result = await service.requestPayout(authUser, {
+        driverId: driver.id,
+        amount: 5000,
+        method: { phone: '0700222333' },
+        reason: 'Weekly earnings',
+      });
+
+      expect(financialOperationsMock.requestCashout).toHaveBeenCalled();
+      expect(result.status).toBe('PENDING');
+      expect(result.amount).toBe(5000);
+      expect(businessMetricsMock.recordFleetPayoutRequested).toHaveBeenCalled();
+    });
+
+    it('rejects payout requests for drivers outside the fleet', async () => {
+      await expect(
+        service.requestPayout(authUser, {
+          driverId: 'unknown-driver',
+          amount: 5000,
+          method: { phone: '0700000000' },
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('computes a fleet compliance score', async () => {
+      const driverUser = await db.getRepository(User).save(
+        db.getRepository(User).create({
+          email: 'driver.compliance@evzone.local',
+          passwordHash: 'hash',
+          firstName: 'Driver',
+          lastName: 'Compliance',
+          role: UserRole.DRIVER,
+          status: AccountStatus.ACTIVE,
+        }),
+      );
+      const driver = await db.getRepository(DriverProfile).save(
+        db.getRepository(DriverProfile).create({
+          userId: driverUser.id,
+          verificationStatus: DriverVerificationStatus.VERIFIED,
+        }),
+      );
+      await db.getRepository(FleetDriver).save(
+        db.getRepository(FleetDriver).create({
+          fleetId: fleet.id,
+          driverId: driver.id,
+          status: FleetAssetStatus.ACTIVE,
+        }),
+      );
+
+      const vehicle = await db.getRepository(Vehicle).save(
+        db.getRepository(Vehicle).create({
+          ownerUserId: user.id,
+          make: 'Toyota',
+          model: 'Hiace',
+          year: 2020,
+          plateNumber: 'UAB 123X',
+          status: VehicleStatus.ACTIVE,
+          vehicleType: VehicleType.VAN,
+          energyType: EnergyType.INTERNAL_COMBUSTION,
+        }),
+      );
+      await db.getRepository(FleetVehicle).save(
+        db.getRepository(FleetVehicle).create({
+          fleetId: fleet.id,
+          vehicleId: vehicle.id,
+          status: FleetAssetStatus.ACTIVE,
+        }),
+      );
+      await db.getRepository(VehicleDocument).save(
+        db.getRepository(VehicleDocument).create({
+          vehicleId: vehicle.id,
+          type: DocumentType.VEHICLE_INSURANCE,
+          status: DocumentStatus.VERIFIED,
+          fileUrl: 'http://example.com/insurance.pdf',
+        }),
+      );
+
+      const module = await db.getRepository(TrainingModule).save(
+        db.getRepository(TrainingModule).create({
+          code: 'SAFETY-101',
+          title: 'Safety',
+          description: 'Safety training',
+        }),
+      );
+      await db.getRepository(TrainingProgress).save(
+        db.getRepository(TrainingProgress).create({
+          driverId: driver.id,
+          moduleId: module.id,
+          status: TrainingProgressStatus.COMPLETED,
+        }),
+      );
+
+      const score = await service.fleetComplianceScore(authUser);
+      expect(score.score).toBeGreaterThanOrEqual(0);
+      expect(score.score).toBeLessThanOrEqual(100);
+      expect(score.breakdown.activeDrivers).toBeGreaterThanOrEqual(1);
+      expect(score.breakdown.activeVehicles).toBeGreaterThanOrEqual(1);
+      expect(businessMetricsMock.recordFleetComplianceScored).toHaveBeenCalled();
+    });
+
+    it('aggregates fleet performance metrics', async () => {
+      const driverUser = await db.getRepository(User).save(
+        db.getRepository(User).create({
+          email: 'driver.performance@evzone.local',
+          passwordHash: 'hash',
+          firstName: 'Driver',
+          lastName: 'Performance',
+          role: UserRole.DRIVER,
+          status: AccountStatus.ACTIVE,
+        }),
+      );
+      const driver = await db.getRepository(DriverProfile).save(
+        db.getRepository(DriverProfile).create({
+          userId: driverUser.id,
+          verificationStatus: DriverVerificationStatus.VERIFIED,
+        }),
+      );
+      await db.getRepository(FleetDriver).save(
+        db.getRepository(FleetDriver).create({
+          fleetId: fleet.id,
+          driverId: driver.id,
+          status: FleetAssetStatus.ACTIVE,
+        }),
+      );
+      await db.getRepository(FleetAssignment).save(
+        db.getRepository(FleetAssignment).create({
+          fleetId: fleet.id,
+          serviceType: ServiceType.RIDE,
+          serviceId: 'ride-fleet-1',
+          driverId: driver.id,
+          status: FleetAssignmentStatus.COMPLETED,
+          startsAt: new Date(),
+          assignedByUserId: user.id,
+        }),
+      );
+      await db.getRepository(EarningsLedger).save(
+        db.getRepository(EarningsLedger).create({
+          userId: driverUser.id,
+          driverId: driver.id,
+          journalId: 'journal-fleet-1',
+          grossAmount: 12000,
+          platformFee: 2000,
+          netAmount: 10000,
+          currency: 'UGX',
+        }),
+      );
+
+      const metrics = await service.fleetPerformanceMetrics(authUser);
+      expect(metrics.totals.completed).toBe(1);
+      expect(metrics.earnings.net).toBe(10000);
+    });
+
+    it('rejects non-fleet roles for fleet portal controller endpoints', () => {
+      const reflector = new Reflector();
+      const guard = new RolesGuard(reflector);
+      const handler = FleetPortalController.prototype.complianceScore;
+
+      const context = {
+        getHandler: () => handler,
+        getClass: () => FleetPortalController,
+        switchToHttp: () => ({
+          getRequest: () => ({ user: { role: UserRole.CUSTOMER } }),
+        }),
+      } as unknown as ExecutionContext;
+
+      expect(guard.canActivate(context)).toBe(false);
+    });
+
+    it('enforces fleet payout permission through PermissionGuard', () => {
+      const reflector = new Reflector();
+      const guard = new PermissionGuard(reflector);
+      const handler = FleetPortalController.prototype.requestPayout;
+
+      const context = {
+        getHandler: () => handler,
+        getClass: () => FleetPortalController,
+        switchToHttp: () => ({
+          getRequest: () => ({
+            user: {
+              role: UserRole.FLEET_PARTNER,
+              activeOrganizationId: organization.id,
+              permissions: ['fleet:read'],
+            },
+          }),
+        }),
+      } as unknown as ExecutionContext;
+
+      expect(() => guard.canActivate(context)).toThrow();
+    });
   });
 });

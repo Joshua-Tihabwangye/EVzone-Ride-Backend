@@ -1,7 +1,9 @@
-import { InjectQueue, Processor } from '@nestjs/bullmq';
+import { InjectQueue, OnQueueEvent, Processor } from '@nestjs/bullmq';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Queue, Job } from 'bullmq';
 import { PAYOUT_VERIFY_QUEUE } from '../../workers';
+import { BusinessMetricsService } from '../../observability/metrics/business-metrics.service';
+import { WithSpan } from '../../observability/tracing/trace.decorator';
 import { PayoutStatusService } from '../payout-status.service';
 
 export interface VerifyPayoutJob {
@@ -15,12 +17,20 @@ export class PayoutVerificationProcessor {
 
   constructor(
     private readonly statusService: PayoutStatusService,
+    private readonly businessMetrics: BusinessMetricsService,
     @Optional() @InjectQueue(PAYOUT_VERIFY_QUEUE) private readonly queue?: Queue,
   ) {}
 
+  @WithSpan()
   async process(job: Job<VerifyPayoutJob>): Promise<void> {
     this.logger.debug(`Verifying payout ${job.data.payoutId}`);
+    this.businessMetrics.recordQueueJob(PAYOUT_VERIFY_QUEUE, 'processed');
     await this.statusService.verifyPayout(job.data.payoutId);
+  }
+
+  @OnQueueEvent('failed')
+  onFailed(_job: Job<VerifyPayoutJob>): void {
+    this.businessMetrics.recordQueueJob(PAYOUT_VERIFY_QUEUE, 'failed');
   }
 
   async scheduleVerification(payoutId: string, delayMs = 60_000): Promise<void> {

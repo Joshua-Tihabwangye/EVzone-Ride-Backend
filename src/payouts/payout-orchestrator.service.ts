@@ -16,6 +16,7 @@ import {
 } from '../common/enums';
 import { CashoutRequest, Payout, Wallet, WalletTransaction } from '../database/entities';
 import { AccountingService } from '../accounting/accounting.service';
+import { BusinessMetricsService } from '../observability/metrics/business-metrics.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { PayoutProviderFactory } from './providers/payout-provider.factory';
 import {
@@ -44,6 +45,7 @@ export class PayoutOrchestratorService {
     private readonly accounting: AccountingService,
     private readonly walletsService: WalletsService,
     private readonly providerFactory: PayoutProviderFactory,
+    private readonly businessMetrics: BusinessMetricsService,
   ) {}
 
   async payoutFromCashout(
@@ -315,8 +317,10 @@ export class PayoutOrchestratorService {
 
       if (status === PayoutStatus.COMPLETED) {
         payout.completedAt = new Date();
+        this.businessMetrics.recordPayoutCompleted();
       } else if (status === PayoutStatus.FAILED) {
         payout.failedAt = new Date();
+        this.businessMetrics.recordPayoutFailed();
       }
 
       await payoutRepo.save(payout);

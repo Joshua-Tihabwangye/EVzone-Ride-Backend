@@ -11,6 +11,10 @@ import { buildSwaggerConfig, SWAGGER_SITE_TITLE, SWAGGER_UI_PATH } from './infra
 import { enhanceSwaggerDocument } from './infrastructure/swagger-document-post-processor';
 import { RedisIoAdapter } from './realtime/redis-io.adapter';
 import { parseCorsOrigins } from './common/utils/cors-origins.helper';
+import { buildTracingConfig } from './observability/tracing/tracing.config';
+import { tracingProvider } from './observability/tracing/tracing.provider';
+
+tracingProvider.init(buildTracingConfig());
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -76,5 +80,8 @@ async function bootstrap(): Promise<void> {
 
   app.get(Logger).log(`EVzone Ride API listening on port ${port}`);
 }
+
+process.on('SIGTERM', () => void tracingProvider.shutdown().catch(() => undefined));
+process.on('SIGINT', () => void tracingProvider.shutdown().catch(() => undefined));
 
 void bootstrap();

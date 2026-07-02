@@ -15,6 +15,7 @@ import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { MoreThanOrEqual, Repository } from 'typeorm';
+import { WithSpan } from '../observability/tracing/trace.decorator';
 import { FileAssetStatus, UserRole } from '../common/enums';
 import { AuthUser } from '../common/interfaces';
 import { getRequiredSecret } from '../common/utils/required-secret.util';
@@ -73,6 +74,7 @@ export class FilesService {
     );
   }
 
+  @WithSpan()
   async upload(userId: string, file: Express.Multer.File, visibility: 'PUBLIC' | 'PRIVATE' = 'PRIVATE') {
     this.validateFile(file);
     await this.assertRateAndQuota(userId, file.size);

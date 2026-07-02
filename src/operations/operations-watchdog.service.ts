@@ -11,6 +11,8 @@ import {
   VehicleDocument,
 } from '../database/entities';
 import { ProcessRoleService } from '../infrastructure/process-role.service';
+import { WithSpan } from '../observability/tracing/trace.decorator';
+import { BusinessMetricsService } from '../observability/metrics/business-metrics.service';
 
 export interface WatchdogResult {
   staleDriversOffline: number;
@@ -35,6 +37,7 @@ export class OperationsWatchdogService implements OnModuleInit, OnModuleDestroy 
     @InjectRepository(VehicleDocument) private readonly vehicleDocuments: Repository<VehicleDocument>,
     @InjectRepository(OperationalAlert) private readonly alerts: Repository<OperationalAlert>,
     private readonly roles: ProcessRoleService,
+    private readonly businessMetrics: BusinessMetricsService,
   ) {}
 
   onModuleInit(): void {
@@ -62,6 +65,7 @@ export class OperationsWatchdogService implements OnModuleInit, OnModuleDestroy 
     };
   }
 
+  @WithSpan()
   async run(): Promise<WatchdogResult> {
     if (this.running) return this.lastResult ?? this.emptyResult();
     this.running = true;
@@ -258,6 +262,7 @@ export class OperationsWatchdogService implements OnModuleInit, OnModuleDestroy 
     });
     if (existing) return 0;
     await this.alerts.save(this.alerts.create({ ...input, status: 'OPEN' }));
+    this.businessMetrics.recordOperationsAlert(input.severity, 'OPEN');
     return 1;
   }
 

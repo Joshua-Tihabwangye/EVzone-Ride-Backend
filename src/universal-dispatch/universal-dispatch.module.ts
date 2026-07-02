@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ObservabilityModule } from '../observability/observability.module';
 import { DriverProfile, RideFeedback } from '../database/entities';
 import { WorkersConfigModule } from '../workers/workers-config.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -37,7 +38,11 @@ import { DispatchStaleCleanupProcessor } from './workers/processors/dispatch-sta
 import { DispatchDriverController } from './controllers/dispatch-driver.controller';
 import { DispatchRiderController } from './controllers/dispatch-rider.controller';
 import { DispatchAdminController } from './controllers/dispatch-admin.controller';
+
+import { AuditModule } from '../audit/audit.module';
+
 import { HealthModule } from '../health/health.module';
+
 import { NotificationsModule } from '../notifications/notifications.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { DriversModule } from '../drivers/drivers.module';
@@ -46,6 +51,7 @@ import { VehiclesModule } from '../vehicles/vehicles.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([...UNIVERSAL_DISPATCH_ENTITIES, DriverProfile, RideFeedback]),
+    ObservabilityModule,
     DatabaseModule,
     StateMachineModule,
     WorkersConfigModule,
@@ -54,6 +60,7 @@ import { VehiclesModule } from '../vehicles/vehicles.module';
     RealtimeModule,
     DriversModule,
     VehiclesModule,
+    AuditModule,
   ],
   providers: [
     DispatchPolicyService,

@@ -1,6 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { WithSpan } from '../../observability/tracing/trace.decorator';
+import { AuditService } from '../../audit/audit.service';
 import {
   UniversalDispatchAssignment,
   UniversalDispatchOffer,
@@ -37,8 +39,12 @@ export class UniversalOfferService {
     private readonly outbox: UniversalOutboxService,
     private readonly realtime: DispatchRealtimeService,
     private readonly stateMachine: UniversalDispatchStateMachineService,
+    private readonly auditService: AuditService,
   ) {}
 
+  private readonly logger = new Logger(UniversalOfferService.name);
+
+  @WithSpan()
   async accept(
     driverId: string,
     offerId: string,
@@ -76,6 +82,10 @@ export class UniversalOfferService {
           requestId: request.id,
         });
       }
+
+      const offerBefore = { ...offer };
+      const requestBefore = { ...request };
+      const unitBefore = { ...unit };
 
       if (![UniversalRequestStatus.SEARCHING, UniversalRequestStatus.OFFERING].includes(request.status)) {
         throw new ConflictException({ code: 'OFFER_INVALID_STATE' });
@@ -177,6 +187,43 @@ export class UniversalOfferService {
         requestId: request.id,
       });
 
+      await this.auditService.record(
+        {
+          actorUserId: driverId,
+          action: 'DISPATCH_OFFER_ACCEPTED',
+          entityType: 'UniversalDispatchOffer',
+          entityId: offer.id,
+          before: offerBefore,
+          after: { ...offer },
+          metadata: { requestId: request.id, assignmentId: assignment.id, unitId: unit.id },
+        },
+        manager,
+      );
+      await this.auditService.record(
+        {
+          actorUserId: driverId,
+          action: 'SERVICE_REQUEST_ASSIGNED',
+          entityType: 'UniversalServiceRequest',
+          entityId: request.id,
+          before: requestBefore,
+          after: { ...request },
+          metadata: { assignmentId: assignment.id, unitId: unit.id, offerId: offer.id },
+        },
+        manager,
+      );
+      await this.auditService.record(
+        {
+          actorUserId: driverId,
+          action: 'DISPATCH_UNIT_RESERVED',
+          entityType: 'UniversalDispatchUnit',
+          entityId: unit.id,
+          before: unitBefore,
+          after: { ...unit },
+          metadata: { requestId: request.id, assignmentId: assignment.id, offerId: offer.id },
+        },
+        manager,
+      );
+
       return assignment;
     });
   }
@@ -195,6 +242,7 @@ export class UniversalOfferService {
     if (offer.status !== UniversalOfferStatus.PENDING) {
       throw new ConflictException({ code: 'OFFER_NOT_PENDING' });
     }
+    const before = { ...offer };
     offer.respondedAt = new Date();
     offer.responseReason = input.reasonCode;
     const saved = await this.stateMachine.transitionOffer(
@@ -215,6 +263,19 @@ export class UniversalOfferService {
       );
     }
 
+    void this.auditService
+      .record({
+        actorUserId: driverId,
+        action: 'DISPATCH_OFFER_DECLINED',
+        entityType: 'UniversalDispatchOffer',
+        entityId: saved.id,
+        before,
+        after: { ...saved },
+        reason: input.reasonCode,
+      })
+      .catch((error) =>
+        this.logger.error(`Audit error: ${error instanceof Error ? error.message : String(error)}`),
+      );
     return saved;
   }
 }

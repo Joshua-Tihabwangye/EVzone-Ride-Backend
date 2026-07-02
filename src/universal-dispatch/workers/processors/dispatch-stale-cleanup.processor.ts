@@ -5,6 +5,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, LessThan, Repository } from 'typeorm';
 import { Queue, Job } from 'bullmq';
 import { DISPATCH_STALE_CLEANUP_QUEUE, WorkerHealthService, DeadLetterService } from '../../../workers';
+import { BusinessMetricsService } from '../../../observability/metrics/business-metrics.service';
+import { WithSpan } from '../../../observability/tracing/trace.decorator';
 import { UniversalDispatchUnit } from '../../domain/universal-dispatch.entities';
 import { DispatchUnitStatus } from '../../domain/universal-dispatch.enums';
 import { DispatchLiveStateService } from '../../infrastructure/dispatch-live-state.service';
@@ -28,10 +30,13 @@ export class DispatchStaleCleanupProcessor {
     private readonly stateMachine: UniversalDispatchStateMachineService,
     private readonly health: WorkerHealthService,
     private readonly deadLetter: DeadLetterService,
+    private readonly businessMetrics: BusinessMetricsService,
     @Optional() @InjectQueue(DISPATCH_STALE_CLEANUP_QUEUE) private readonly queue?: Queue,
   ) {}
 
+  @WithSpan()
   async process(job: Job<StaleCleanupJob>): Promise<void> {
+    this.businessMetrics.recordQueueJob(DISPATCH_STALE_CLEANUP_QUEUE, 'processed');
     const batchSize = job.data.batchSize ?? 200;
     const thresholdSeconds = Number(this.config.get<string>('DISPATCH_STALE_LOCATION_SECONDS') ?? 300);
     const cutoff = new Date(Date.now() - thresholdSeconds * 1000);
@@ -70,6 +75,7 @@ export class DispatchStaleCleanupProcessor {
 
   @OnQueueEvent('failed')
   onFailed(job: Job<StaleCleanupJob>, error: Error): void {
+    this.businessMetrics.recordQueueJob(DISPATCH_STALE_CLEANUP_QUEUE, 'failed');
     this.health.beat(DispatchStaleCleanupProcessor.name, 'failure');
     void this.deadLetter.record(job, error);
   }

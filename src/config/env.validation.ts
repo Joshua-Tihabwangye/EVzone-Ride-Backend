@@ -58,6 +58,22 @@ export const validationSchema = Joi.object({
   PAYTOTA_WEBHOOK_PUBLIC_KEY: requiredSecretInProduction,
   FLUTTERWAVE_WEBHOOK_SECRET: requiredSecretInProduction,
   FILE_SIGNATURE_SECRET: requiredSecretInProduction,
+
+  OTEL_ENABLED: Joi.string().valid('true', 'false', '1', '0', 'yes', 'no', '').default('false'),
+  OTEL_SERVICE_NAME: Joi.string().default('evzone-ride'),
+  OTEL_SERVICE_VERSION: Joi.string().default(''),
+  OTEL_ENVIRONMENT: Joi.string().default(Joi.ref('NODE_ENV')),
+  OTEL_EXPORTER_OTLP_ENDPOINT: Joi.string().uri().allow(''),
+  OTEL_EXPORTER_OTLP_PROTOCOL: Joi.string().valid('http/protobuf', 'grpc').default('http/protobuf'),
+  OTEL_SAMPLE_RATE: Joi.string().default('1'),
+  OTEL_LOG_LEVEL: Joi.string().valid('NONE', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'VERBOSE').default('NONE'),
+
+  METRICS_ENABLED: Joi.string().valid('true', 'false', '1', '0', 'yes', 'no', '').default('false'),
+  METRICS_PORT: Joi.string().default('9090'),
+  METRICS_ENDPOINT: Joi.string().default('/metrics'),
+  METRICS_BASIC_AUTH_USER: Joi.string().allow(''),
+  METRICS_BASIC_AUTH_PASS: Joi.string().allow(''),
+  METRICS_COLLECT_DEFAULTS: Joi.string().valid('true', 'false', '1', '0', 'yes', 'no', '').default('true'),
 })
   .custom((value, helpers) => {
     const nodeEnv = (value.NODE_ENV ?? 'development').toLowerCase();
