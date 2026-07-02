@@ -40,9 +40,11 @@ import {
   VehicleDocument,
 } from '../database/entities';
 import { FinancialOperationsService } from '../financial-operations/financial-operations.service';
+import { CreateCashoutRequestDto } from '../financial-operations/financial-operations.dto';
+import { WalletsService } from '../wallets/wallets.service';
 import { CancelRideDto, CompleteRideDto, VerifyRideOtpDto } from '../rides/rides.dto';
 import { RidesService } from '../rides/rides.service';
-import { CreateVehicleDto, UpdateVehicleDto, VehicleDocumentDto } from '../vehicles/vehicles.dto';
+import { CreateVehicleDto, SetAccessoriesDto, UpdateVehicleDto, VehicleDocumentDto } from '../vehicles/vehicles.dto';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import {
   CompatDriverPreferencesDto,
@@ -64,6 +66,7 @@ export class DriverCompatibilityController {
     private readonly driverJobs: DriverJobsService,
     private readonly vehicles: VehiclesService,
     private readonly financial: FinancialOperationsService,
+    private readonly wallets: WalletsService,
     private readonly users: UsersService,
     @InjectRepository(DriverProfile) private readonly driverProfiles: Repository<DriverProfile>,
     @InjectRepository(DriverDocument) private readonly driverDocuments: Repository<DriverDocument>,
@@ -529,6 +532,39 @@ export class DriverCompatibilityController {
     return this.mapVehicleDocument(await this.vehicleDocuments.save(document));
   }
 
+  @Get('vehicles/:vehicleId/accessories')
+  async getVehicleAccessories(@CurrentUser() user: AuthUser, @Param('vehicleId') vehicleId: string) {
+    const vehicle = await this.vehicles.get(user.id, vehicleId);
+    return {
+      vehicleId: vehicle.id,
+      accessories: (vehicle as any).features ?? {},
+    };
+  }
+
+  @Patch('vehicles/:vehicleId/accessories')
+  async patchVehicleAccessories(
+    @CurrentUser() user: AuthUser,
+    @Param('vehicleId') vehicleId: string,
+    @Body() dto: SetAccessoriesDto,
+  ) {
+    const updated = await this.vehicles.setAccessories(user.id, vehicleId, dto);
+    return {
+      vehicleId: updated.id,
+      accessories: updated.features ?? {},
+    };
+  }
+
+  @Post('vehicles/:vehicleId/select-active')
+  async selectActiveVehicle(@CurrentUser() user: AuthUser, @Param('vehicleId') vehicleId: string) {
+    const vehicle = await this.vehicles.activate(user.id, vehicleId);
+    const driver = await this.driverProfiles.findOne({ where: { userId: user.id } });
+    if (driver) {
+      driver.currentVehicleId = vehicle.id;
+      await this.driverProfiles.save(driver);
+    }
+    return this.mapVehicle(vehicle);
+  }
+
   @Patch('active-vehicle')
   async activateVehicle(@CurrentUser() user: AuthUser, @Body() dto: CompatDriverPresenceDto) {
     if (!dto.vehicleId) {
@@ -626,8 +662,44 @@ export class DriverCompatibilityController {
   }
 
   @Get('wallet')
-  wallet(@CurrentUser() user: AuthUser) {
-    return { availableBalance: 0, pendingBalance: 0, balance: 0, currency: 'UGX', lastUpdatedAt: Date.now() };
+  async wallet(@CurrentUser() user: AuthUser) {
+    const wallet = await this.wallets.get(user.id);
+    return {
+      walletId: wallet.id,
+      availableBalance: Number(wallet.availableBalance),
+      pendingBalance: Number(wallet.reservedForCashout),
+      balance: Number(wallet.availableBalance),
+      currency: wallet.currency ?? 'UGX',
+      lastUpdatedAt: wallet.updatedAt ? new Date(wallet.updatedAt).getTime() : Date.now(),
+    };
+  }
+
+  @Get('wallet/transactions')
+  async walletTransactions(
+    @CurrentUser() user: AuthUser,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.wallets.listTransactions(user.id, Number(page || 1), Number(limit || 20));
+    return {
+      items: result.items.map((tx: any) => ({
+        id: tx.id,
+        type: tx.type,
+        direction: tx.direction,
+        amount: Number(tx.amount),
+        balanceAfter: Number(tx.balanceAfter),
+        reference: tx.reference,
+        description: tx.description,
+        status: tx.status,
+        createdAt: tx.createdAt.toISOString(),
+      })),
+      meta: result.meta,
+    };
+  }
+
+  @Post('cashout-requests')
+  async createCashoutRequest(@CurrentUser() user: AuthUser, @Body() dto: CreateCashoutRequestDto) {
+    return this.financial.requestCashout(user.id, dto, user.activeOrganizationId);
   }
 
   @Get('earnings/events')

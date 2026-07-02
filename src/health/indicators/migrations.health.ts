@@ -7,7 +7,7 @@ import { DataSource } from 'typeorm';
  * Expected latest applied migration. Update this constant whenever a new
  * migration is added to src/database/migrations/.
  */
-const EXPECTED_LATEST_MIGRATION = 'MakeFileAssetUrlNullable1783000000004';
+const EXPECTED_LATEST_MIGRATION = 'PartnerIntegrationFramework1785000002000';
 
 @Injectable()
 export class MigrationsHealthIndicator extends HealthIndicator {
@@ -17,6 +17,16 @@ export class MigrationsHealthIndicator extends HealthIndicator {
 
   async isHealthy(key: string): Promise<HealthIndicatorResult> {
     try {
+      // SQL.js test runs intentionally skip Postgres-only migrations, so the
+      // migration parity check is not meaningful there.
+      if (this.dataSource.options.type === 'sqljs') {
+        return this.getStatus(key, true, {
+          latest: null,
+          expected: EXPECTED_LATEST_MIGRATION,
+          note: 'sqljs migration parity check skipped',
+        });
+      }
+
       const rows = await this.dataSource.query(
         'SELECT name FROM typeorm_migrations ORDER BY timestamp DESC LIMIT 1',
       );

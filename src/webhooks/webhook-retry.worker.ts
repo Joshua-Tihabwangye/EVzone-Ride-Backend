@@ -1,5 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { BusinessMetricsService } from '../observability/metrics/business-metrics.service';
+import { WithSpan } from '../observability/tracing/trace.decorator';
 import { WorkerHeartbeatService } from '../infrastructure/worker-heartbeat.service';
 import { WebhookEventService } from './webhook-event.service';
 
@@ -9,15 +11,18 @@ export class WebhookRetryWorker {
 
   constructor(
     private readonly events: WebhookEventService,
+    private readonly businessMetrics: BusinessMetricsService,
     @Optional() private readonly heartbeat?: WorkerHeartbeatService,
   ) {}
 
   @Cron('*/30 * * * * *')
+  @WithSpan()
   async run(): Promise<void> {
     try {
       const pending = await this.events.claimFailedForRetry(20);
       for (const record of pending) {
         try {
+          this.businessMetrics.recordWebhookRetryAttempt();
           await this.events.retry(record.id);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

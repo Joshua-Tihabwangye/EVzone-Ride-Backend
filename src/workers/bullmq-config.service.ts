@@ -9,6 +9,7 @@ export const DISPATCH_SCHEDULED_REQUESTS_QUEUE = 'dispatch-scheduled-requests';
 export const DISPATCH_STALE_CLEANUP_QUEUE = 'dispatch-stale-cleanup';
 export const PAYOUT_VERIFY_QUEUE = 'payout-verify';
 export const RECONCILIATION_DAILY_QUEUE = 'reconciliation-daily-run';
+export const PARTNER_WEBHOOK_DELIVERY_QUEUE = 'partner-webhook-delivery';
 
 export const WORKER_QUEUE_NAMES = [
   DISPATCH_MATCH_QUEUE,
@@ -18,6 +19,7 @@ export const WORKER_QUEUE_NAMES = [
   DISPATCH_STALE_CLEANUP_QUEUE,
   PAYOUT_VERIFY_QUEUE,
   RECONCILIATION_DAILY_QUEUE,
+  PARTNER_WEBHOOK_DELIVERY_QUEUE,
 ] as const;
 
 export type WorkerQueueName = (typeof WORKER_QUEUE_NAMES)[number];

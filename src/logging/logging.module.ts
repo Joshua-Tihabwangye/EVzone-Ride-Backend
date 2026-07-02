@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { currentRequestContext } from '../common/request-context';
+import { getActiveTraceId } from '../observability/tracing/trace-context';
 import { AppLogger } from './logger.service';
 
 @Module({
@@ -22,6 +23,7 @@ import { AppLogger } from './logger.service';
               const user = (req as { user?: { userId?: string; id?: string; role?: string } }).user;
               return {
                 requestId: ctx?.requestId,
+                traceId: getActiveTraceId(),
                 startedAt: ctx?.startedAt,
                 tenantId: (req.headers as Record<string, string | string[] | undefined>)['x-organization-id'],
                 userId: user?.userId ?? user?.id,

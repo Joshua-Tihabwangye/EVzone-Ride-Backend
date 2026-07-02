@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { WithSpan } from '../observability/tracing/trace.decorator';
+import { BusinessMetricsService } from '../observability/metrics/business-metrics.service';
 import { randomUUID } from 'node:crypto';
 import { AuditService } from '../audit/audit.service';
 import { encryptSecret } from '../common/utils/crypto-vault';
@@ -35,6 +37,7 @@ export class FinancialOperationsService {
     private readonly wallets: WalletsService,
     private readonly payoutOrchestrator: PayoutOrchestratorService,
     private readonly auditService: AuditService,
+    private readonly businessMetrics: BusinessMetricsService,
   ) {}
 
   listMethods(userId: string) {
@@ -115,6 +118,7 @@ export class FinancialOperationsService {
     return this.updateMethod(userId, id, { enabled: false });
   }
 
+  @WithSpan()
   async requestCashout(userId: string, dto: CreateCashoutRequestDto, organizationId?: string) {
     const reference = dto.idempotencyKey?.trim() ?? `CO-${randomUUID()}`;
     const existing = await this.cashouts.findOne({ where: { userId, reference } });
@@ -143,6 +147,7 @@ export class FinancialOperationsService {
         metadata: dto.metadata,
       }),
     );
+    this.businessMetrics.recordCashoutRequested();
     void this.auditService
       .record({
         actorUserId: userId,
@@ -219,6 +224,7 @@ export class FinancialOperationsService {
     return saved;
   }
 
+  @WithSpan()
   async reviewCashout(id: string, reviewerId: string, dto: ReviewCashoutRequestDto, idempotencyKey?: string) {
     const record = await this.cashouts.findOne({ where: { id } });
     if (!record) throw new NotFoundException('Cashout request not found');
@@ -232,6 +238,7 @@ export class FinancialOperationsService {
       record.status = CashoutRequestStatus.REJECTED;
       record.failureReason = dto.reason;
       const saved = await this.cashouts.save(record);
+      this.businessMetrics.recordCashoutRejected();
       await this.releaseReserve(saved);
       void this.auditService
         .record({
@@ -253,6 +260,7 @@ export class FinancialOperationsService {
       providerName: dto.provider,
       idempotencyKey: idempotencyKey ?? record.reference,
     });
+    this.businessMetrics.recordCashoutApproved();
     void this.auditService
       .record({
         actorUserId: reviewerId,

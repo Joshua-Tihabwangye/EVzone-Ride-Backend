@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ObservabilityModule } from '../observability/observability.module';
 import { AccountingModule } from '../accounting/accounting.module';
 import { CashoutRequest, Payout, Wallet, WalletTransaction } from '../database/entities';
 import { WalletsModule } from '../wallets/wallets.module';
@@ -13,6 +14,7 @@ import { PayoutProviderFactory } from './providers/payout-provider.factory';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Payout, CashoutRequest, Wallet, WalletTransaction]),
+    ObservabilityModule,
     AccountingModule,
     WalletsModule,
   ],

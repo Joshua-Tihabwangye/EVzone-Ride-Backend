@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
+import { WithSpan } from '../../observability/tracing/trace.decorator';
 import { ConfigService } from '@nestjs/config';
 import {
   UniversalDispatchDecisionTrace,
@@ -53,6 +54,7 @@ export class UniversalMatchingService {
     private readonly stateMachine: UniversalDispatchStateMachineService,
   ) {}
 
+  @WithSpan()
   async matchRequest(requestId: string, shadowMode = false): Promise<MatchResult> {
     const request = await this.requests.findOne({ where: { id: requestId } });
     if (!request) throw new Error('Request not found');

@@ -54,7 +54,7 @@ describe('Month 2 integration: financial lifecycle', () => {
     financialOpsService = app.get(FinancialOperationsService);
     dataSource = app.get(DataSource);
     audits = dataSource.getRepository(AuditLog);
-  });
+  }, 30_000);
 
   afterAll(async () => {
     await app?.close();

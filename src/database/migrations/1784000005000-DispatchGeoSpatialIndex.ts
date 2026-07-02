@@ -15,7 +15,7 @@ export class DispatchGeoSpatialIndex1784000005000 implements MigrationInterface 
       `CREATE INDEX IF NOT EXISTS "IDX_ud_dispatch_unit_last_assigned" ON "universal_dispatch_units" ("lastAssignedAt");`,
     );
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS "IDX_ud_dispatch_unit_geo_gist" ON "universal_dispatch_units" USING GIST (ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography);`,
+      `CREATE INDEX IF NOT EXISTS "IDX_ud_dispatch_unit_geo_gist" ON "universal_dispatch_units" USING GIST (((ST_SetSRID(ST_MakePoint(longitude, latitude), 4326))::geography));`,
     );
   }
 

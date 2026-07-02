@@ -12,6 +12,9 @@ export const Permission = {
   FLEET_DRIVER_WRITE: 'fleet:driver:write',
   FLEET_VEHICLE_WRITE: 'fleet:vehicle:write',
   FLEET_DISPATCH_WRITE: 'fleet:dispatch:write',
+  FLEET_FINANCE_READ: 'fleet:finance:read',
+  FLEET_PAYOUT_REQUEST: 'fleet:payout:request',
+  FLEET_COMPLIANCE_READ: 'fleet:compliance:read',
 
   // Agent portal
   AGENT_READ: 'agent:read',
@@ -32,6 +35,11 @@ export const Permission = {
   FINANCE_PAYOUT_READ: 'finance:payout:read',
   FINANCE_PAYOUT_RETRY: 'finance:payout:retry',
   FINANCE_REFUND_CREATE: 'finance:refund:create',
+  FINANCE_REVENUE_READ: 'finance:revenue:read',
+  FINANCE_SETTLEMENT_WRITE: 'finance:settlement:write',
+
+  PARTNER_ADMIN_READ: 'partner:admin:read',
+  PARTNER_ADMIN_WRITE: 'partner:admin:write',
 
   // Governance
   GOVERNANCE_FLAG_WRITE: 'governance:flag:write',
@@ -62,6 +70,9 @@ export const ORGANIZATION_ROLE_PERMISSIONS: Record<OrganizationMemberRole, Permi
     Permission.FLEET_DRIVER_WRITE,
     Permission.FLEET_VEHICLE_WRITE,
     Permission.FLEET_DISPATCH_WRITE,
+    Permission.FLEET_FINANCE_READ,
+    Permission.FLEET_PAYOUT_REQUEST,
+    Permission.FLEET_COMPLIANCE_READ,
     Permission.AGENT_READ,
     Permission.AGENT_CASE_WRITE,
     Permission.AGENT_MANUAL_BOOKING_WRITE,
@@ -74,6 +85,10 @@ export const ORGANIZATION_ROLE_PERMISSIONS: Record<OrganizationMemberRole, Permi
     Permission.FINANCE_CASHOUT_REVIEW,
     Permission.FINANCE_PAYOUT_READ,
     Permission.FINANCE_REFUND_CREATE,
+    Permission.FINANCE_REVENUE_READ,
+    Permission.FINANCE_SETTLEMENT_WRITE,
+    Permission.PARTNER_ADMIN_READ,
+    Permission.PARTNER_ADMIN_WRITE,
     Permission.GOVERNANCE_ALERT_ACKNOWLEDGE,
   ],
   [OrganizationMemberRole.FLEET_MANAGER]: [
@@ -82,6 +97,9 @@ export const ORGANIZATION_ROLE_PERMISSIONS: Record<OrganizationMemberRole, Permi
     Permission.FLEET_DRIVER_WRITE,
     Permission.FLEET_VEHICLE_WRITE,
     Permission.FLEET_DISPATCH_WRITE,
+    Permission.FLEET_FINANCE_READ,
+    Permission.FLEET_PAYOUT_REQUEST,
+    Permission.FLEET_COMPLIANCE_READ,
     Permission.DISPATCH_READ,
   ],
   [OrganizationMemberRole.DISPATCH_MANAGER]: [
@@ -120,12 +138,17 @@ export const ORGANIZATION_ROLE_PERMISSIONS: Record<OrganizationMemberRole, Permi
     Permission.FINANCE_PAYOUT_READ,
     Permission.FINANCE_PAYOUT_RETRY,
     Permission.FINANCE_REFUND_CREATE,
+    Permission.FINANCE_REVENUE_READ,
+    Permission.FINANCE_SETTLEMENT_WRITE,
+    Permission.FLEET_FINANCE_READ,
+    Permission.FLEET_PAYOUT_REQUEST,
   ],
   [OrganizationMemberRole.COMPLIANCE]: [
     Permission.ORGANIZATION_READ,
     Permission.GOVERNANCE_FLAG_WRITE,
     Permission.GOVERNANCE_RISK_CASE_WRITE,
     Permission.GOVERNANCE_ALERT_ACKNOWLEDGE,
+    Permission.FLEET_COMPLIANCE_READ,
   ],
   [OrganizationMemberRole.VIEWER]: [
     Permission.ORGANIZATION_READ,

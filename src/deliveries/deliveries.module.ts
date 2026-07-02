@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ObservabilityModule } from '../observability/observability.module';
 import { DriversModule } from '../drivers/drivers.module';
 import { MatchingModule } from '../matching/matching.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -11,7 +12,15 @@ import { DeliveryRoutesService } from './delivery-routes.service';
 import { DeliveriesService } from './deliveries.service';
 
 @Module({
-  imports: [DriversModule, MatchingModule, PricingModule, NotificationsModule, PaymentsModule, WalletsModule],
+  imports: [
+    ObservabilityModule,
+    DriversModule,
+    MatchingModule,
+    PricingModule,
+    NotificationsModule,
+    PaymentsModule,
+    WalletsModule,
+  ],
   controllers: [DeliveriesController, DeliveryRoutesController],
   providers: [DeliveriesService, DeliveryRoutesService],
   exports: [DeliveriesService, DeliveryRoutesService],

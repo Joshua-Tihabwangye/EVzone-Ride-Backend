@@ -2,6 +2,8 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
 import { Repository } from 'typeorm';
+import { WithSpan } from '../observability/tracing/trace.decorator';
+import { BusinessMetricsService } from '../observability/metrics/business-metrics.service';
 import { AccountingService } from '../accounting/accounting.service';
 import { PaymentStatus, PayoutStatus, TransactionDirection, WalletTransactionType } from '../common/enums';
 import { Payout, User, Wallet, WalletTransaction } from '../database/entities';
@@ -14,6 +16,7 @@ export class WalletsService {
     @InjectRepository(Payout) private readonly payouts: Repository<Payout>,
     @InjectRepository(User) private readonly users: Repository<User>,
     private readonly accounting: AccountingService,
+    private readonly businessMetrics: BusinessMetricsService,
   ) {}
 
   async get(userId: string) {
@@ -44,6 +47,7 @@ export class WalletsService {
     );
   }
 
+  @WithSpan()
   async transfer(
     senderUserId: string,
     recipientIdentifier: string,
@@ -218,6 +222,7 @@ export class WalletsService {
     return { wallet, transaction };
   }
 
+  @WithSpan()
   async credit(
     userId: string,
     amount: number,
@@ -259,9 +264,11 @@ export class WalletsService {
       description,
       metadata,
     });
+    this.businessMetrics.recordWalletMovement('CREDIT', type);
     return { wallet, transaction };
   }
 
+  @WithSpan()
   async debit(
     userId: string,
     amount: number,
@@ -305,9 +312,11 @@ export class WalletsService {
       description,
       metadata,
     });
+    this.businessMetrics.recordWalletMovement('DEBIT', type);
     return { wallet, transaction };
   }
 
+  @WithSpan()
   async withdraw(userId: string, amount: number, destination: string, organizationId?: string) {
     const reference = `PAYOUT-${randomUUID()}`;
     const wallet = await this.ensureWallet(userId);

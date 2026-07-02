@@ -190,6 +190,26 @@ export class FleetPortalListQueryDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(250) limit?: number;
 }
 
+export class FleetDateRangeQueryDto {
+  @IsOptional() @IsDateString() from?: string;
+  @IsOptional() @IsDateString() to?: string;
+}
+
+export class RequestFleetPayoutDto {
+  @IsString() driverId!: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(100)
+  amount!: number;
+
+  @IsOptional() @IsString() currency?: string;
+
+  @IsOptional() @IsString() reason?: string;
+
+  @IsObject() method!: Record<string, unknown>;
+}
+
 export class UpdateFleetResourceStatusDto {
   @IsString() status!: string;
   @IsOptional() @IsString() reason?: string;

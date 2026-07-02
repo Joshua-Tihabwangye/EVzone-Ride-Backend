@@ -1,6 +1,7 @@
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PaymentMethod, PaymentStatus, ServiceType } from '../src/common/enums';
 import { PaymentsService } from '../src/payments/payments.service';
+import { createBusinessMetricsMock } from './helpers/metrics.mock';
 
 describe('School Shuttle CorporatePay payment bridge', () => {
   it('creates and confirms a payment for an externally managed school trip', async () => {
@@ -33,6 +34,7 @@ describe('School Shuttle CorporatePay payment bridge', () => {
       {} as never,
       {} as never,
       { record: jest.fn(async () => ({ id: 'audit-1' })) } as never,
+      createBusinessMetricsMock() as never,
     );
 
     const created = await service.createIntent(
