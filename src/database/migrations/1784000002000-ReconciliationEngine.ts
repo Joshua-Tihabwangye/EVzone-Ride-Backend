@@ -52,6 +52,11 @@ export class ReconciliationEngine1784000002000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
+      ALTER TYPE "public"."corporate_pay_reconciliations_status_enum"
+      ADD VALUE IF NOT EXISTS 'VARIANCE';
+    `);
+
+    await queryRunner.query(`
       UPDATE "corporate_pay_reconciliations"
       SET "status" = 'VARIANCE'
       WHERE "status" = 'MISMATCHED';
